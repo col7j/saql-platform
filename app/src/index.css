@@ -1,0 +1,27 @@
+@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Light.woff2') format('woff2'); font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Black.woff2') format('woff2'); font-weight: 900; font-display: swap; }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body { @apply bg-ink-50 text-ink-800 font-sans antialiased; }
+  h1, h2, h3, h4 { @apply font-bold text-ink-900; }
+  input, select, textarea { @apply font-sans; }
+  ::selection { background: #cdeef3; }
+}
+
+@layer components {
+  .input { @apply w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-800 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-ink-50 disabled:text-ink-400; }
+  .label { @apply mb-1 block text-xs font-medium text-ink-600; }
+  .chip { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium; }
+  .table-base { @apply w-full text-sm; }
+  .table-base th { @apply whitespace-nowrap bg-ink-50 px-3 py-2 text-start text-xs font-medium text-ink-500; }
+  .table-base td { @apply border-t border-ink-100 px-3 py-2 align-middle; }
+  .num { font-variant-numeric: tabular-nums; }
+}

@@ -1,0 +1,10 @@
+# الحزم (مثبتة خارج iCloud ومربوطة برابط رمزي)
+node_modules
+node_modules.nosync
+app/node_modules
+dist
+app/dist
+*.log
+.DS_Store
+.claude/
+.vite/
