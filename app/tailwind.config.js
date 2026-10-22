@@ -17,6 +17,7 @@ export default {
       backgroundImage: {
         'brand-grad': 'linear-gradient(135deg,#00708c 0%,#008fa8 55%,#00b9d1 100%)',
         'accent-grad': 'linear-gradient(135deg,#f79845 0%,#fbb42b 100%)',
+        'brand-deep': 'linear-gradient(135deg,#06384a 0%,#00708c 50%,#008fa8 100%)',
       },
     },
   },

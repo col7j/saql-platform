@@ -71,52 +71,65 @@ export function AppShell() {
     if (!userId) nav('/login');
   }, [userId, nav]);
 
-  const { primary, more } = navFor(db, me.person.id);
+  const { sections, all } = navFor(db, me.person.id);
   const unread = db.notifications.filter((n) => n.toId === me.person.id && !n.read).length;
-  const moreActive = more.some((i) => loc.pathname.startsWith(i.to)) || loc.pathname === '/app/more';
-  const linkCls = (active: boolean) => cx('flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-[15px] transition', active ? 'bg-brand-600 font-medium text-white shadow-sm' : 'text-ink-700 hover:bg-ink-100');
+  const [drawer, setDrawer] = useState(false);
+  useEffect(() => setDrawer(false), [loc.pathname]);
+  const linkCls = (active: boolean) => cx('group flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-[15px] transition', active ? 'bg-brand-grad font-medium text-white shadow-md shadow-brand-600/20' : 'text-ink-700 hover:bg-brand-50 hover:text-brand-800');
 
-  // القائمة الجانبية: 5 عناصر حسب الدور + "المزيد" (6 كحد أقصى)
+  // القائمة الجانبية: كل الأقسام ظاهرة ومقسّمة إلى مجموعات
   const sidebar = (
     <nav className="flex h-full flex-col">
-      <Link to="/app" className="flex items-center gap-2 px-5 pb-4 pt-5">
+      <Link to="/app" className="flex items-center gap-2 px-5 pb-3 pt-5">
         <img src="./brand/logo-horizontal.svg" alt="صقل" className="h-10" />
       </Link>
-      <div className="flex-1 space-y-1 overflow-y-auto px-3 pb-6">
-        {primary.map((i) => (
-          <NavLink key={i.to} to={i.to} end={i.to === '/app'} className={({ isActive }) => linkCls(isActive)}>
-            <NavIcon name={i.icon} className="h-5 w-5" />
-            <span className="flex-1">{i.label}</span>
-          </NavLink>
-        ))}
-        {more.length > 0 && (
-          <NavLink to="/app/more" className={() => linkCls(moreActive)}>
-            <NavIcon name="more" className="h-5 w-5" />
-            <span className="flex-1">المزيد</span>
-          </NavLink>
-        )}
-      </div>
-      <div className="border-t border-ink-100 p-3">
-        <div className="flex items-center gap-2.5 px-2 pb-2">
-          <Avatar name={me.person.name} size={32} color={me.isStaff ? 'linear-gradient(135deg,#f79845,#fbb42b)' : me.group?.color} />
+      <div className="relative mx-3 mb-4 overflow-hidden rounded-2xl bg-brand-deep p-3 text-white">
+        <div className="absolute -bottom-8 -start-6 h-20 w-20 rounded-full bg-accent-400/40 blur-xl" />
+        <div className="relative flex items-center gap-2.5">
+          <Avatar name={me.person.name} size={38} color={me.isStaff ? 'linear-gradient(135deg,#f79845,#fbb42b)' : me.group?.color ?? '#f79845'} />
           <div className="min-w-0">
-            <div className="truncate text-sm font-bold text-ink-900">{me.person.name}</div>
-            <div className="truncate text-[11px] text-ink-500">{me.labels.slice(0, 2).join(' · ')}</div>
+            <div className="truncate text-sm font-bold">{me.person.name}</div>
+            <div className="truncate text-[11px] text-white/80">{me.labels.slice(0, 2).join(' · ')}</div>
           </div>
         </div>
+      </div>
+      <div className="flex-1 space-y-4 overflow-y-auto px-3 pb-6">
+        {sections.map((sec) => (
+          <div key={sec.title}>
+            <div className="px-3 pb-1 text-[11px] font-bold tracking-wide text-ink-400">{sec.title}</div>
+            <div className="space-y-0.5">
+              {sec.items.map((i) => (
+                <NavLink key={i.to} to={i.to} end={i.to === '/app'} className={({ isActive }) => linkCls(isActive)}>
+                  <NavIcon name={i.icon} className="h-5 w-5" />
+                  <span className="flex-1">{i.label}</span>
+                  {i.to === '/app/notifications' && unread > 0 && <span className="num rounded-full bg-accent-500 px-1.5 text-[10px] font-bold text-white">{unread}</span>}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-ink-100 p-3">
         <button onClick={() => { setUser(null); nav('/'); }} className="flex min-h-[44px] w-full items-center gap-2 rounded-xl px-3 text-sm text-ink-500 hover:bg-ink-100">
           <Icons.LogOut className="h-4 w-4" /> سجّل الخروج
         </button>
       </div>
     </nav>
   );
-  const bottom = [...primary.slice(0, 4)];
+  // الشريط السفلي للجوال: الرئيسية، التقويم، وأهم عنصرين للدور، وزر القائمة الكاملة
+  const roleItems = all.filter((i) => !['/app', '/app/calendar', '/app/notifications'].includes(i.to)).slice(0, 2);
+  const bottom = [all.find((i) => i.to === '/app')!, all.find((i) => i.to === '/app/calendar')!, ...roleItems];
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
       <RoleSwitcher />
       <div className="mx-auto flex max-w-[1500px]">
-        <aside className="sticky top-[36px] hidden h-[calc(100vh-36px)] w-60 shrink-0 border-e border-ink-100 bg-white lg:block">{sidebar}</aside>
+        <aside className="sticky top-[36px] hidden h-[calc(100vh-36px)] w-64 shrink-0 border-e border-ink-100 bg-white lg:block">{sidebar}</aside>
+        {drawer && (
+          <div className="fixed inset-0 z-50 bg-ink-900/40 lg:hidden" onClick={() => setDrawer(false)}>
+            <aside className="h-full w-72 max-w-[85%] overflow-y-auto bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>{sidebar}</aside>
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <header className="sticky top-[36px] z-30 flex items-center justify-between gap-2 border-b border-ink-100 bg-white/90 px-4 py-2 backdrop-blur">
             <img src="./brand/logo-horizontal.svg" alt="صقل" className="h-8 lg:invisible" />
@@ -132,7 +145,6 @@ export function AppShell() {
           </main>
         </div>
       </div>
-      {/* شريط سفلي للجوال: يُستخدم بإبهام واحد */}
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-ink-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         {bottom.map((i) => (
           <NavLink key={i.to} to={i.to} end={i.to === '/app'} className={({ isActive }) => cx('flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px]', isActive ? 'font-bold text-brand-700' : 'text-ink-500')}>
@@ -140,10 +152,10 @@ export function AppShell() {
             <span className="max-w-full truncate px-1">{i.label}</span>
           </NavLink>
         ))}
-        <NavLink to="/app/more" className={() => cx('flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px]', moreActive ? 'font-bold text-brand-700' : 'text-ink-500')}>
-          <NavIcon name="more" className="h-5 w-5" />
-          المزيد
-        </NavLink>
+        <button onClick={() => setDrawer(true)} className="flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px] text-ink-500">
+          <Icons.Menu className="h-5 w-5" />
+          القائمة
+        </button>
       </nav>
       <Toasts />
       <ConfirmHost />
@@ -151,24 +163,26 @@ export function AppShell() {
   );
 }
 
-/** صفحة "المزيد": بقية الأقسام حسب الدور */
+/** صفحة القائمة الكاملة (للروابط القديمة) */
 export function MorePage() {
   const db = useDB();
   const me = useMe();
-  const { primary, more } = navFor(db, me.person.id);
-  const mobileExtra = primary.slice(4); // العنصر الخامس لا يتسع في الشريط السفلي
-  const items = [...mobileExtra.map((i) => ({ ...i, mobileOnly: true })), ...more.map((i) => ({ ...i, mobileOnly: false }))];
+  const { sections } = navFor(db, me.person.id);
   return (
-    <div>
-      <h1 className="mb-4 text-xl font-bold">المزيد</h1>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {items.map((i) => (
-          <Link key={i.to} to={i.to} className={cx('flex min-h-[72px] items-center gap-3 rounded-2xl border border-ink-100 bg-white p-4 shadow-card hover:border-brand-200', i.mobileOnly && 'lg:hidden')}>
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><NavIcon name={i.icon} className="h-5 w-5" /></span>
-            <span className="font-medium">{i.label}</span>
-          </Link>
-        ))}
-      </div>
+    <div className="space-y-5">
+      {sections.map((sec) => (
+        <div key={sec.title}>
+          <h2 className="mb-2 text-sm font-bold text-ink-500">{sec.title}</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {sec.items.map((i) => (
+              <Link key={i.to} to={i.to} className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-ink-100 bg-white p-4 shadow-card hover:border-brand-200">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><NavIcon name={i.icon} className="h-5 w-5" /></span>
+                <span className="font-medium">{i.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

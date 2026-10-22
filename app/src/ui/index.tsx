@@ -57,7 +57,7 @@ export function Card({ children, className, title, action, subtitle, pad = true 
   return (
     <section className={cx('rounded-2xl border border-ink-100 bg-white shadow-card', className)}>
       {(title || action) && (
-        <header className="flex flex-wrap items-start justify-between gap-2 border-b border-ink-100 px-4 py-3 sm:px-5">
+        <header className="flex flex-wrap items-start justify-between gap-2 border-b border-ink-100 bg-gradient-to-l from-brand-50/60 to-white px-4 py-3 sm:px-5">
           <div className="min-w-0">
             {title && <h3 className="text-[15px] font-bold text-ink-900">{title}</h3>}
             {subtitle && <p className="mt-0.5 text-xs text-ink-500">{subtitle}</p>}
@@ -79,7 +79,7 @@ export function PageHeader({ title, subtitle, actions, back }: { title: ReactNod
             <L.ArrowRight className="h-3.5 w-3.5" /> رجوع
           </Link>
         )}
-        <h1 className="text-xl font-bold text-ink-900 sm:text-2xl">{title}</h1>
+        <h1 className="flex items-center gap-2.5 text-xl font-black text-ink-900 sm:text-2xl"><span className="h-7 w-1.5 shrink-0 rounded-full bg-accent-grad" />{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-ink-500">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -200,7 +200,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { key:
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
-          className={cx('inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-medium transition sm:min-h-[40px]', value === t.key ? 'border border-brand-300 bg-brand-50 text-brand-800' : 'border border-ink-100 bg-white text-ink-600 hover:bg-ink-50')}
+          className={cx('inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-medium transition sm:min-h-[40px]', value === t.key ? 'bg-brand-grad text-white shadow-md shadow-brand-600/20' : 'border border-ink-100 bg-white text-ink-600 hover:border-brand-200 hover:bg-brand-50')}
         >
           {t.label}
           {t.badge}

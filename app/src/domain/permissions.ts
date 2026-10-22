@@ -274,9 +274,14 @@ export interface NavItem {
   priority: number;
 }
 
-/** القائمة الجانبية: الرئيسية + 4 عناصر حسب الدور + "المزيد" (6 كحد أقصى). الباقي في صفحة "المزيد" */
-export const PRIMARY_NAV = 5;
-export function navFor(db: DB, personId: ID): { primary: NavItem[]; more: NavItem[] } {
+/** القائمة الجانبية: كل الأقسام ظاهرة، مقسّمة إلى مجموعات، ومرتبة داخل كل مجموعة حسب أهميتها للدور */
+const SECTION_OF: Record<string, string> = {
+  '/app': 'الأساسية', '/app/calendar': 'الأساسية', '/app/notifications': 'الأساسية',
+  '/app/finance': 'الإدارة', '/app/tasks': 'الإدارة', '/app/committees': 'الإدارة', '/app/people': 'الإدارة', '/app/insights': 'الإدارة',
+  '/app/inbox': 'الإدارة', '/app/tracking-link': 'الإدارة', '/app/site-editor': 'الإدارة', '/app/settings': 'الإدارة',
+};
+export const NAV_SECTIONS = ['الأساسية', 'البرنامج', 'الإدارة'];
+export function navFor(db: DB, personId: ID): { sections: { title: string; items: NavItem[] }[]; all: NavItem[] } {
   const c = getCapabilities(db, personId);
   const published = groupsPublished(db);
   const map = new Map<string, NavItem>();
@@ -287,8 +292,9 @@ export function navFor(db: DB, personId: ID): { primary: NavItem[]; more: NavIte
   const hasRequests = c.leaderOf || c.facilitatorOf.length || c.staffTripsLed.length || db.budgetRequests.some((r) => r.requestedBy === personId) || db.custodies.some((x) => x.recipientId === personId);
 
   add('/app', 'الرئيسية', 'home', 0);
+  add('/app/calendar', 'التقويم', 'calendar', 1);
+  add('/app/notifications', 'الإشعارات', 'bell', 2);
   add('/app/trips', 'الرحلات', 'map', 40);
-  add('/app/calendar', 'التقويم', 'calendar', 70);
   add('/app/library', 'المكتبة', 'book', 60);
   add('/app/surveys', 'الاستبيانات', 'clipboard', 75);
   add('/app/groups', 'المجموعات', 'grid', 80);
@@ -339,5 +345,7 @@ export function navFor(db: DB, personId: ID): { primary: NavItem[]; more: NavIte
   if (c.isSiteEditor) add('/app/site-editor', 'تحرير الموقع', 'globe', 92);
 
   const all = [...map.values()].sort((a, b) => a.priority - b.priority);
-  return { primary: all.slice(0, PRIMARY_NAV), more: all.slice(PRIMARY_NAV) };
+  const sectionOf = (to: string) => SECTION_OF[to] ?? (c.isParticipant && to === '/app/tasks' ? 'البرنامج' : 'البرنامج');
+  const sections = NAV_SECTIONS.map((title) => ({ title, items: all.filter((i) => (i.to === '/app/tasks' && c.isParticipant ? 'البرنامج' : sectionOf(i.to)) === title) })).filter((x) => x.items.length);
+  return { sections, all };
 }

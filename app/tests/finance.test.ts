@@ -143,7 +143,12 @@ describe('الفواتير', () => {
 });
 
 describe('القائمة الجانبية', () => {
-  it('لا تتجاوز 6 عناصر لأي دور (5 + المزيد)', () => {
-    db.persons.forEach((p) => expect(navFor(db, p.id).primary.length).toBeLessThanOrEqual(5));
+  it('كل الأقسام ظاهرة، والتقويم من الأساسية لكل دور', () => {
+    db.persons.forEach((p) => {
+      const nav = navFor(db, p.id);
+      expect(nav.sections[0].title).toBe('الأساسية');
+      expect(nav.sections[0].items.map((i) => i.to)).toContain('/app/calendar');
+      expect(nav.all.some((i) => i.to === '/app/more')).toBe(false);
+    });
   });
 });
