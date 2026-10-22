@@ -151,7 +151,7 @@ function MaterialLine({ m }: { m: Material }) {
       {m.mandatory != null && m.origin === 'pre_trip' && <Badge tone={m.mandatory ? 'orange' : 'gray'}>{m.mandatory ? 'إلزامية' : 'اختيارية'}</Badge>}
       {!revealed && <Badge tone="gray" icon={<Icons.EyeOff className="h-3 w-3" />}>{m.revealMode === 'manual' ? 'مخفية حتى يفتحها الرافع' : `تظهر ${fmtDateTime(m.revealAt)}`}</Badge>}
       {own && m.revealMode === 'manual' && <Button size="sm" variant="secondary" onClick={() => repos.materials.setRevealed(m.id, !m.revealed)}>{m.revealed ? 'إخفاء' : 'إظهار الآن'}</Button>}
-      {me.isParticipant && revealed && (state === 'viewed' ? <Badge tone="green">شاهدتها</Badge> : <Button size="sm" variant="secondary" onClick={() => repos.materials.mark(m.id, 'viewed')}>تمت المشاهدة</Button>)}
+      {me.isParticipant && revealed && (state === 'viewed' ? <Badge tone="green">شاهدتها</Badge> : <Button size="sm" variant="secondary" onClick={() => repos.materials.mark(m.id, 'viewed')}>علّم كمشاهَدة</Button>)}
     </div>
   );
 }
@@ -174,7 +174,7 @@ function SessionsCard({ trip }: { trip: Trip }) {
                   <div className="text-sm font-bold">{s.title}</div>
                   <div className="text-xs text-ink-500">{fmtDate(s.date)} · {fmtTime(s.start)} – {fmtTime(s.end)}{s.presenter && ` · ${s.presenter}`}</div>
                 </div>
-                {canUp && <Button size="sm" variant="secondary" onClick={() => setUp(s.id)} icon={<Icons.Upload className="h-3.5 w-3.5" />}>رفع مادة</Button>}
+                {canUp && <Button size="sm" variant="secondary" onClick={() => setUp(s.id)} icon={<Icons.Upload className="h-3.5 w-3.5" />}>ارفع مادة</Button>}
               </div>
               <div className="space-y-1.5">{mats.length === 0 ? <p className="text-xs text-ink-400">لا مواد ظاهرة</p> : mats.map((m) => <MaterialLine key={m.id} m={m} />)}</div>
             </div>
@@ -193,7 +193,7 @@ function PreMaterials({ trip }: { trip: Trip }) {
   const canUp = isTripTeam(db, me.person.id, trip) || me.isStaff;
   const mats = db.materials.filter((m) => m.tripId === trip.id && m.origin === 'pre_trip');
   return (
-    <Card title="المواد القبلية" action={canUp && <Button size="sm" variant="secondary" onClick={() => setUp(true)} icon={<Icons.Plus className="h-3.5 w-3.5" />}>إضافة</Button>}>
+    <Card title="المواد القبلية" action={canUp && <Button size="sm" variant="secondary" onClick={() => setUp(true)} icon={<Icons.Plus className="h-3.5 w-3.5" />}>أضف</Button>}>
       <div className="space-y-1.5">{mats.length === 0 ? <p className="text-sm text-ink-400">لا مواد قبلية</p> : mats.map((m) => <MaterialLine key={m.id} m={m} />)}</div>
       {up && <UploadModal trip={trip} onClose={() => setUp(false)} preTrip />}
     </Card>
@@ -209,7 +209,7 @@ function UploadModal({ trip, sessionId, onClose, preTrip }: { trip: Trip; sessio
       footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={!f.title} onClick={() => act(() => {
         repos.materials.add({ title: f.title, type: f.type, url: f.url || 'https://example.com', origin: preTrip ? 'pre_trip' : 'session', tripId: trip.id, sessionId, revealMode: preTrip ? 'auto' : f.revealMode, revealAt: preTrip ? undefined : revealAt, revealed: preTrip || f.revealMode === 'auto', audience: { kind: 'all' }, mandatory: preTrip ? f.mandatory : undefined, pointsRequested: preTrip && f.points });
         onClose();
-      }, 'رُفعت المادة')}>رفع</Button></>}>
+      }, 'رُفعت المادة')}>ارفع</Button></>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="العنوان" className="sm:col-span-2"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
         <Field label="النوع"><Select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as MaterialType })} options={Object.entries(materialTypeLabel).map(([value, label]) => ({ value, label }))} /></Field>

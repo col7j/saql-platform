@@ -43,7 +43,7 @@ export default function PlansPage() {
                     ) : (
                       <>
                         <Badge icon={<Icons.Lock className="h-3 w-3" />}>مقفلة (لم يحضر لقاء الخطة الشخصية)</Badge>
-                        {me.isLeader && <Button size="sm" variant="secondary" onClick={() => act(() => repos.plans.unlock(pid), 'فُتحت الخطة')}>فتح يدوي</Button>}
+                        {me.isLeader && <Button size="sm" variant="secondary" onClick={() => act(() => repos.plans.unlock(pid), 'فُتحت الخطة')}>افتح يدوياً</Button>}
                       </>
                     )}
                   </div>

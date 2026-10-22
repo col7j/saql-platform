@@ -22,7 +22,7 @@ export default function PrepTab({ trip }: { trip: Trip }) {
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
-        <Card title="مهام فريق الرحلة" subtitle="قائد الفريق يسند المهام، وكل أعضاء الفريق يرونها" action={isLead && <Button size="sm" onClick={() => setOpen(true)} icon={<Icons.Plus className="h-4 w-4" />}>إسناد مهمة</Button>}>
+        <Card title="مهام فريق الرحلة" subtitle="قائد الفريق يسند المهام، وكل أعضاء الفريق يرونها" action={isLead && <Button size="sm" onClick={() => setOpen(true)} icon={<Icons.Plus className="h-4 w-4" />}>أسند مهمة</Button>}>
           {teamTasks.length > 0 && <Progress value={(done / teamTasks.length) * 100} label className="mb-4" />}
           <div className="space-y-2">
             {teamTasks.length === 0 ? <Empty title="لم تُسند مهام بعد" /> : teamTasks.map((t) => <TaskRow key={t.id} task={t} showContext={false} />)}

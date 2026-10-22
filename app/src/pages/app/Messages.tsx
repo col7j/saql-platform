@@ -15,7 +15,7 @@ export function ContactPage() {
       <PageHeader title="تواصل مع الإدارة" subtitle="قبل تشكيل المجموعات يتواصل المشاركون مع الإدارة من داخل المنصة" />
       <Card>
         <Textarea rows={3} value={text} onChange={(e) => setText(e.target.value)} placeholder="اكتب رسالتك" />
-        <Button className="mt-2" disabled={!text.trim()} onClick={() => act(() => { repos.messages.send(text); setText(''); }, 'أُرسلت الرسالة')}>إرسال</Button>
+        <Button className="mt-2" disabled={!text.trim()} onClick={() => act(() => { repos.messages.send(text); setText(''); }, 'أُرسلت الرسالة')}>أرسل</Button>
       </Card>
       <div className="mt-4 space-y-3">
         {mine.map((m) => (
@@ -43,7 +43,7 @@ export function InboxPage() {
               <div className="flex items-center justify-between"><PersonChip id={m.fromId} /><span className="text-[11px] text-ink-400">{fmtDateTime(m.at)}</span></div>
               <p className="mt-2 text-sm">{m.text}</p>
               {m.reply ? <div className="mt-2 rounded-xl bg-brand-50 p-2 text-sm"><b>الرد:</b> {m.reply.text}</div> : (
-                <div className="mt-2 flex gap-2"><Input value={replies[m.id] ?? ''} onChange={(e) => setReplies({ ...replies, [m.id]: e.target.value })} placeholder="الرد" /><Button disabled={!replies[m.id]} onClick={() => act(() => repos.messages.reply(m.id, replies[m.id]), 'أُرسل الرد')}>رد</Button></div>
+                <div className="mt-2 flex gap-2"><Input value={replies[m.id] ?? ''} onChange={(e) => setReplies({ ...replies, [m.id]: e.target.value })} placeholder="الرد" /><Button disabled={!replies[m.id]} onClick={() => act(() => repos.messages.reply(m.id, replies[m.id]), 'أُرسل الرد')}>ردّ</Button></div>
               )}
             </Card>
           ))}

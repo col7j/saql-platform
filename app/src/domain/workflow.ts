@@ -1,6 +1,7 @@
 // منطق المسارات: دورة الاعتماد، شروط النشر، حالة الرحلة، العهدة، المهام.
 import { addDays, dateTime, diffDays, minutesOf, now, nowISO, todayISO } from './dates';
 import { groupOf, isMaterialRevealed, tripTeamIds } from './permissions';
+import { isBudgetApproved, ownerTitle, requestFor } from './finance';
 import type {
   Approval, Custody, DB, DocKind, DocStatus, FocusMeeting, ID, PersonalPlan, ScheduleItem, Settings, Task, Trip, TripDoc,
 } from './types';
@@ -183,7 +184,7 @@ export function tripStage(db: DB, trip: Trip): TripStage {
   }
   if (!isApproved(db, trip.id, 'initial')) return 'initial';
   if (!isApproved(db, trip.id, 'detailed')) return 'detailed';
-  if (!isApproved(db, trip.id, 'budget')) return 'budget';
+  if (!isBudgetApproved(db, 'trip', trip.id)) return 'budget';
   if (!tripDataComplete(trip)) return 'trip_data';
   return 'ready';
 }
@@ -201,7 +202,7 @@ export function publishChecks(db: DB, trip: Trip) {
   return [
     { label: 'اعتماد الخطة المبسطة', ok: isApproved(db, trip.id, 'initial') },
     { label: 'اعتماد الخطة التفصيلية (الجدول)', ok: isApproved(db, trip.id, 'detailed') },
-    { label: 'اعتماد الموازنة', ok: isApproved(db, trip.id, 'budget') },
+    { label: 'اعتماد الموازنة (طلب الميزانية)', ok: isBudgetApproved(db, 'trip', trip.id) },
     { label: 'اكتمال الجدول في بيانات الرحلة', ok: hasSchedule(trip) },
     { label: 'إضافة الضيوف وتأكيدهم', ok: trip.guests.length > 0 && trip.guests.every((g) => g.confirmed) },
   ];
@@ -228,18 +229,15 @@ export function isTripClosed(db: DB, trip: Trip) {
 
 /** المواعيد النهائية القادمة والمتأخرة */
 export function tripDeadlines(db: DB, trip: Trip) {
-  const list: { kind: DocKind; label: string; date: string; done: boolean; late: boolean; onTime: boolean | null }[] = [];
-  const i = docFor(db, trip.id, 'initial');
-  const d = docFor(db, trip.id, 'detailed');
-  const b = docFor(db, trip.id, 'budget');
+  const list: { kind: DocKind | 'budget'; label: string; date: string; done: boolean; late: boolean; onTime: boolean | null }[] = [];
   const today = todayISO();
-  const mk = (kind: DocKind, label: string, date: string, doc?: TripDoc) => {
-    const ot = docOnTime(doc, date);
-    list.push({ kind, label, date, done: !!doc?.submittedAt, late: !doc?.submittedAt && today > date, onTime: ot });
+  const mk = (kind: DocKind | 'budget', label: string, date: string, submittedAt?: string) => {
+    const onTime = submittedAt ? submittedAt.slice(0, 10) <= date : null;
+    list.push({ kind, label, date, done: !!submittedAt, late: !submittedAt && today > date, onTime });
   };
-  mk('initial', 'رفع الخطة المبسطة', trip.deadlines.initial, i);
-  mk('detailed', 'رفع الخطة التفصيلية', trip.deadlines.detailed, d);
-  mk('budget', 'رفع الموازنة التقديرية', trip.deadlines.detailed, b);
+  mk('initial', 'رفع الخطة المبسطة', trip.deadlines.initial, docFor(db, trip.id, 'initial')?.submittedAt);
+  mk('detailed', 'رفع الخطة التفصيلية', trip.deadlines.detailed, docFor(db, trip.id, 'detailed')?.submittedAt);
+  mk('budget', 'رفع طلب الميزانية (موازنة تفصيلية)', trip.deadlines.detailed, requestFor(db, 'trip', trip.id)?.submittedAt);
   return list;
 }
 
@@ -247,8 +245,8 @@ export function tripDeadlines(db: DB, trip: Trip) {
 export function custodyFigures(db: DB, c: Custody) {
   const inv = db.invoices.filter((i) => i.custodyId === c.id);
   const received = c.installments.filter((i) => i.status === 'received').reduce((s, i) => s + i.amount, 0);
-  const accepted = inv.filter((i) => i.status === 'accepted').reduce((s, i) => s + i.amount, 0);
-  const pending = inv.filter((i) => i.status === 'pending').reduce((s, i) => s + i.amount, 0);
+  const accepted = inv.filter((i) => i.status === 'accepted').reduce((s, i) => s + i.total, 0);
+  const pending = inv.filter((i) => i.status === 'pending').reduce((s, i) => s + i.total, 0);
   const rejected = inv.filter((i) => i.status === 'rejected');
   const remaining = received - accepted - (c.refund?.amount ?? 0);
   return { received, accepted, pending, rejected, remaining, invoices: inv, overspend: Math.max(0, accepted - c.total) };
@@ -273,9 +271,7 @@ export function budgetTotal(lines: { qty: number; price: number }[]) {
 }
 
 export function custodyOwnerTitle(db: DB, c: Custody): string {
-  if (c.ownerKind === 'trip') return db.trips.find((t) => t.id === c.ownerId)?.title ?? 'رحلة';
-  if (c.ownerKind === 'focus') return db.focusMeetings.find((f) => f.id === c.ownerId)?.title ?? 'لقاء تركيز';
-  return 'لقاء فردي';
+  return ownerTitle(db, c.ownerKind, c.ownerId);
 }
 
 // ───────────── المهام ─────────────

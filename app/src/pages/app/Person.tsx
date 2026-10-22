@@ -41,7 +41,7 @@ export default function PersonPage() {
                 ))}
               </ul>
               {canWriteFacilitatorNote(db, me.person.id, p.id) && (
-                <div className="mt-3 flex gap-2"><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة جديدة" /><Button disabled={!note.trim()} onClick={() => act(() => { repos.groups.addNote(p.id, note); setNote(''); }, 'أُضيفت الملاحظة')}>إضافة</Button></div>
+                <div className="mt-3 flex gap-2"><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة جديدة" /><Button disabled={!note.trim()} onClick={() => act(() => { repos.groups.addNote(p.id, note); setNote(''); }, 'أُضيفت الملاحظة')}>أضف</Button></div>
               )}
             </Card>
           )}

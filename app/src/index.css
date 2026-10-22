@@ -17,7 +17,7 @@
 }
 
 @layer components {
-  .input { @apply w-full rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-800 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-ink-50 disabled:text-ink-400; }
+  .input { @apply w-full min-h-[44px] sm:min-h-[40px] rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-800 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-ink-50 disabled:text-ink-400; }
   .label { @apply mb-1 block text-xs font-medium text-ink-600; }
   .chip { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium; }
   .table-base { @apply w-full text-sm; }

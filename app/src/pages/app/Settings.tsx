@@ -42,7 +42,7 @@ function Evaluation() {
     const sum = items.filter((i) => i.enabled && i.key !== 'enrichment').reduce((a, i) => a + i.weight, 0);
     return (
       <Card title={scope === 'individual' ? `البنود الفردية (${s.split.individual}%)` : `البنود الجماعية (${s.split.group}%)`} subtitle={`مجموع الأوزان ${sum} · تُطبَّع الأوزان تلقائياً إلى النصيب الكامل`}
-        action={<Button size="sm" variant="secondary" onClick={() => setS({ ...s, evaluationItems: [...s.evaluationItems, { key: uid('ev'), name: 'بند جديد', scope, weight: 10, mode: 'manual', enabled: true }] })} icon={<Icons.Plus className="h-4 w-4" />}>بند</Button>}>
+        action={<Button size="sm" variant="secondary" onClick={() => setS({ ...s, evaluationItems: [...s.evaluationItems, { key: uid('ev'), name: 'بند جديد', scope, weight: 10, mode: 'manual', enabled: true }] })} icon={<Icons.Plus className="h-4 w-4" />}>أضف بنداً</Button>}>
         <div className="space-y-3">
           {items.map((i) => (
             <div key={i.key} className="rounded-2xl border border-ink-100 p-3">
@@ -100,7 +100,7 @@ function Evaluation() {
       </div>
       {section('individual')}
       {section('group')}
-      <div className="sticky bottom-3 flex justify-end"><Button onClick={save}>حفظ إعدادات التقييم</Button></div>
+      <div className="sticky bottom-3 flex justify-end"><Button onClick={save}>احفظ إعدادات التقييم</Button></div>
     </div>
   );
 }
@@ -144,7 +144,7 @@ function Targets() {
           <Field label="نهاية البرنامج"><Input type="date" value={s.program.endDate} onChange={(e) => setS({ ...s, program: { ...s.program, endDate: e.target.value } })} /></Field>
         </div>
       </Card>
-      <div className="lg:col-span-2"><Button onClick={() => act(() => repos.settings.update({ targets: s.targets, programCounts: s.programCounts, deadlineDefaults: s.deadlineDefaults, scheduleRevealHours: s.scheduleRevealHours, program: s.program }), 'حُفظت الإعدادات')}>حفظ</Button></div>
+      <div className="lg:col-span-2"><Button onClick={() => act(() => repos.settings.update({ targets: s.targets, programCounts: s.programCounts, deadlineDefaults: s.deadlineDefaults, scheduleRevealHours: s.scheduleRevealHours, program: s.program }), 'حُفظت الإعدادات')}>احفظ</Button></div>
     </div>
   );
 }
@@ -164,8 +164,8 @@ function Categories() {
         ))}
       </div>
       <div className="mt-3 flex gap-2">
-        <Button variant="secondary" onClick={() => setCats([...cats, { id: uid('cat'), name: 'تصنيف جديد', color: '#00b9d1' }])}>+ تصنيف</Button>
-        <Button onClick={() => act(() => repos.settings.update({ scheduleCategories: cats }), 'حُفظت التصنيفات')}>حفظ</Button>
+        <Button variant="secondary" onClick={() => setCats([...cats, { id: uid('cat'), name: 'تصنيف جديد', color: '#00b9d1' }])}>أضف تصنيفاً</Button>
+        <Button onClick={() => act(() => repos.settings.update({ scheduleCategories: cats }), 'حُفظت التصنيفات')}>احفظ</Button>
       </div>
     </Card>
   );
@@ -195,7 +195,7 @@ function Templates() {
         <Select value={t.proofType} onChange={(e) => setT({ ...t, proofType: e.target.value as ProofType })} options={(['none', 'link', 'file', 'text'] as ProofType[]).map((p) => ({ value: p, label: proofTypeLabel[p] }))} />
         <Input dir="ltr" placeholder="tag" value={t.tag} onChange={(e) => setT({ ...t, tag: e.target.value })} />
         <Input type="number" value={t.dueOffsetDays} onChange={(e) => setT({ ...t, dueOffsetDays: +e.target.value })} title="أيام بالنسبة لنهاية الرحلة" />
-        <Button disabled={!t.title} onClick={() => act(() => { repos.tasks.saveTemplate({ ...t, id: uid('tpl') }); setT({ ...t, title: '', tag: '' }); }, 'أُضيف للقالب')}>إضافة</Button>
+        <Button disabled={!t.title} onClick={() => act(() => { repos.tasks.saveTemplate({ ...t, id: uid('tpl') }); setT({ ...t, title: '', tag: '' }); }, 'أُضيف للقالب')}>أضف</Button>
       </div>
     </Card>
   );
@@ -244,11 +244,10 @@ function OpenPoints() {
     <Card title="النقاط المفتوحة (القسم 20)" subtitle="مبنية قابلة للتعديل حتى تُحسم">
       <div className="grid gap-2 md:grid-cols-2">
         {row('تعديل الجدول بعد الانطلاق يحتاج موافقة الإدارة', '20.6', s.scheduleEditAfterStartNeedsApproval, 'scheduleEditAfterStartNeedsApproval')}
-        {row('المصروف الزائد عن الموازنة يحتاج موافقة المالية والإدارة', '20.7', s.overspendNeedsApproval, 'overspendNeedsApproval')}
+        {row('المصروف الزائد عن الموازنة يحتاج موافقة المالية والقائد العام', '20.7', s.overspendNeedsApproval, 'overspendNeedsApproval')}
         {row('تعليقات رابط المتابعة تحتاج مراجعة قبل الظهور', '20.8', s.trackingCommentsNeedReview, 'trackingCommentsNeedReview')}
         {row('عرض التاريخ الهجري مع الميلادي', '20.11', s.showHijri, 'showHijri')}
         {row('دفع الرسوم داخل المنصة (وإلا تُسجَّل فقط)', '20.12', s.feesInPlatform, 'feesInPlatform')}
-        {row('عرض الموازنة التقديرية لأعضاء الإدارة', '11.4', s.budgetVisibleToStaff, 'budgetVisibleToStaff')}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-3">
           <div><div className="text-sm font-medium">قيمة رسوم البرنامج</div><div className="text-[11px] text-ink-400">ر.س</div></div>
           <Input type="number" className="w-28" value={s.feeAmount} onChange={(e) => repos.settings.update({ feeAmount: num(e.target.value) })} />

@@ -15,9 +15,9 @@ import PrepTab from './PrepTab';
 import DataTab from './DataTab';
 import AttendanceTab from './AttendanceTab';
 import ClosureTab from './ClosureTab';
-import { CustodyCard } from '../CustodyCard';
+import { RequestPanel, canSeeOwnerBudget } from '../RequestPanel';
 
-type TabKey = 'overview' | 'docs' | 'schedule' | 'prep' | 'data' | 'attendance' | 'custody' | 'closure';
+type TabKey = 'overview' | 'docs' | 'budget' | 'schedule' | 'prep' | 'data' | 'attendance' | 'closure';
 
 export default function TripDetail() {
   const { id } = useParams();
@@ -39,16 +39,15 @@ export default function TripDetail() {
   if (!trip) return <Empty title="الرحلة غير موجودة" />;
   const st = tripStage(db, trip);
   const team = isTripTeam(db, pid, trip);
-  const custody = db.custodies.find((c) => c.ownerKind === 'trip' && c.ownerId === trip.id);
-  const showCustody = !!custody && (canSeeFinance(db, pid) || custody.recipientId === pid);
 
   const tabs: { key: TabKey; label: string }[] = [];
   if (canPlans) {
-    tabs.push({ key: 'overview', label: 'نظرة عامة' }, { key: 'docs', label: 'الوثائق والاعتماد' }, { key: 'schedule', label: 'الجدول الزمني' }, { key: 'prep', label: 'التجهيز والمهام' });
+    tabs.push({ key: 'overview', label: 'نظرة عامة' }, { key: 'docs', label: 'الخطط والاعتماد' });
+    if (canSeeOwnerBudget(db, pid, 'trip', trip.id)) tabs.push({ key: 'budget', label: 'الميزانية' });
+    tabs.push({ key: 'schedule', label: 'الجدول الزمني' }, { key: 'prep', label: 'التجهيز والمهام' });
   }
   tabs.push({ key: 'data', label: canPlans ? 'بيانات الرحلة (للمشاركين)' : 'تفاصيل الرحلة' });
   if (canTakeTripAttendance(db, pid, trip) || me.isStaff || tripTeamLeaderId(db, trip) === pid) tabs.push({ key: 'attendance', label: 'الحضور' });
-  if (showCustody) tabs.push({ key: 'custody', label: 'العهدة' });
   if (canPlans && ['live', 'closing', 'closed'].includes(st)) tabs.push({ key: 'closure', label: 'الإغلاق والتقييم' });
   const activeTab = tabs.some((t) => t.key === tab) ? tab : tabs[0].key;
 
@@ -97,7 +96,12 @@ export default function TripDetail() {
       {activeTab === 'prep' && <PrepTab trip={trip} />}
       {activeTab === 'data' && <DataTab trip={trip} />}
       {activeTab === 'attendance' && <AttendanceTab trip={trip} />}
-      {activeTab === 'custody' && custody && <CustodyCard custody={custody} />}
+      {activeTab === 'budget' && (
+        <div className="space-y-4">
+          <Notice>الرحلات تُقدَّم دائماً بموازنة تفصيلية (تصنيف ← بند ← عدد × سعر). ضمن المرصود تذهب لمسؤول المالية، وما يتجاوزه يذهب للقائد العام.</Notice>
+          <RequestPanel ownerKind="trip" ownerId={trip.id} title="ميزانية الرحلة" />
+        </div>
+      )}
       {activeTab === 'closure' && <ClosureTab trip={trip} />}
       {!canPlans && !team && activeTab === 'data' && (
         <p className="mt-4 text-xs text-ink-400">خطط الرحلة وجداولها التفصيلية خاصة بالمجموعة المنفذة والإدارة.</p>
@@ -128,9 +132,9 @@ function Overview({ tripId, onTab }: { tripId: string; onTab: (t: TabKey) => voi
           <Card title="شروط نشر الرحلة" subtitle="قائد الفريق ينشر بلا اعتماد إضافي، لكن الزر لا يعمل إلا باكتمال الشروط">
             <Checklist items={checks} />
             <div className="mt-4 flex flex-wrap gap-2">
-              {isLead && <Button disabled={!canPublish(db, trip)} onClick={() => act(() => repos.trips.publish(trip.id), 'نُشرت الرحلة ووصل التنبيه للجميع')} icon={<Icons.Send className="h-4 w-4" />}>نشر الرحلة</Button>}
-              {!checks[3].ok && <Button variant="secondary" onClick={() => onTab('schedule')}>إكمال الجدول</Button>}
-              {!checks[4].ok && <Button variant="secondary" onClick={() => onTab('data')}>إضافة الضيوف</Button>}
+              {isLead && <Button disabled={!canPublish(db, trip)} onClick={() => act(() => repos.trips.publish(trip.id), 'نُشرت الرحلة ووصل التنبيه للجميع')} icon={<Icons.Send className="h-4 w-4" />}>انشر الرحلة</Button>}
+              {!checks[3].ok && <Button variant="secondary" onClick={() => onTab('schedule')}>أكمل الجدول</Button>}
+              {!checks[4].ok && <Button variant="secondary" onClick={() => onTab('data')}>أضف الضيوف</Button>}
             </div>
           </Card>
         )}
@@ -186,8 +190,8 @@ function Overview({ tripId, onTab }: { tripId: string; onTab: (t: TabKey) => voi
                 {trip.trackerSubstitute.reason && <p className="mt-1 text-xs text-ink-500">السبب: {trip.trackerSubstitute.reason}</p>}
                 {me.isLeader && trip.trackerSubstitute.status === 'pending' && (
                   <div className="mt-2 flex gap-2">
-                    <Button size="sm" variant="success" onClick={() => act(() => repos.trips.decideTrackerSubstitute(trip.id, true), 'اعتُمد البديل')}>اعتماد</Button>
-                    <Button size="sm" variant="secondary" onClick={() => act(() => repos.trips.decideTrackerSubstitute(trip.id, false))}>رفض</Button>
+                    <Button size="sm" variant="success" onClick={() => act(() => repos.trips.decideTrackerSubstitute(trip.id, true), 'اعتُمد البديل')}>اعتمد</Button>
+                    <Button size="sm" variant="secondary" onClick={() => act(() => repos.trips.decideTrackerSubstitute(trip.id, false))}>ارفض</Button>
                   </div>
                 )}
               </div>
@@ -199,7 +203,7 @@ function Overview({ tripId, onTab }: { tripId: string; onTab: (t: TabKey) => voi
 
         {me.isLeader && (
           <Card title="إدارة الرحلة (القائد العام)">
-            <Button size="sm" variant="secondary" onClick={() => setEditDate(true)} icon={<Icons.CalendarClock className="h-4 w-4" />}>تعديل التاريخ</Button>
+            <Button size="sm" variant="secondary" onClick={() => setEditDate(true)} icon={<Icons.CalendarClock className="h-4 w-4" />}>عدّل التاريخ</Button>
             <EditDateModal open={editDate} onClose={() => setEditDate(false)} tripId={trip.id} />
           </Card>
         )}
@@ -214,7 +218,7 @@ function SubstituteModal({ open, onClose, tripId, candidates }: { open: boolean;
   const [c, setC] = useState(candidates[0] ?? '');
   const [reason, setReason] = useState('');
   return (
-    <Modal open={open} onClose={onClose} title="متابع بديل" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={() => act(() => { repos.trips.requestTrackerSubstitute(tripId, c, reason); if (me.isLeader) repos.trips.decideTrackerSubstitute(tripId, true); onClose(); }, 'أُرسل الطلب')}>إرسال</Button></>}>
+    <Modal open={open} onClose={onClose} title="متابع بديل" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={() => act(() => { repos.trips.requestTrackerSubstitute(tripId, c, reason); if (me.isLeader) repos.trips.decideTrackerSubstitute(tripId, true); onClose(); }, 'أُرسل الطلب')}>أرسل</Button></>}>
       <Notice>البديل من أعضاء الإدارة، ولا يكون ميسّر هذه الرحلة. يوافق القائد العام ثم يتولى البديل المتابعة كاملة.</Notice>
       <Field label="البديل" className="mt-3"><Select value={c} onChange={(e) => setC(e.target.value)} options={candidates.map((x) => ({ value: x, label: personName(db, x) }))} /></Field>
       <Field label="سبب الاعتذار" className="mt-3"><Input value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
@@ -228,7 +232,7 @@ function EditDateModal({ open, onClose, tripId }: { open: boolean; onClose: () =
   const [s, setS] = useState(t.startDate);
   const [e, setE] = useState(t.endDate);
   return (
-    <Modal open={open} onClose={onClose} title="تعديل تاريخ الرحلة" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={() => act(() => { repos.trips.update(tripId, { startDate: s, endDate: t.type === 'internal' ? s : e }); onClose(); }, 'عُدّل التاريخ ووصل التنبيه')}>حفظ</Button></>}>
+    <Modal open={open} onClose={onClose} title="تعديل تاريخ الرحلة" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={() => act(() => { repos.trips.update(tripId, { startDate: s, endDate: t.type === 'internal' ? s : e }); onClose(); }, 'عُدّل التاريخ ووصل التنبيه')}>احفظ</Button></>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="البداية"><Input type="date" value={s} onChange={(x) => setS(x.target.value)} /></Field>
         <Field label="النهاية"><Input type="date" value={t.type === 'internal' ? s : e} disabled={t.type === 'internal'} onChange={(x) => setE(x.target.value)} /></Field>

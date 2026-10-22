@@ -44,13 +44,13 @@ export function TaskRow({ task, showContext = true }: { task: Task; showContext?
           {task.proof && <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800"><b>الإثبات:</b> {task.proof}</div>}
           {canManage && task.status !== 'done' && (
             <div className="flex flex-wrap items-end gap-2">
-              {task.status === 'new' && <Button size="sm" variant="secondary" onClick={() => act(() => repos.tasks.update(task.id, { status: 'in_progress' }))}>بدء التنفيذ</Button>}
+              {task.status === 'new' && <Button size="sm" variant="secondary" onClick={() => act(() => repos.tasks.update(task.id, { status: 'in_progress' }))}>ابدأ التنفيذ</Button>}
               {task.proofType !== 'none' && (
                 <Field label={`الإثبات (${proofTypeLabel[task.proofType]})`} className="min-w-[220px] flex-1">
                   <Input value={proof} onChange={(e) => setProof(e.target.value)} placeholder={task.proofType === 'link' ? 'https://' : task.proofType === 'file' ? 'اسم الملف المرفوع' : 'اكتب الإثبات'} />
                 </Field>
               )}
-              <Button size="sm" variant="success" onClick={() => act(() => repos.tasks.update(task.id, { status: 'done', proof: proof || undefined }), 'أُغلقت المهمة')}>إنهاء المهمة</Button>
+              <Button size="sm" variant="success" onClick={() => act(() => repos.tasks.update(task.id, { status: 'done', proof: proof || undefined }), 'أُغلقت المهمة')}>أنهِ المهمة</Button>
             </div>
           )}
           <CommentThread target={{ kind: 'task', id: task.id }} canComment allowSuggestion={false} />
@@ -65,7 +65,7 @@ export function TaskModal({ open, onClose, assignees, defaults }: { open: boolea
   const [f, setF] = useState({ title: '', description: '', assigneeId: assignees[0] ?? '', dueDate: addDays(todayISO(), 7), proofType: 'none' as ProofType, mandatory: false, tag: '' });
   return (
     <Modal open={open} onClose={onClose} title="مهمة جديدة"
-      footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={!f.title.trim() || !f.assigneeId} onClick={() => act(() => { repos.tasks.create({ ...defaults, ...f, tag: f.tag || defaults.tag }); onClose(); }, 'أُسندت المهمة')}>إسناد</Button></>}>
+      footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={!f.title.trim() || !f.assigneeId} onClick={() => act(() => { repos.tasks.create({ ...defaults, ...f, tag: f.tag || defaults.tag }); onClose(); }, 'أُسندت المهمة')}>أسند</Button></>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="المهمة" className="sm:col-span-2"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} placeholder="مثال: الضيافة، الشؤون المالية، التنسيق مع الضيوف" /></Field>
         <Field label="الوصف" className="sm:col-span-2"><Input value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>

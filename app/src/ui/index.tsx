@@ -11,7 +11,7 @@ const iconMap: Record<string, L.LucideIcon> = {
   home: L.Home, calendar: L.CalendarDays, bell: L.Bell, map: L.MapPinned, target: L.Target, users: L.UsersRound, compass: L.Compass,
   clipboard: L.ClipboardList, book: L.LibraryBig, grid: L.LayoutGrid, trophy: L.Trophy, radar: L.Radar, message: L.MessagesSquare,
   check: L.ListChecks, layers: L.Layers, contact: L.Contact, wallet: L.Wallet, receipt: L.Receipt, link: L.Link2, globe: L.Globe,
-  settings: L.Settings2,
+  settings: L.Settings2, meeting: L.Presentation, chart: L.ChartNoAxesColumn, more: L.LayoutGrid,
 };
 export function NavIcon({ name, className }: { name: string; className?: string }) {
   const I = iconMap[name] ?? L.Circle;
@@ -21,20 +21,23 @@ export { L as Icons };
 
 // ───────────── أزرار ─────────────
 type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent' | 'success';
+// زر رئيسي واحد في كل شاشة: primary (أو accent للتأكيد). البقية ثانوية. الرفض/الحذف بإطار أحمر لا بتعبئة.
 const btnBase = 'inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap';
 const btnVar: Record<BtnVariant, string> = {
   primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
   secondary: 'bg-white text-ink-700 border border-ink-200 hover:border-brand-300 hover:text-brand-700',
   ghost: 'text-ink-600 hover:bg-ink-100',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
+  danger: 'bg-white text-red-700 border border-red-200 hover:bg-red-50',
   accent: 'bg-accent-grad text-white hover:brightness-105 shadow-sm',
-  success: 'bg-emerald-600 text-white hover:bg-emerald-700',
+  success: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
 };
+// أهداف لمس لا تقل عن 44px على الجوال
+const btnSize = { sm: 'px-3 min-h-[40px] sm:min-h-[32px] text-xs', md: 'px-4 min-h-[44px] sm:min-h-[40px] text-sm' };
 export function Button({
   children, variant = 'primary', size = 'md', className, icon, ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: BtnVariant; size?: 'sm' | 'md'; icon?: ReactNode }) {
   return (
-    <button {...rest} className={cx(btnBase, btnVar[variant], size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-4 py-2 text-sm', className)}>
+    <button {...rest} className={cx(btnBase, btnVar[variant], btnSize[size], className)}>
       {icon}
       {children}
     </button>
@@ -42,7 +45,7 @@ export function Button({
 }
 export function LinkButton({ to, children, variant = 'secondary', size = 'md', className, icon }: { to: string; children: ReactNode; variant?: BtnVariant; size?: 'sm' | 'md'; className?: string; icon?: ReactNode }) {
   return (
-    <Link to={to} className={cx(btnBase, btnVar[variant], size === 'sm' ? 'px-2.5 py-1.5 text-xs' : 'px-4 py-2 text-sm', className)}>
+    <Link to={to} className={cx(btnBase, btnVar[variant], btnSize[size], className)}>
       {icon}
       {children}
     </Link>
@@ -197,7 +200,7 @@ export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { key:
         <button
           key={t.key}
           onClick={() => onChange(t.key)}
-          className={cx('inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition', value === t.key ? 'bg-brand-600 text-white shadow-sm' : 'bg-white text-ink-600 hover:bg-brand-50 border border-ink-100')}
+          className={cx('inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-medium transition sm:min-h-[40px]', value === t.key ? 'border border-brand-300 bg-brand-50 text-brand-800' : 'border border-ink-100 bg-white text-ink-600 hover:bg-ink-50')}
         >
           {t.label}
           {t.badge}
@@ -320,6 +323,105 @@ export function Notice({ tone = 'blue', children, icon }: { tone?: 'blue' | 'ora
     <div className={cx('flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-sm', cls)}>
       <span className="mt-0.5 shrink-0">{icon ?? <L.Info className="h-4 w-4" />}</span>
       <div className="min-w-0">{children}</div>
+    </div>
+  );
+}
+
+// ───────────── حالة + الخطوة التالية ─────────────
+/** شارة حالة بنص (لا تعتمد على اللون وحده) وبجانبها الخطوة التالية ومن ينتظره */
+export function StatusPill({ label, tone, next, waitingOn, compact }: { label: string; tone: Tone; next?: string; waitingOn?: string; compact?: boolean }) {
+  return (
+    <div className={cx('flex flex-wrap items-center gap-x-2 gap-y-1', compact ? 'text-xs' : 'text-sm')}>
+      <Badge tone={tone} icon={<L.CircleDot className="h-3 w-3" />}>{label}</Badge>
+      {next && next !== 'لا إجراء' && (
+        <span className="inline-flex items-center gap-1 text-xs text-ink-500">
+          <L.ArrowLeft className="h-3 w-3" />
+          التالي: {next}{waitingOn && waitingOn !== '—' ? ` (${waitingOn})` : ''}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ───────────── نموذج على خطوات ─────────────
+export interface WizardStep {
+  title: string;
+  content: ReactNode;
+  valid?: boolean;
+  hint?: string;
+}
+/** نموذج على خطوات مع شريط تقدم وحقول قليلة في كل خطوة */
+export function StepWizard({ steps, onFinish, finishLabel = 'احفظ', onCancel }: { steps: WizardStep[]; onFinish: () => void; finishLabel?: string; onCancel?: () => void }) {
+  const [i, setI] = useState(0);
+  const step = steps[i];
+  const last = i === steps.length - 1;
+  return (
+    <div>
+      <div className="mb-4">
+        <div className="mb-1.5 flex items-center justify-between text-xs text-ink-500">
+          <span className="font-medium text-ink-800">{step.title}</span>
+          <span className="num">الخطوة {i + 1} من {steps.length}</span>
+        </div>
+        <div className="flex gap-1">
+          {steps.map((_, k) => <span key={k} className={cx('h-1.5 flex-1 rounded-full', k <= i ? 'bg-brand-500' : 'bg-ink-100')} />)}
+        </div>
+      </div>
+      <div className="min-h-[160px]">{step.content}</div>
+      {step.hint && step.valid === false && <p className="mt-3 text-xs text-red-600">{step.hint}</p>}
+      <div className="mt-5 flex items-center justify-between gap-2 border-t border-ink-100 pt-4">
+        <div>
+          {i > 0 ? <Button variant="ghost" onClick={() => setI(i - 1)} icon={<L.ArrowRight className="h-4 w-4" />}>السابق</Button> : onCancel ? <Button variant="ghost" onClick={onCancel}>إلغاء</Button> : <span />}
+        </div>
+        <Button disabled={step.valid === false} onClick={() => (last ? onFinish() : setI(i + 1))} icon={last ? <L.Check className="h-4 w-4" /> : undefined}>
+          {last ? finishLabel : 'التالي'}
+          {!last && <L.ArrowLeft className="h-4 w-4" />}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ───────────── تأكيد الإجراءات التي لا رجعة فيها ─────────────
+interface ConfirmReq { title: string; body?: string; cta: string; danger?: boolean; run: () => void }
+let confirmSetter: ((r: ConfirmReq | null) => void) | null = null;
+/** تأكيد للإجراءات التي لا رجعة فيها فقط (صرف، إغلاق، رفض) */
+export function askConfirm(r: ConfirmReq) {
+  if (confirmSetter) confirmSetter(r);
+  else r.run();
+}
+export function ConfirmHost() {
+  const [r, setR] = useState<ConfirmReq | null>(null);
+  useEffect(() => {
+    confirmSetter = setR;
+    return () => { confirmSetter = null; };
+  }, []);
+  if (!r) return null;
+  return (
+    <Modal open onClose={() => setR(null)} title={r.title}
+      footer={<><Button variant="secondary" onClick={() => setR(null)}>تراجع</Button><Button variant={r.danger ? 'danger' : 'primary'} onClick={() => { const run = r.run; setR(null); run(); }}>{r.cta}</Button></>}>
+      <p className="text-sm text-ink-600">{r.body ?? 'هذا الإجراء لا يمكن التراجع عنه.'}</p>
+    </Modal>
+  );
+}
+
+// ───────────── قائمة "المزيد" للإجراءات الثانوية ─────────────
+export function MoreMenu({ items, label = 'المزيد' }: { items: { label: string; onClick: () => void; danger?: boolean; hidden?: boolean }[]; label?: string }) {
+  const [open, setOpen] = useState(false);
+  const visible = items.filter((i) => !i.hidden);
+  if (!visible.length) return null;
+  return (
+    <div className="relative">
+      <Button variant="ghost" onClick={() => setOpen(!open)} icon={<L.Ellipsis className="h-4 w-4" />}>{label}</Button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+          <div className="absolute end-0 z-40 mt-1 min-w-[200px] overflow-hidden rounded-xl border border-ink-100 bg-white py-1 shadow-lg">
+            {visible.map((i) => (
+              <button key={i.label} onClick={() => { setOpen(false); i.onClick(); }} className={cx('block min-h-[44px] w-full px-4 py-2 text-start text-sm hover:bg-ink-50', i.danger && 'text-red-700')}>{i.label}</button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

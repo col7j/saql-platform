@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fmtDate, fmtTime, todayISO } from '@/domain/dates';
-import { SAR, focusStatusLabel, focusStatusTone, materialTypeLabel } from '@/domain/labels';
-import { canManageFocus, canTakeFocusAttendance, canSeeFinance } from '@/domain/permissions';
+import { focusStatusLabel, focusStatusTone, materialTypeLabel } from '@/domain/labels';
+import { canManageFocus, canTakeFocusAttendance } from '@/domain/permissions';
+import { focusIndex } from '@/domain/finance';
 
 import type { FocusMeeting } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, KeyVal, Notice, PageHeader, Select, Stars, Steps, cx } from '@/ui';
 import { GroupBadge, PersonChip } from '@/ui/domain';
-import { BudgetEditor } from './BudgetEditor';
-import { CustodyCard } from './CustodyCard';
+import { RequestPanel } from './RequestPanel';
 
 export default function FocusDetail() {
   const { id } = useParams();
@@ -21,14 +21,13 @@ export default function FocusDetail() {
   const isFac = canManageFocus(db, me.person.id, f);
   const isPresenter = f.presenterIds.includes(me.person.id);
   const canAttend = canTakeFocusAttendance(db, me.person.id, f);
-  const custody = db.custodies.find((c) => c.ownerKind === 'focus' && c.ownerId === f.id);
   const steps = (['draft', 'published', 'held', 'closed'] as const).map((s, i, arr) => ({ label: focusStatusLabel[s], state: (arr.indexOf(f.status) > i ? 'done' : arr.indexOf(f.status) === i ? 'current' : 'todo') as 'done' | 'current' | 'todo' }));
 
   return (
     <div>
       <PageHeader back="/app/focus" title={f.title}
-        subtitle={<span className="flex flex-wrap items-center gap-2"><GroupBadge id={f.groupId} />{f.isUmrah && <Badge tone="green" icon={<Icons.Moon className="h-3 w-3" />}>لقاء العمرة</Badge>}<Badge tone={focusStatusTone[f.status]}>{focusStatusLabel[f.status]}</Badge></span>}
-        actions={isFac && f.status === 'draft' && <Button onClick={() => act(() => repos.focus.publish(f.id), 'نُشر اللقاء ووصل التنبيه للمجموعة')} icon={<Icons.Send className="h-4 w-4" />}>نشر اللقاء</Button>}
+        subtitle={<span className="flex flex-wrap items-center gap-2"><GroupBadge id={f.groupId} />{f.isUmrah && <Badge tone="green" icon={<Icons.Moon className="h-3 w-3" />}>لقاء العمرة</Badge>}<Badge tone={focusStatusTone[f.status]}>{focusStatusLabel[f.status]}</Badge><span className="text-xs text-ink-500">اللقاء رقم {focusIndex(db, f)} في المجموعة</span></span>}
+        actions={isFac && f.status === 'draft' && <Button onClick={() => act(() => repos.focus.publish(f.id), 'نُشر اللقاء ووصل التنبيه للمجموعة')} icon={<Icons.Send className="h-4 w-4" />}>انشر اللقاء</Button>}
       />
       <div className="mb-5 rounded-2xl border border-ink-100 bg-white p-3 shadow-card"><Steps steps={steps} /></div>
 
@@ -49,20 +48,7 @@ export default function FocusDetail() {
             <KeyVal k="الميسّر" v={<PersonChip id={g.facilitatorId} size={22} />} />
             <KeyVal k="المحضّر" v={<PersonChip id={f.attendanceTakerId ?? g.leaderId} size={22} sub={f.attendanceTakerId ? 'نائب لهذا اللقاء' : 'قائد المجموعة'} />} />
           </Card>
-          {(isFac || canSeeFinance(db, me.person.id)) && (
-            <Card title="الميزانية" subtitle={f.isUmrah ? 'لقاء العمرة: ميزانية أعلى ودورة مبسطة' : undefined}>
-              {f.budget.lines.length === 0 ? <p className="text-sm text-ink-400">بدون ميزانية</p> : <BudgetEditor lines={f.budget.lines} ownerKind="focus" readOnly />}
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-                <Badge tone={f.budget.status === 'accepted' || f.budget.status === 'accepted_lower' ? 'green' : f.budget.status === 'revise' ? 'red' : 'orange'}>
-                  {{ none: '—', pending: 'بانتظار المالية', accepted: 'مقبولة', revise: 'مطلوب تعديل البنود', accepted_lower: 'مقبولة بمبلغ أقل' }[f.budget.status]}
-                </Badge>
-                {f.budget.approvedAmount != null && <span className="num">المعتمد: {SAR(f.budget.approvedAmount)}</span>}
-              </div>
-              {f.budget.financeNote && <p className="mt-1 text-xs text-ink-500">ملاحظة المالية: {f.budget.financeNote}</p>}
-              {isFac && f.budget.status === 'revise' && <Button size="sm" className="mt-2" onClick={() => act(() => repos.focus.update(f.id, { budget: { ...f.budget, status: 'pending' } }), 'أُعيد الإرسال للمالية')}>إعادة الإرسال للمالية</Button>}
-            </Card>
-          )}
-          {custody && (custody.recipientId === me.person.id || canSeeFinance(db, me.person.id)) && <CustodyCard custody={custody} />}
+          <RequestPanel ownerKind="focus" ownerId={f.id} title={f.isUmrah ? 'ميزانية لقاء العمرة' : 'ميزانية اللقاء'} />
         </div>
       </div>
     </div>
@@ -84,7 +70,7 @@ function PresenterPrep({ f }: { f: FocusMeeting }) {
         </Field>
         <Field label="الوقت"><Input type="time" value={start} onChange={(e) => setStart(e.target.value)} /></Field>
       </div>
-      <Button className="mt-3" onClick={() => act(() => repos.focus.update(f.id, { topic: topic || f.topic, date: date || f.date, start }), 'حُفظت التفاصيل')}>حفظ التفاصيل</Button>
+      <Button className="mt-3" onClick={() => act(() => repos.focus.update(f.id, { topic: topic || f.topic, date: date || f.date, start }), 'حُفظت التفاصيل')}>احفظ التفاصيل</Button>
     </Card>
   );
 }
@@ -121,7 +107,7 @@ function AttendanceCard({ f, canAttend, isFac }: { f: FocusMeeting; canAttend: b
           );
         })}
       </div>
-      {canAttend && open && <Button className="mt-3" onClick={() => act(() => repos.focus.markHeld(f.id), 'أُغلق التحضير وأُرسل الاستبيان الاختياري')}>تأكيد التحضير وإنهاء اللقاء</Button>}
+      {canAttend && open && <Button className="mt-3" onClick={() => act(() => repos.focus.markHeld(f.id), 'أُغلق التحضير وأُرسل الاستبيان الاختياري')}>أكّد التحضير وأنهِ اللقاء</Button>}
     </Card>
   );
 }
@@ -155,7 +141,7 @@ function EvaluationCard({ f, isFac }: { f: FocusMeeting; isFac: boolean }) {
           f.presenterIds.forEach((p) => { if (crit.some((c) => !scores[p]?.[c.key])) throw new Error('أكمل تقييم كل المعايير'); });
           f.presenterIds.forEach((p) => repos.focus.evaluatePresenter(f.id, p, scores[p]));
           repos.focus.close(f.id);
-        }, 'حُفظ التقييم وأُغلق اللقاء')} icon={<Icons.Lock className="h-4 w-4" />}>حفظ التقييم وإغلاق اللقاء</Button>
+        }, 'حُفظ التقييم وأُغلق اللقاء')} icon={<Icons.Lock className="h-4 w-4" />}>احفظ التقييم وأغلق اللقاء</Button>
       )}
     </Card>
   );
@@ -174,7 +160,7 @@ function FilesCard({ f, canUpload }: { f: FocusMeeting; canUpload: boolean }) {
       {canUpload && (
         <div className="mt-3 flex gap-2">
           <Input placeholder="عنوان الملف" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <Button disabled={!title} onClick={() => act(() => { repos.materials.add({ title, type: 'pdf', url: 'https://example.com', origin: 'focus', focusMeetingId: f.id, revealMode: 'auto', revealed: true, audience: { kind: 'group', groupId: f.groupId } }); setTitle(''); }, 'رُفع الملف')}>رفع</Button>
+          <Button variant="secondary" disabled={!title} onClick={() => act(() => { repos.materials.add({ title, type: 'pdf', url: 'https://example.com', origin: 'focus', focusMeetingId: f.id, revealMode: 'auto', revealed: true, audience: { kind: 'group', groupId: f.groupId } }); setTitle(''); }, 'رُفع الملف')}>ارفع</Button>
         </div>
       )}
     </Card>

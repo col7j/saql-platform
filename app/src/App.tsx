@@ -1,5 +1,5 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { AppShell } from './layout/AppShell';
+import { AppShell, MorePage } from './layout/AppShell';
 import PublicHome from './pages/public/Home';
 import Login from './pages/public/Login';
 import TrackingPage from './pages/public/Tracking';
@@ -23,7 +23,9 @@ import TasksPage from './pages/app/Tasks';
 import CommitteesPage, { CommitteeDetail } from './pages/app/Committees';
 import PeoplePage from './pages/app/People';
 import FinancePage from './pages/app/Finance';
-import CustodyPage from './pages/app/Custody';
+import RequestsPage from './pages/app/Requests';
+import MeetingsPage, { MeetingDetail } from './pages/app/Meetings';
+import InsightsPage from './pages/app/Insights';
 import { ContactPage, InboxPage } from './pages/app/Messages';
 import TrackingLinkAdmin from './pages/app/TrackingLinkAdmin';
 import SiteEditor from './pages/app/SiteEditor';
@@ -59,7 +61,12 @@ export default function App() {
           <Route path="committees" element={<CommitteesPage />} />
           <Route path="committees/:id" element={<CommitteeDetail />} />
           <Route path="finance" element={<FinancePage />} />
-          <Route path="custody" element={<CustodyPage />} />
+          <Route path="custody" element={<Navigate to="/app/requests" replace />} />
+          <Route path="requests" element={<RequestsPage />} />
+          <Route path="meetings" element={<MeetingsPage />} />
+          <Route path="meetings/:id" element={<MeetingDetail />} />
+          <Route path="insights" element={<InsightsPage />} />
+          <Route path="more" element={<MorePage />} />
           <Route path="contact" element={<ContactPage />} />
           <Route path="inbox" element={<InboxPage />} />
           <Route path="tracking-link" element={<TrackingLinkAdmin />} />

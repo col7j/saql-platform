@@ -4,11 +4,11 @@ import type { Committee, CommitteeMembership, Group, Person } from '@/domain/typ
 export const LEADER_ID = 'p_lead';
 
 const staffRaw: [string, string, string][] = [
-  ['s1', 'خالد العمري', 'ميسّر مجموعة أُحُد · قائد اللجنة المالية'],
+  ['s1', 'خالد العمري', 'ميسّر مجموعة أُحُد · عضو اللجنة المالية'],
   ['s2', 'فيصل الجهني', 'ميسّر مجموعة قُباء · قائد اللجنة الإعلامية'],
   ['s3', 'أنس المطيري', 'ميسّر مجموعة سَلع · عضو اللجنة المالية'],
   ['s4', 'سلمان الأحمدي', 'ميسّر مجموعة العقيق · عضو اللجنة الإعلامية'],
-  ['s5', 'ماجد الصاعدي', 'متابع الرحلات'],
+  ['s5', 'ماجد الصاعدي', 'مسؤول اللجنة المالية · متابع الرحلات'],
 ];
 
 const participantNames = [
@@ -70,8 +70,10 @@ export function buildCommittees(): { committees: Committee[]; memberships: Commi
   let n = 0;
   const m = (committeeId: string, personId: string, role: 'leader' | 'member', canSeeFinance: boolean): CommitteeMembership => ({ id: `cm_${++n}`, committeeId, personId, role, canSeeFinance });
   const memberships: CommitteeMembership[] = [
-    m('c_fin', 's1', 'leader', true),
-    m('c_fin', 's3', 'member', true),
+    // مسؤول اللجنة المالية ليس ميسّراً حتى لا يعتمد طلبات مجموعته
+    { ...m('c_fin', 's5', 'leader', true), financePerms: ['view_budget', 'manage_categories', 'approve_within', 'disburse', 'review_invoices', 'close_custody'] },
+    { ...m('c_fin', 's1', 'member', true), financePerms: ['view_budget', 'approve_within', 'review_invoices'] },
+    { ...m('c_fin', 's3', 'member', false), financePerms: [] }, // بلا صلاحيات مفوّضة: لا يرى أزرار الصرف
     m('c_media', 's2', 'leader', false),
     m('c_media', 's4', 'member', false),
     m('c_media', 'u9', 'member', false), // مشارك ضمن الإعلامية بموافقة القائد العام

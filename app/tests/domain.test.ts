@@ -12,8 +12,11 @@ describe('الصفات والصلاحيات', () => {
   it('تتجمع الصفات على الشخص', () => {
     const c = getCapabilities(db, 's1');
     expect(c.facilitatorOf.map((g) => g.id)).toEqual(['g1']);
-    expect(c.isFinanceLead).toBe(true);
-    expect(getCapabilities(db, 's5').isTracker).toBe(true);
+    expect(c.isFinance).toBe(true);
+    expect(c.isFinanceLead).toBe(false);
+    const owner = getCapabilities(db, 's5');
+    expect(owner.isTracker).toBe(true);
+    expect(owner.isFinanceLead).toBe(true);
   });
   it('خطط المجموعة لا تراها المجموعات الأخرى أبداً، وتراها الإدارة', () => {
     expect(canViewTripPlans(db, 'u2', trip('t7'))).toBe(true); // من أُحُد

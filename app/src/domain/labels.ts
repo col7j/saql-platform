@@ -8,7 +8,6 @@ export const tripTypeLabel: Record<TripType, string> = { internal: 'داخلية
 export const docKindLabel: Record<DocKind, string> = {
   initial: 'الخطة المبسطة',
   detailed: 'الخطة التفصيلية',
-  budget: 'الموازنة التقديرية',
   final_report: 'التقرير الختامي',
 };
 
@@ -113,6 +112,7 @@ export const notificationTypeLabel: Record<NotificationType, string> = {
   survey_available: 'استبيان متاح',
   invoice_rejected: 'رفض فاتورة',
   budget_request: 'طلب ميزانية',
+  meeting: 'اجتماع',
   general: 'عام',
 };
 
@@ -126,4 +126,4 @@ export const materialOriginLabel = {
   focus: 'ملف لقاء تركيز',
 } as const;
 
-export const SAR = (n: number) => `${Math.round(n).toLocaleString('en-US')} ر.س`;
+export const SAR = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })} ر.س`;

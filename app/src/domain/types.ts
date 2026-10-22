@@ -88,12 +88,16 @@ export interface Committee {
   description?: string;
   kpis: CommitteeKPI[];
 }
+/** صلاحيات مالية يفوّضها مسؤول اللجنة المالية لأعضاء لجنته، كل واحدة على حدة */
+export type FinancePermission = 'view_budget' | 'manage_categories' | 'approve_within' | 'disburse' | 'review_invoices' | 'close_custody';
 export interface CommitteeMembership {
   id: ID;
   committeeId: ID;
   personId: ID;
   role: 'leader' | 'member';
   canSeeFinance: boolean;
+  /** للجنة المالية فقط: الصلاحيات المفوّضة (قائد اللجنة يملكها كلها) */
+  financePerms?: FinancePermission[];
 }
 export interface MemberRequest {
   id: ID;
@@ -124,6 +128,7 @@ export interface Task {
   committeeId?: ID;
   tripId?: ID;
   focusMeetingId?: ID;
+  meetingId?: ID;
   groupId?: ID;
   assigneeId: ID;
   createdBy: ID;
@@ -153,7 +158,8 @@ export type TripExecutor =
   | { kind: 'group'; groupId: ID }
   | { kind: 'staff'; leaderId: ID; memberIds: ID[] };
 
-export type DocKind = 'initial' | 'detailed' | 'budget' | 'final_report';
+/** الموازنة لم تعد وثيقة في دورة الخطط، بل طلب ميزانية مستقل (BudgetRequest) */
+export type DocKind = 'initial' | 'detailed' | 'final_report';
 export type DocStatus =
   | 'draft'
   | 'submitted' // بانتظار الميسّر (أو القائد العام في رحلات فريق العمل)
@@ -257,6 +263,8 @@ export interface Trip {
   location?: string;
   description?: string;
   isPersonalPlanMeeting: boolean;
+  /** اللقاء الافتتاحي أو الختامي (نوع صرف مستقل) */
+  milestone?: 'opening' | 'closing';
   deadlines: { initial: ISODate; detailed: ISODate };
   createdAt: ISODateTime;
   createdBy: ID;
@@ -279,9 +287,11 @@ export interface Trip {
 
 // ───────────── لقاءات التركيز ─────────────
 export type FocusStatus = 'draft' | 'published' | 'held' | 'closed';
+/** سطر موازنة: تصنيف ← بند ← عدد × سعر الوحدة */
 export interface BudgetLine {
   id: ID;
   categoryId: ID;
+  itemId?: ID;
   description: string;
   unit: string;
   qty: number;
@@ -307,12 +317,7 @@ export interface FocusMeeting {
   presenterAxes: Record<ID, string>;
   guestName?: string;
   status: FocusStatus;
-  budget: {
-    lines: BudgetLine[];
-    status: 'none' | 'pending' | 'accepted' | 'revise' | 'accepted_lower';
-    approvedAmount?: number;
-    financeNote?: string;
-  };
+
   attendanceTakerId?: ID;
   attendanceConfirmedBy?: ID;
   presenterEvaluations: Record<ID, Record<string, number>>; // personId -> criterion -> 1..5
@@ -441,16 +446,71 @@ export interface MaterialView {
 }
 
 // ───────────── المالية ─────────────
-export type BudgetOwnerKind = 'trip' | 'focus' | 'individual';
+/** أنواع الصرف. الصرف والعهد مسموحة فقط لما في settings.spendableTypes */
+export type SpendKind = 'opening' | 'focus' | 'internal_trip' | 'external_trip' | 'closing' | 'meeting';
+export type BudgetOwnerKind = 'trip' | 'focus' | 'meeting';
+
+export interface BudgetCategoryItem {
+  id: ID;
+  name: string;
+  hidden?: boolean;
+}
 export interface BudgetCategory {
   id: ID;
   name: string;
-  appliesTo: BudgetOwnerKind[];
+  hidden?: boolean;
+  items: BudgetCategoryItem[];
 }
-export interface TripBudget {
-  tripId: ID;
+
+/** مبلغ لكل عنصر، أو إجمالي يُقسَّم على عدد */
+export interface AllocationRule {
+  mode: 'per_item' | 'total';
+  perItem: number;
+  total: number;
+  divisor: number;
+}
+export interface ProgramBudget {
+  setupDone: boolean;
+  setupAt?: ISODateTime;
+  focus: AllocationRule;
+  umrahPerGroup: number;
+  internalTrip: AllocationRule;
+  externalTrip: AllocationRule;
+  opening: number;
+  closing: number;
+  meetingDefault: number; // مرصود اختياري للاجتماعات (للتخطيط)
+  focusLimits: { min: number; max: number }; // لقاءات التركيز بميزانية لكل مجموعة
+}
+
+export type BudgetRequestStatus =
+  | 'draft'
+  | 'pending_finance' // ضمن المرصود: بانتظار مسؤول المالية
+  | 'pending_leader' // تجاوز المرصود: بانتظار القائد العام
+  | 'needs_detail' // القائد العام طلب موازنة تفصيلية من مقدّم الطلب
+  | 'approved' // معتمد: بانتظار صرف العهدة
+  | 'rejected'; // مرفوض بسبب: يعود لمقدّم الطلب
+export interface BudgetRequestEvent {
+  at: ISODateTime;
+  byId: ID;
+  action: 'submit' | 'finance_approve' | 'finance_reject' | 'leader_approve' | 'leader_reject' | 'leader_request_detail' | 'detail_submitted' | 'disbursed';
+  note?: string;
+}
+export interface BudgetRequest {
+  id: ID;
+  ownerKind: BudgetOwnerKind;
+  ownerId: ID;
+  spendKind: SpendKind;
+  requestedBy: ID;
+  amount: number; // المبلغ المطلوب (مجموع الأسطر إن كانت تفصيلية)
+  allocated: number; // المرصود وقت التقديم
+  detailed: boolean;
   lines: BudgetLine[];
+  note?: string;
+  status: BudgetRequestStatus;
+  submittedAt?: ISODateTime;
+  history: BudgetRequestEvent[];
 }
+
 export type InstallmentStatus = 'scheduled' | 'awaiting_iban' | 'awaiting_transfer' | 'awaiting_confirm' | 'received';
 export interface Installment {
   id: ID;
@@ -465,6 +525,7 @@ export interface Installment {
 export type CustodyStatus = 'setup' | 'active' | 'closing' | 'closed';
 export interface Custody {
   id: ID;
+  requestId?: ID;
   ownerKind: BudgetOwnerKind;
   ownerId: ID;
   recipientId: ID;
@@ -477,12 +538,19 @@ export interface Custody {
   closedAt?: ISODateTime;
   createdAt: ISODateTime;
 }
+/** سطر فاتورة: تصنيف + وصف + مبلغ */
+export interface InvoiceLine {
+  id: ID;
+  categoryId: ID;
+  itemId?: ID;
+  description: string;
+  amount: number;
+}
 export interface Invoice {
   id: ID;
   custodyId: ID;
-  categoryId: ID;
-  statement: string;
-  amount: number;
+  total: number;
+  lines: InvoiceLine[];
   image: string;
   uploadedBy: ID;
   status: 'pending' | 'accepted' | 'rejected';
@@ -493,8 +561,40 @@ export interface FeeRecord {
   personId: ID;
   amount: number;
   paid: boolean;
-  paidAt?: ISODate;
+  paidAt?: ISODateTime;
   note?: string;
+}
+export interface AuditEntry {
+  id: ID;
+  at: ISODateTime;
+  byId: ID;
+  action: string;
+  detail: string;
+}
+
+// ───────────── الاجتماعات ─────────────
+export type MeetingStatus = 'planned' | 'held' | 'minutes' | 'closed';
+export interface Meeting {
+  id: ID;
+  title: string;
+  kind: 'periodic' | 'urgent';
+  recurrence: 'none' | 'weekly' | 'biweekly' | 'monthly';
+  withGroupLeaders: boolean;
+  createdBy: ID;
+  ownerId: ID; // المسؤول الوحيد، وهو من يكتب المحضر
+  date: ISODate;
+  start: string;
+  end: string;
+  location: string;
+  inviteeIds: ID[];
+  agenda: string[];
+  status: MeetingStatus;
+  attendeeIds: ID[];
+  discussion?: string;
+  decisions: string[];
+  outputs: string[];
+  allocated?: number; // مبلغ مرصود اختياري يضعه المسؤول المالي (للتخطيط)
+  createdAt: ISODateTime;
 }
 
 // ───────────── الحضور والنقاط ─────────────
@@ -558,6 +658,7 @@ export type NotificationType =
   | 'survey_available'
   | 'invoice_rejected'
   | 'budget_request'
+  | 'meeting'
   | 'general';
 
 export interface Notification {
@@ -632,6 +733,8 @@ export interface Settings {
   feesInPlatform: boolean; // 20.12
   feeAmount: number;
   budgetVisibleToStaff: boolean;
+  /** أنواع الصرف المسموح بها: أي طلب صرف أو عهدة خارجها يُمنع */
+  spendableTypes: SpendKind[];
   trackerId?: ID;
   trackingLink: { token?: string; active: boolean; createdAt?: ISODateTime };
   site: SiteContent;
@@ -656,7 +759,6 @@ export interface DB {
   taskTemplates: TaskTemplate[];
   trips: Trip[];
   docs: TripDoc[];
-  tripBudgets: TripBudget[];
   actualSchedule: ActualScheduleEntry[];
   focusMeetings: FocusMeeting[];
   slots: AvailabilitySlot[];
@@ -666,6 +768,10 @@ export interface DB {
   materials: Material[];
   materialViews: MaterialView[];
   budgetCategories: BudgetCategory[];
+  programBudget: ProgramBudget;
+  budgetRequests: BudgetRequest[];
+  audit: AuditEntry[];
+  meetings: Meeting[];
   custodies: Custody[];
   invoices: Invoice[];
   fees: FeeRecord[];

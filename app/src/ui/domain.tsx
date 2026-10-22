@@ -77,8 +77,8 @@ export function CommentThread({ target, canComment, allowSuggestion = true }: { 
                 ))}
               </div>
             ) : <span />}
-            <Button size="sm" disabled={!text.trim()} onClick={() => act(() => { repos.comments.add(target, text, kind); setText(''); })} icon={<Icons.Send className="h-3.5 w-3.5" />}>
-              إرسال
+            <Button size="sm" variant="secondary" disabled={!text.trim()} onClick={() => act(() => { repos.comments.add(target, text, kind); setText(''); })} icon={<Icons.Send className="h-3.5 w-3.5" />}>
+              أرسل التعليق
             </Button>
           </div>
         </div>

@@ -2,6 +2,12 @@
 // القواعد: النقاط كسب فقط (لا خصم)، والأوزان والبنود كلها من الإعدادات.
 import { tripHasStarted, docFor, docOnTime, isApproved, scheduleAdherence, focusDone, planProgress } from './workflow';
 import { isTripTeam } from './permissions';
+import { requestFor } from './finance';
+
+function budgetOnTime(db: DB, trip: Trip): boolean | null {
+  const r = requestFor(db, 'trip', trip.id);
+  return r?.submittedAt ? r.submittedAt.slice(0, 10) <= trip.deadlines.detailed : null;
+}
 import type { DB, EvaluationItem, ID, PointsEntry, Trip, TripType } from './types';
 
 export interface ItemScore {
@@ -140,7 +146,7 @@ function groupTripItem(db: DB, trip: Trip, item: EvaluationItem): { ratio: numbe
       const vals = {
         schedule: adh,
         schedule_on_time: onTimeValue(docOnTime(docFor(db, trip.id, 'detailed'), trip.deadlines.detailed), lf),
-        budget_on_time: onTimeValue(docOnTime(docFor(db, trip.id, 'budget'), trip.deadlines.detailed), lf),
+        budget_on_time: onTimeValue(budgetOnTime(db, trip), lf),
         location_early: onTimeValue(docOnTime(docFor(db, trip.id, 'initial'), trip.deadlines.initial), lf),
       };
       return { ratio: subWeighted(item, vals), detail: adh == null ? 'الالتزام بالجدول لم يُوثّق بعد' : `الالتزام بالجدول ${Math.round(adh * 100)}%` };

@@ -1,6 +1,6 @@
 // الرحلات في البيانات التجريبية: كل رحلة في مرحلة مختلفة من المسار
 import { addDays, timeOf, toISODate } from '@/domain/dates';
-import type { ActualScheduleEntry, ScheduleItem, Trip, TripBudget, TripDoc, TripSession, DocKind, DocStatus } from '@/domain/types';
+import type { ActualScheduleEntry, BudgetLine, ScheduleItem, Trip, TripDoc, TripSession, DocKind, DocStatus } from '@/domain/types';
 import { LEADER_ID } from './seed-people';
 
 type Tpl = [number, string, string, string?]; // دقائق، تصنيف، تفصيل، عنوان لقاء
@@ -91,7 +91,7 @@ function baseTrip(p: Partial<Trip> & Pick<Trip, 'id' | 'title' | 'type' | 'execu
 export interface TripSeed {
   trips: Trip[];
   docs: TripDoc[];
-  budgets: TripBudget[];
+  budgets: Record<string, BudgetLine[]>;
   actual: ActualScheduleEntry[];
 }
 
@@ -99,7 +99,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
   seq = 0;
   const trips: Trip[] = [];
   const docs: TripDoc[] = [];
-  const budgets: TripBudget[] = [];
+  const budgets: Record<string, BudgetLine[]> = {};
   const actual: ActualScheduleEntry[] = [];
 
   const iso = (date: string, h = 10) => at(date, h).toISOString();
@@ -113,24 +113,25 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
   };
   const initialFields = (place: string) => ({ location: place, titles: 'القيادة بالقدوة · العمل بروح الفريق', outline: 'جولة صباحية، ثم محاضرة، ثم ورشة تطبيقية ونشاط جماعي.' });
   const detailedFields = { summary: 'الجدول الزمني المعتمد مع الخطة البديلة، وتوزيع المهام على الفريق.', details: 'التجمع 7:00 ص، العودة بعد العصر. الضيوف مؤكدون.' };
-  const budget = (tripId: string, lines: [string, string, string, number, number][]) =>
-    budgets.push({ tripId, lines: lines.map(([categoryId, description, unit, qty, price]) => ({ id: nid('bl'), categoryId, description, unit, qty, price })) });
+  const budget = (tripId: string, lines: [string, string, string, number, number, string?][]) =>
+    (budgets[tripId] = lines.map(([categoryId, description, unit, qty, price, itemId]) => ({ id: nid('bl'), categoryId, itemId, description, unit, qty, price })));
   const internalBudget = (tripId: string) =>
     budget(tripId, [
-      ['bc_transport', 'باص كوستر مع سائق', 'يوم', 1, 1000],
-      ['bc_food', 'غداء للمشاركين والفريق', 'وجبة', 32, 35],
-      ['bc_hosting', 'قهوة وتمر وماء', 'طلب', 2, 150],
-      ['bc_guests', 'مكافأة ضيف المحاضرة', 'ضيف', 1, 500],
-      ['bc_tickets', 'رسوم دخول الموقع', 'تذكرة', 32, 10],
+      ['bc_transport', 'باص كوستر مع سائق', 'يوم', 1, 1000, 'bi_bus'],
+      ['bc_food', 'غداء للمشاركين والفريق', 'وجبة', 32, 35, 'bi_meals'],
+      ['bc_hosting', 'قهوة وتمر وماء', 'طلب', 2, 150, 'bi_coffee'],
+      ['bc_guests', 'مكافأة ضيف المحاضرة', 'ضيف', 1, 500, 'bi_lecturer'],
+      ['bc_tickets', 'رسوم دخول الموقع', 'تذكرة', 32, 10, 'bi_entry'],
     ]);
   const externalBudget = (tripId: string) =>
     budget(tripId, [
-      ['bc_transport', 'حافلة 50 راكباً ذهاباً وعودة', 'رحلة', 1, 6500],
-      ['bc_housing', 'استراحة/شاليه', 'ليلة', 2, 2200],
-      ['bc_food', 'وجبات رئيسية', 'وجبة', 32 * 6, 30],
-      ['bc_hosting', 'ضيافة يومية', 'يوم', 3, 300],
-      ['bc_guests', 'مكافآت الضيوف', 'ضيف', 2, 700],
-      ['bc_print', 'مطبوعات ودروع', 'طقم', 1, 600],
+      ['bc_transport', 'حافلة 50 راكباً ذهاباً وعودة', 'رحلة', 1, 6500, 'bi_bus'],
+      ['bc_housing', 'استراحة للمشاركين', 'ليلة', 2, 2200, 'bi_house_part'],
+      ['bc_housing', 'سكن المدربين', 'ليلة', 2, 450, 'bi_house_trainers'],
+      ['bc_food', 'وجبات رئيسية', 'وجبة', 32 * 6, 30, 'bi_meals'],
+      ['bc_hosting', 'ضيافة يومية', 'يوم', 3, 300, 'bi_coffee'],
+      ['bc_guests', 'مكافآت الضيوف', 'ضيف', 2, 700, 'bi_lecturer'],
+      ['bc_print', 'مطبوعات ودروع', 'طقم', 1, 600, 'bi_gifts'],
     ]);
   const guests = (names: [string, string][], confirmed = true) => names.map(([name, role]) => ({ id: nid('gs'), name, role, confirmed }));
 
@@ -139,7 +140,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     const d = addDays(T, -52);
     const r = buildRun(at(d, 8), internalTpl('معنى القيادة الشبابية', 'اكتشف نقاط قوتك'), 'د. سامي الغامدي');
     const t = baseTrip({
-      id: 't1', title: 'اللقاء التطويري الأول: الانطلاقة', type: 'internal', executor: { kind: 'staff', leaderId: 's2', memberIds: ['s3', 's4'] },
+      id: 't1', title: 'اللقاء الافتتاحي: الانطلاقة', milestone: 'opening', type: 'internal', executor: { kind: 'staff', leaderId: 's2', memberIds: ['s3', 's4'] },
       startDate: d, endDate: d, location: 'قاعة الملتقى · المدينة المنورة', description: 'لقاء التأسيس والتعارف قبل تشكيل المجموعات.',
       published: true, publishedAt: iso(addDays(d, -3)), scheduleVisibility: 'full', scheduleStartedNotified: true,
       schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }], changes: [] },
@@ -151,7 +152,6 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     trips.push(t);
     doc('t1', 'initial', 'approved', iso(addDays(d, -25)), initialFields('قاعة الملتقى'), approvedChain('t1', null, addDays(d, -25)));
     doc('t1', 'detailed', 'approved', iso(addDays(d, -12)), detailedFields, approvedChain('t1', null, addDays(d, -12)));
-    doc('t1', 'budget', 'approved', iso(addDays(d, -12)), {}, approvedChain('t1', null, addDays(d, -12)));
     doc('t1', 'final_report', 'approved', iso(addDays(d, 4)), { summary: 'تقرير اللقاء التطويري الأول', achievements: 'تعارف المشاركين، وبناء التوقعات.', recommendations: 'تقديم موعد الغداء.' }, approvedChain('t1', null, addDays(d, 4)));
     internalBudget('t1');
     r.items.forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't1', refItemId: it.id, followed: i === 6 ? 'none' : i === 1 ? 'B' : 'A', note: i === 6 ? 'تأخر الضيف 20 دقيقة: وقت بدل ضائع' : undefined, actualStart: it.start, actualEnd: it.end, byId: 's5', at: iso(d, 18) }));
@@ -174,7 +174,6 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     trips.push(t);
     doc('t2', 'initial', 'approved', iso(addDays(d, -24)), initialFields('مزرعة الريحان'), approvedChain('t2', null, addDays(d, -24)));
     doc('t2', 'detailed', 'approved', iso(addDays(d, -11)), detailedFields, approvedChain('t2', null, addDays(d, -11)));
-    doc('t2', 'budget', 'approved', iso(addDays(d, -11)), {}, approvedChain('t2', null, addDays(d, -11)));
     doc('t2', 'final_report', 'submitted', iso(addDays(d, 6)), { summary: 'تقرير لقاء الخطة الشخصية', achievements: 'عبّأ 20 مشاركاً عجلة الحياة.', recommendations: 'متابعة الغائبين بلقاء تعويضي.' });
     internalBudget('t2');
     r.items.forEach((it) => actual.push({ id: nid('ac'), tripId: 't2', refItemId: it.id, followed: 'A', byId: 's5', at: iso(d, 18) }));
@@ -198,7 +197,6 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     trips.push(t);
     doc('t3', 'initial', 'approved', iso(addDays(d, -24)), initialFields('جبل أُحُد'), approvedChain('t3', 's1', addDays(d, -24)));
     doc('t3', 'detailed', 'approved', iso(addDays(d, -11)), detailedFields, [ap('s1', 'facilitator', 'reject', iso(addDays(d, -12)), 'الجدول لا يتضمن وقتاً للصلاة'), ap('s1', 'facilitator', 'approve', iso(addDays(d, -11), 14), undefined, 2), ap(LEADER_ID, 'leader', 'approve', iso(addDays(d, -10)), undefined, 2)], 2);
-    doc('t3', 'budget', 'approved', iso(addDays(d, -11)), {}, approvedChain('t3', 's1', addDays(d, -11)));
     doc('t3', 'final_report', 'approved', iso(addDays(d, 5)), { summary: 'تقرير رحلة أُحُد الداخلية', achievements: 'تنفيذ كامل البرنامج ومشاركة كل المجموعات.', recommendations: 'تقليل وقت التنقل.' }, approvedChain('t3', 's1', addDays(d, 5)));
     internalBudget('t3');
     r.items.forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't3', refItemId: it.id, followed: i === 6 ? 'none' : 'A', note: i === 6 ? 'بدأت الورشة متأخرة 15 دقيقة' : undefined, actualStart: i === 6 ? it.start.replace(/:(\d\d)$/, ':15') : it.start, actualEnd: it.end, categoryId: it.categoryId, byId: 's5', at: iso(d, 18) }));
@@ -222,7 +220,6 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     trips.push(t);
     doc('t4', 'initial', 'approved', iso(addDays(T, -26)), initialFields('مسجد قُباء'), approvedChain('t4', 's2', addDays(T, -26)));
     doc('t4', 'detailed', 'approved', iso(addDays(T, -9)), detailedFields, approvedChain('t4', 's2', addDays(T, -9)));
-    doc('t4', 'budget', 'approved', iso(addDays(T, -9)), {}, approvedChain('t4', 's2', addDays(T, -9)));
     internalBudget('t4');
     // المتابع وثّق أول بندين
     r.items.slice(0, 2).forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't4', refItemId: it.id, followed: i === 0 ? 'A' : 'B', byId: 's5', at: new Date().toISOString() }));
@@ -241,7 +238,6 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     trips.push(t);
     doc('t5', 'initial', 'approved', iso(addDays(T, -14)), initialFields('جبل سَلع'), approvedChain('t5', 's3', addDays(T, -14)));
     doc('t5', 'detailed', 'approved', iso(addDays(T, -3)), detailedFields, approvedChain('t5', 's3', addDays(T, -3)));
-    doc('t5', 'budget', 'approved', iso(addDays(T, -3)), {}, approvedChain('t5', 's3', addDays(T, -3)));
     internalBudget('t5');
   }
 
@@ -258,7 +254,6 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     trips.push(t);
     doc('t6', 'initial', 'approved', iso(addDays(T, -3)), initialFields('وادي العقيق'), approvedChain('t6', 's4', addDays(T, -3)));
     doc('t6', 'detailed', 'approved', iso(addDays(T, -1), 9), detailedFields, [ap('s4', 'facilitator', 'approve', iso(addDays(T, -1), 13))].concat([ap(LEADER_ID, 'leader', 'approve', iso(T, 9))]));
-    doc('t6', 'budget', 'facilitator_approved', iso(addDays(T, -1), 9), {}, [ap('s4', 'facilitator', 'approve', iso(addDays(T, -1), 13))]);
     internalBudget('t6');
   }
 
@@ -276,7 +271,6 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     trips.push(t);
     doc('t7', 'initial', 'approved', iso(addDays(T, -22)), { ...initialFields('العُلا'), titles: 'القيادة في التاريخ · التخطيط الاستراتيجي' }, approvedChain('t7', 's1', addDays(T, -22)));
     doc('t7', 'detailed', 'submitted', iso(addDays(T, -1)), detailedFields);
-    doc('t7', 'budget', 'submitted', iso(addDays(T, -1)), {});
     externalBudget('t7');
   }
 
@@ -308,7 +302,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
   // 11) رحلة ينبع (فريق عمل خارجية) — مبسطة معتمدة مباشرة من القائد العام
   {
     const d = addDays(T, 110);
-    trips.push(baseTrip({ id: 't11', title: 'رحلة ينبع: ختام البرنامج', type: 'external', executor: { kind: 'staff', leaderId: 's1', memberIds: ['s2', 's5'] }, startDate: d, endDate: addDays(d, 2), location: 'ينبع البحر' }, T));
+    trips.push(baseTrip({ id: 't11', title: 'اللقاء الختامي: رحلة ينبع', milestone: 'closing', type: 'external', executor: { kind: 'staff', leaderId: 's1', memberIds: ['s2', 's5'] }, startDate: d, endDate: addDays(d, 2), location: 'ينبع البحر' }, T));
     doc('t11', 'initial', 'approved', iso(addDays(T, -5)), initialFields('ينبع البحر'), [ap(LEADER_ID, 'leader', 'approve', iso(addDays(T, -4)))]);
     doc('t11', 'detailed', 'draft', null, { summary: '', details: '' });
   }

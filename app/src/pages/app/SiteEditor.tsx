@@ -20,13 +20,13 @@ export default function SiteEditor() {
           <button onClick={() => setS({ ...s, [k]: s[k].filter((_, j) => j !== i) })}><Icons.X className="h-4 w-4 text-ink-300" /></button>
         </div>
       ))}
-      <Button size="sm" variant="secondary" onClick={() => setS({ ...s, [k]: [...s[k], { title: '', text: '' }] })}>+ إضافة</Button>
+      <Button size="sm" variant="secondary" onClick={() => setS({ ...s, [k]: [...s[k], { title: '', text: '' }] })}>أضف</Button>
     </div>
   );
   return (
     <div>
       <PageHeader title="تحرير الموقع العام" subtitle="الموقع تعريفي فقط. لا يحتوي الترتيب ولا النقاط ولا رابط المتابعة"
-        actions={<><Link to="/" target="_blank" className="text-sm text-brand-600">معاينة</Link><Button onClick={() => act(() => repos.settings.update({ site: s }), 'نُشر المحتوى')}>حفظ ونشر</Button></>} />
+        actions={<><Link to="/" target="_blank" className="text-sm text-brand-600">معاينة</Link><Button onClick={() => act(() => repos.settings.update({ site: s }), 'نُشر المحتوى')}>احفظ وانشر</Button></>} />
       <div className="space-y-6">
         <Card title="الواجهة">
           <div className="grid gap-3">
@@ -49,7 +49,7 @@ export default function SiteEditor() {
                 <button onClick={() => setS({ ...s, faq: s.faq.filter((_, j) => j !== i) })}><Icons.X className="h-4 w-4 text-ink-300" /></button>
               </div>
             ))}
-            <Button size="sm" variant="secondary" onClick={() => setS({ ...s, faq: [...s.faq, { q: '', a: '' }] })}>+ سؤال</Button>
+            <Button size="sm" variant="secondary" onClick={() => setS({ ...s, faq: [...s.faq, { q: '', a: '' }] })}>أضف سؤالاً</Button>
           </div>
           <Field label="بريد التواصل" className="mt-3"><Input dir="ltr" value={s.contactEmail} onChange={(e) => setS({ ...s, contactEmail: e.target.value })} /></Field>
         </Card>

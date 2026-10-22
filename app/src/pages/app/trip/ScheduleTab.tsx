@@ -43,9 +43,9 @@ export default function ScheduleTab({ trip }: { trip: Trip }) {
         subtitle="كل بند: من ساعة إلى ساعة، تصنيف عام، وتفصيل. يمكن ربط البند بلقاء (محاضرة/دورة) له موادّه"
         action={canEdit && (
           <>
-            <Button size="sm" variant="secondary" onClick={() => { const id = uid('pl'); setPlans([...plans, { id, name: `الخطة ${'أبجدهوز'[plans.length] ?? plans.length + 1}`, items: [] }]); setActive(id); setDirty(true); }} icon={<Icons.Plus className="h-4 w-4" />}>خطة جديدة</Button>
-            {plan && plans[0].id !== plan.id && <Button size="sm" variant="secondary" onClick={() => updatePlan((p) => ({ ...p, items: plans[0].items.map((i) => ({ ...i, id: uid('si'), sessionId: undefined })) }))}>نسخ من الخطة أ</Button>}
-            <Button size="sm" onClick={() => setEditing({ id: uid('si'), date: trip.startDate, start: '08:00', end: '09:00', categoryId: cats[0].id, detail: '' })} icon={<Icons.Plus className="h-4 w-4" />}>بند</Button>
+            <Button size="sm" variant="secondary" onClick={() => { const id = uid('pl'); setPlans([...plans, { id, name: `الخطة ${'أبجدهوز'[plans.length] ?? plans.length + 1}`, items: [] }]); setActive(id); setDirty(true); }} icon={<Icons.Plus className="h-4 w-4" />}>أضف خطة</Button>
+            {plan && plans[0].id !== plan.id && <Button size="sm" variant="secondary" onClick={() => updatePlan((p) => ({ ...p, items: plans[0].items.map((i) => ({ ...i, id: uid('si'), sessionId: undefined })) }))}>انسخ من الخطة أ</Button>}
+            <Button size="sm" onClick={() => setEditing({ id: uid('si'), date: trip.startDate, start: '08:00', end: '09:00', categoryId: cats[0].id, detail: '' })} icon={<Icons.Plus className="h-4 w-4" />}>أضف بنداً</Button>
           </>
         )}
       >
@@ -85,7 +85,7 @@ export default function ScheduleTab({ trip }: { trip: Trip }) {
         {canEdit && dirty && (
           <div className="sticky bottom-3 mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50 p-3">
             <Input className="min-w-[200px] flex-1" placeholder={trip.published ? 'وصف التعديل (مثال: اعتذر الضيف فاستبدلنا الورشة)' : 'وصف التعديل (اختياري)'} value={note} onChange={(e) => setNote(e.target.value)} />
-            <Button onClick={save}>حفظ الجدول</Button>
+            <Button onClick={save}>احفظ الجدول</Button>
             <Button variant="ghost" onClick={() => { setPlans(trip.schedule.plans); setDirty(false); }}>تراجع</Button>
           </div>
         )}
@@ -132,7 +132,7 @@ function ItemModal({ item, trip, onClose, onSave }: { item: ScheduleItem; trip: 
   for (let d = trip.startDate; d <= trip.endDate; d = new Date(new Date(d).getTime() + 86400000).toISOString().slice(0, 10)) days.push(d);
   const invalid = minutesOf(i.end) <= minutesOf(i.start) || !i.detail.trim();
   return (
-    <Modal open onClose={onClose} title="بند في الجدول" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={invalid} onClick={() => onSave(i, sessionTitle.trim() || undefined)}>حفظ البند</Button></>}>
+    <Modal open onClose={onClose} title="بند في الجدول" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={invalid} onClick={() => onSave(i, sessionTitle.trim() || undefined)}>احفظ البند</Button></>}>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="اليوم"><Select value={i.date} onChange={(e) => setI({ ...i, date: e.target.value })} options={days.map((d) => ({ value: d, label: fmtDate(d) }))} /></Field>
         <Field label="من"><Input type="time" value={i.start} onChange={(e) => setI({ ...i, start: e.target.value })} /></Field>

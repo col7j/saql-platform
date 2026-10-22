@@ -3,14 +3,13 @@ import { useEffect, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/domain/dates';
 import { docKindLabel, docStatusLabel, docStatusTone } from '@/domain/labels';
 import {
-  canCommentOnTripDoc, canEditTripDoc, canFacilitatorReview, canLeaderDecide, canSeeEstimatedBudget,
+  canCommentOnTripDoc, canEditTripDoc, canFacilitatorReview, canLeaderDecide,
 } from '@/domain/permissions';
 import { approvalSteps, docFor, hasSchedule, isApproved, tripHasEnded } from '@/domain/workflow';
 import type { DocKind, Trip, TripDoc } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Field, Icons, Input, Modal, Notice, ReasonModal, Steps, Textarea } from '@/ui';
 import { CommentThread } from '@/ui/domain';
-import { BudgetEditor } from '../BudgetEditor';
 
 const FIELDS: Record<DocKind, { key: string; label: string; long?: boolean }[]> = {
   initial: [
@@ -22,7 +21,6 @@ const FIELDS: Record<DocKind, { key: string; label: string; long?: boolean }[]> 
     { key: 'summary', label: 'ملخص الخطة التفصيلية', long: true },
     { key: 'details', label: 'التفاصيل (التجمع، الضيوف، الترتيبات)', long: true },
   ],
-  budget: [],
   final_report: [
     { key: 'summary', label: 'ملخص التقرير', long: true },
     { key: 'achievements', label: 'ما تم إنجازه', long: true },
@@ -32,7 +30,7 @@ const FIELDS: Record<DocKind, { key: string; label: string; long?: boolean }[]> 
 
 export default function DocsTab({ trip }: { trip: Trip }) {
   const db = useDB();
-  const kinds: DocKind[] = ['initial', 'detailed', 'budget', 'final_report'];
+  const kinds: DocKind[] = ['initial', 'detailed', 'final_report'];
   const docs = kinds.map((k) => docFor(db, trip.id, k)).filter(Boolean) as TripDoc[];
   const [open, setOpen] = useState<string | null>(docs.find((d) => d.status !== 'approved')?.id ?? docs[0]?.id ?? null);
   return (
@@ -54,12 +52,9 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
   const isStaffTrip = trip.executor.kind === 'staff';
   const editable = canEditTripDoc(db, pid, trip, doc);
   const [fields, setFields] = useState(doc.fields);
-  const budget = db.tripBudgets.find((b) => b.tripId === trip.id)?.lines ?? [];
-  const [lines, setLines] = useState(budget);
   const [rejectAs, setRejectAs] = useState<'facilitator' | 'leader' | null>(null);
   const [editApprove, setEditApprove] = useState(false);
   useEffect(() => setFields(doc.fields), [doc.fields]);
-  useEffect(() => setLines(budget), [db.tripBudgets]); // eslint-disable-line
 
   const prereq =
     doc.kind === 'initial' ? null
@@ -67,18 +62,14 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
         : isApproved(db, trip.id, 'initial') ? null : 'تُفتح بعد اعتماد الخطة المبسطة';
   const needsSchedule = doc.kind === 'detailed' && !hasSchedule(trip);
   const deadline = doc.kind === 'initial' ? trip.deadlines.initial : doc.kind === 'final_report' ? undefined : trip.deadlines.detailed;
-  const seeBudget = canSeeEstimatedBudget(db, pid, trip);
 
   const save = () => act(() => {
     repos.trips.updateDocFields(doc.id, fields);
-    if (doc.kind === 'budget') repos.trips.saveBudget(trip.id, lines);
   }, 'حُفظت المسودة');
   const submit = () => act(() => {
     if (prereq) throw new Error(prereq);
     if (needsSchedule) throw new Error('أضف الجدول الزمني أولاً من تبويب الجدول');
-    if (doc.kind === 'budget' && lines.length === 0) throw new Error('أضف بنود الموازنة');
     repos.trips.updateDocFields(doc.id, fields);
-    if (doc.kind === 'budget') repos.trips.saveBudget(trip.id, lines);
     repos.trips.docAction(doc.id, { type: 'submit' });
   }, 'رُفعت للمراجعة');
 
@@ -106,9 +97,7 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
             </Notice>
           )}
 
-          {doc.kind === 'budget' ? (
-            seeBudget ? <BudgetEditor lines={lines} onChange={setLines} ownerKind="trip" readOnly={!editable} /> : <Notice>الموازنة التقديرية مخفية عن أعضاء الإدارة حتى يُظهرها القائد العام.</Notice>
-          ) : (
+          {(
             <div className="grid gap-3">
               {FIELDS[doc.kind].map((f) =>
                 editable ? (
@@ -133,19 +122,19 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
           )}
 
           <div className="flex flex-wrap gap-2">
-            {editable && <Button variant="secondary" onClick={save}>حفظ مسودة</Button>}
+            {editable && <Button variant="secondary" onClick={save}>احفظ المسودة</Button>}
             {editable && <Button onClick={submit} icon={<Icons.Upload className="h-4 w-4" />}>رفع {isStaffTrip ? 'للقائد العام' : 'للميسّر'}</Button>}
             {canFacilitatorReview(db, pid, trip, doc) && (
               <>
-                <Button variant="success" onClick={() => act(() => repos.trips.docAction(doc.id, { type: 'facilitator_approve' }), 'وافقت ورُفعت للإدارة')} icon={<Icons.Check className="h-4 w-4" />}>موافقة ورفع للإدارة</Button>
-                <Button variant="danger" onClick={() => setRejectAs('facilitator')} icon={<Icons.X className="h-4 w-4" />}>رفض بسبب</Button>
+                <Button variant="success" onClick={() => act(() => repos.trips.docAction(doc.id, { type: 'facilitator_approve' }), 'وافقت ورُفعت للإدارة')} icon={<Icons.Check className="h-4 w-4" />}>وافق وارفع للإدارة</Button>
+                <Button variant="danger" onClick={() => setRejectAs('facilitator')} icon={<Icons.X className="h-4 w-4" />}>ارفض بسبب</Button>
               </>
             )}
             {canLeaderDecide(db, pid, trip, doc) && (
               <>
-                <Button variant="success" onClick={() => act(() => repos.trips.docAction(doc.id, { type: 'leader_approve' }), 'اعتُمدت')} icon={<Icons.BadgeCheck className="h-4 w-4" />}>اعتماد</Button>
-                {doc.kind !== 'budget' && <Button variant="secondary" onClick={() => setEditApprove(true)} icon={<Icons.PenLine className="h-4 w-4" />}>تعديل واعتماد</Button>}
-                <Button variant="danger" onClick={() => setRejectAs('leader')}>رفض بسبب</Button>
+                <Button variant="success" onClick={() => act(() => repos.trips.docAction(doc.id, { type: 'leader_approve' }), 'اعتُمدت')} icon={<Icons.BadgeCheck className="h-4 w-4" />}>اعتمد</Button>
+                {<Button variant="secondary" onClick={() => setEditApprove(true)} icon={<Icons.PenLine className="h-4 w-4" />}>عدّل واعتمد</Button>}
+                <Button variant="danger" onClick={() => setRejectAs('leader')}>ارفض بسبب</Button>
               </>
             )}
             {me.isStaff && !me.isLeader && ['facilitator_approved', 'submitted'].includes(doc.status) && <span className="self-center text-xs text-ink-400">أعضاء الإدارة يناقشون ويعلّقون، والاعتماد للقائد العام فقط.</span>}
@@ -186,7 +175,7 @@ function EditApproveModal({ open, onClose, doc }: { open: boolean; onClose: () =
   const [note, setNote] = useState('');
   return (
     <Modal open={open} onClose={onClose} title={`تعديل واعتماد: ${docKindLabel[doc.kind]}`} wide
-      footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={!note.trim()} onClick={() => act(() => { repos.trips.updateDocFields(doc.id, fields); repos.trips.docAction(doc.id, { type: 'leader_edit_approve', reason: note }); onClose(); }, 'عُدّلت واعتُمدت')}>اعتماد بالتعديلات</Button></>}>
+      footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={!note.trim()} onClick={() => act(() => { repos.trips.updateDocFields(doc.id, fields); repos.trips.docAction(doc.id, { type: 'leader_edit_approve', reason: note }); onClose(); }, 'عُدّلت واعتُمدت')}>اعتمد بالتعديلات</Button></>}>
       <div className="grid gap-3">
         {FIELDS[doc.kind].map((f) => (
           <Field key={f.key} label={f.label}><Textarea rows={3} value={fields[f.key] ?? ''} onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })} /></Field>

@@ -11,6 +11,10 @@ import type {
   StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
 } from '@/domain/types';
 import { docKindLabel } from '@/domain/labels';
+import {
+  allocatedFor, assertSpendable, financeOwnerId, hasFinancePerm, invoiceError, isFinanceOwner, linesTotal, ownerLink, ownerTitle, routeFor, spendKindLabel, spendKindOf, FINANCE_PERMS,
+} from '@/domain/finance';
+import type { BudgetRequest, FinancePermission, InvoiceLine, Meeting, ProgramBudget, SpendKind } from '@/domain/types';
 
 /** إن أعادت الوصفة false فلا تغيير يُحفظ */
 export type Mutate = (recipe: (draft: DB) => unknown) => void;
@@ -43,6 +47,76 @@ export interface CreateTripInput {
   description?: string;
   isPersonalPlanMeeting: boolean;
   deadlines: { initial: string; detailed: string };
+}
+
+function personName(d: DB, id: ID) {
+  return d.persons.find((p) => p.id === id)?.name ?? '—';
+}
+function audit(d: DB, byId: ID, action: string, detail: string) {
+  d.audit.unshift({ id: uid('au'), at: nowISO(), byId, action, detail });
+}
+function guard(d: DB, pid: ID, perm: FinancePermission) {
+  if (!hasFinancePerm(d, pid, perm)) throw new Error(`لا تملك صلاحية «${FINANCE_PERMS.find((p) => p.key === perm)!.label}». يمنحها مسؤول اللجنة المالية.`);
+}
+function ownerOnly(d: DB, pid: ID) {
+  if (!isFinanceOwner(d, pid)) throw new Error('هذا الإجراء لمسؤول اللجنة المالية فقط');
+}
+function financeIdsWith(d: DB, perm: FinancePermission) {
+  return d.memberships.filter((m) => d.committees.find((c) => c.id === m.committeeId)?.kind === 'finance').map((m) => m.personId).filter((p) => hasFinancePerm(d, p, perm));
+}
+function findRequest(d: DB, id: ID) {
+  const r = d.budgetRequests.find((x) => x.id === id);
+  if (!r) throw new Error('الطلب غير موجود');
+  return r;
+}
+function findMeeting(d: DB, id: ID) {
+  const m = d.meetings.find((x) => x.id === id);
+  if (!m) throw new Error('الاجتماع غير موجود');
+  return m;
+}
+function createCustodyIn(d: DB, input: { ownerKind: Custody['ownerKind']; ownerId: ID; requestId?: ID; recipientId: ID; installments: { amount: number; dueDate: string; condition?: string }[] }) {
+  if (!input.installments.length || input.installments.some((i) => !(i.amount > 0))) throw new Error('حدد مبلغ كل دفعة');
+  const total = input.installments.reduce((s, i) => s + i.amount, 0);
+  const c: Custody = {
+    id: uid('cu'), requestId: input.requestId, ownerKind: input.ownerKind, ownerId: input.ownerId, recipientId: input.recipientId, total, status: 'setup', createdAt: nowISO(),
+    installments: input.installments.map((i, idx) => ({ id: uid('in'), ...i, status: idx === 0 ? 'awaiting_iban' : 'scheduled' })),
+  };
+  d.custodies.push(c);
+  pushNotification(d, [input.recipientId], 'custody_issued', `صُرفت لك عهدة ${ownerTitle(d, input.ownerKind, input.ownerId)}: ارفع رقم الآيبان`, '/app/requests');
+  return c;
+}
+/** تقديم طلب ميزانية أو إعادة تقديمه. يُستخدم من الشاشات ومن إنشاء لقاء التركيز */
+function submitRequestIn(d: DB, pid: ID, input: { ownerKind: BudgetRequest['ownerKind']; ownerId: ID; amount: number; lines: BudgetLine[]; detailed: boolean; note?: string }) {
+  if (!d.programBudget.setupDone) throw new Error('لم يُعدّ المسؤول المالي الميزانية بعد. أرسل الطلب بعد إعدادها.');
+  const spendKind = spendKindOf(d, input.ownerKind, input.ownerId);
+  assertSpendable(d, spendKind);
+  // من يقدّم: الميسّر للقاء التركيز، وقائد الفريق للرحلة، ومسؤول الاجتماع للاجتماع
+  if (input.ownerKind === 'focus') {
+    const fm = d.focusMeetings.find((f) => f.id === input.ownerId)!;
+    if (d.groups.find((g) => g.id === fm.groupId)?.facilitatorId !== pid) throw new Error('طلب ميزانية لقاء التركيز للميسّر فقط');
+    if (allocatedFor(d, 'focus', fm.id) === 0) throw new Error(`هذا اللقاء بعد الحد الأعلى (${d.programBudget.focusLimits.max}) للقاءات بميزانية، فلا يُطلب له ميزانية.`);
+  }
+  if (input.ownerKind === 'trip') {
+    const t = d.trips.find((x) => x.id === input.ownerId)!;
+    if (tripTeamLeaderId(d, t) !== pid) throw new Error('طلب ميزانية الرحلة لقائد الفريق فقط');
+    if (!input.lines.length) throw new Error('الرحلات تُقدَّم دائماً بموازنة تفصيلية: أضف بنود الموازنة');
+  }
+  if (input.ownerKind === 'meeting' && d.meetings.find((m) => m.id === input.ownerId)?.ownerId !== pid) throw new Error('طلب ميزانية الاجتماع لمسؤوله');
+  const detailed = input.detailed || input.lines.length > 0;
+  const amount = detailed ? linesTotal(input.lines) : input.amount;
+  if (!(amount > 0)) throw new Error('اكتب المبلغ المطلوب');
+  const allocated = allocatedFor(d, input.ownerKind, input.ownerId);
+  const existing = [...d.budgetRequests].reverse().find((r) => r.ownerKind === input.ownerKind && r.ownerId === input.ownerId);
+  if (existing && !['draft', 'rejected', 'needs_detail'].includes(existing.status)) throw new Error('يوجد طلب قائم لهذا العنصر');
+  // بعد طلب القائد العام موازنة تفصيلية يعود الطلب إليه مباشرة
+  const status = existing?.status === 'needs_detail' ? 'pending_leader' : routeFor(amount, allocated);
+  const r: BudgetRequest = existing ?? { id: uid('br'), ownerKind: input.ownerKind, ownerId: input.ownerId, spendKind, requestedBy: pid, amount, allocated, detailed, lines: [], status, history: [] };
+  Object.assign(r, { amount, allocated, detailed, lines: input.lines, note: input.note, status, submittedAt: r.submittedAt ?? nowISO() });
+  r.history.push({ at: nowISO(), byId: pid, action: existing?.status === 'needs_detail' ? 'detail_submitted' : 'submit', note: input.note });
+  if (!existing) d.budgetRequests.push(r);
+  const t = ownerTitle(d, r.ownerKind, r.ownerId);
+  if (status === 'pending_finance') pushNotification(d, financeIdsWith(d, 'approve_within').filter((x) => x !== pid), 'budget_request', `طلب ميزانية ضمن المرصود: ${t} (${amount} ر.س)`, '/app/finance');
+  else pushNotification(d, [leaderId(d)], 'budget_request', `طلب ميزانية يتجاوز المرصود: ${t} (${amount} من ${allocated} ر.س)`, '/app/finance');
 }
 
 export function createLocalRepositories(mutate: Mutate, me: () => ID) {
@@ -139,8 +213,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
             closure: { photos: [] }, evaluation: { manual: {} }, punctuality: {},
           };
           d.trips.push(trip);
-          (['initial', 'detailed', 'budget'] as const).forEach((kind) => d.docs.push({ id: uid('doc'), tripId: id, kind, status: 'draft', version: 1, fields: {}, history: [] }));
-          d.tripBudgets.push({ tripId: id, lines: [] });
+          (['initial', 'detailed'] as const).forEach((kind) => d.docs.push({ id: uid('doc'), tripId: id, kind, status: 'draft', version: 1, fields: {}, history: [] }));
           d.tasks.push(...tasksFromTemplates(d, trip, me()));
           const team = tripTeamIds(d, trip);
           pushNotification(d, team, 'general', `أُسندت إليكم رحلة جديدة: ${trip.title}`, `/app/trips/${id}`);
@@ -187,19 +260,10 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
           if (action.type === 'leader_reject') pushNotification(d, [teamLead, fac], 'approval_rejected', `أعاد القائد العام ${label}: ${action.reason}`, link);
           if (action.type === 'leader_approve' || action.type === 'leader_edit_approve') {
             pushNotification(d, [...team, fac], 'approval_approved', `اعتُمدت ${label}`, link);
-            // بعد اعتماد الموازنة يصل مسؤول المالية تنبيه بصرف عهدة
-            if (doc.kind === 'budget') pushNotification(d, financeIds(d), 'custody_issued', `اعتُمدت موازنة ${trip.title}: مطلوب صرف عهدة`, '/app/finance');
             // فتح التقرير الختامي بعد اعتماد التفصيلية تلقائياً
             if (doc.kind === 'detailed' && !docFor(d, trip.id, 'final_report'))
               d.docs.push({ id: uid('doc'), tripId: trip.id, kind: 'final_report', status: 'draft', version: 1, fields: {}, history: [] });
           }
-        });
-      },
-      saveBudget(tripId: ID, lines: BudgetLine[]) {
-        mutate((d) => {
-          const b = d.tripBudgets.find((x) => x.tripId === tripId);
-          if (b) b.lines = lines;
-          else d.tripBudgets.push({ tripId, lines });
         });
       },
       /** حفظ الجدول. أي تعديل بعد الانطلاق يُسجَّل ويؤثر على التقييم */
@@ -371,16 +435,14 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
 
     // ───────────── لقاءات التركيز ─────────────
     focus: {
-      create(fm: Omit<FocusMeeting, 'id' | 'createdBy' | 'status' | 'presenterEvaluations'>): ID {
+      /** إنشاء اللقاء، ومعه طلب الميزانية مباشرة إن طلبه الميسّر */
+      create(fm: Omit<FocusMeeting, 'id' | 'createdBy' | 'status' | 'presenterEvaluations'>, budget?: { amount: number; note?: string }): ID {
         const id = uid('f');
         mutate((d) => {
           const meeting: FocusMeeting = { ...fm, id, createdBy: me(), status: 'draft', presenterEvaluations: {} };
           d.focusMeetings.push(meeting);
           if (meeting.presenterIds.length) pushNotification(d, meeting.presenterIds, 'focus_created_presenter', `كُلّفت بالتقديم في "${meeting.title}": جهّز وحدد التفاصيل`, `/app/focus/${id}`);
-          if (meeting.budget.lines.length) {
-            meeting.budget.status = 'pending';
-            pushNotification(d, financeIds(d), 'budget_request', `طلب ميزانية: ${meeting.title}`, '/app/finance');
-          }
+          if (budget) submitRequestIn(d, me(), { ownerKind: 'focus', ownerId: id, amount: budget.amount, note: budget.note, lines: [], detailed: false });
         });
         return id;
       },
@@ -419,13 +481,6 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       close(id: ID) {
         mutate((d) => {
           d.focusMeetings.find((x) => x.id === id)!.status = 'closed';
-        });
-      },
-      financeDecision(id: ID, status: FocusMeeting['budget']['status'], approvedAmount?: number, note?: string) {
-        mutate((d) => {
-          const f = d.focusMeetings.find((x) => x.id === id)!;
-          f.budget = { ...f.budget, status, approvedAmount, financeNote: note };
-          pushNotification(d, [f.createdBy], status === 'revise' ? 'approval_rejected' : 'approval_approved', `قرار المالية على ميزانية "${f.title}"`, `/app/focus/${id}`);
         });
       },
     },
@@ -589,8 +644,40 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
 
     // ───────────── المالية ─────────────
     finance: {
+      /** معالج الميزانية: أول إعداد من المسؤول المالي */
+      setupBudget(pb: ProgramBudget) {
+        mutate((d) => {
+          ownerOnly(d, me());
+          d.programBudget = { ...pb, setupDone: true, setupAt: d.programBudget.setupAt ?? nowISO() };
+          audit(d, me(), pb.setupDone ? 'تعديل الميزانية' : 'إعداد الميزانية', 'حُفظت مبالغ المرصود لكل نوع');
+        });
+      },
+      setSpendable(kinds: SpendKind[]) {
+        mutate((d) => {
+          ownerOnly(d, me());
+          d.settings.spendableTypes = kinds;
+          audit(d, me(), 'تعديل أنواع الصرف المسموح', kinds.map((k) => spendKindLabel[k]).join('، '));
+        });
+      },
+      /** تفويض صلاحية لعضو في اللجنة المالية أو سحبها */
+      setPermission(personId: ID, perm: FinancePermission, on: boolean) {
+        mutate((d) => {
+          ownerOnly(d, me());
+          const cid = d.committees.find((c) => c.kind === 'finance')!.id;
+          const m = d.memberships.find((x) => x.committeeId === cid && x.personId === personId);
+          if (!m) throw new Error('الشخص ليس عضواً في اللجنة المالية');
+          const set = new Set(m.financePerms ?? []);
+          if (on) set.add(perm); else set.delete(perm);
+          m.financePerms = [...set];
+          m.canSeeFinance = set.has('view_budget');
+          const label = FINANCE_PERMS.find((x) => x.key === perm)!.label;
+          audit(d, me(), on ? 'منح صلاحية' : 'سحب صلاحية', `${label} — ${personName(d, personId)}`);
+          pushNotification(d, [personId], 'general', `${on ? 'مُنحت' : 'سُحبت'} صلاحية «${label}» في اللجنة المالية`, '/app/finance');
+        });
+      },
       saveCategory(c: BudgetCategory) {
         mutate((d) => {
+          guard(d, me(), 'manage_categories');
           const i = d.budgetCategories.findIndex((x) => x.id === c.id);
           if (i >= 0) d.budgetCategories[i] = c;
           else d.budgetCategories.push(c);
@@ -598,20 +685,74 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       },
       removeCategory(id: ID) {
         mutate((d) => {
-          const used = d.tripBudgets.some((b) => b.lines.some((l) => l.categoryId === id)) || d.invoices.some((i) => i.categoryId === id);
-          if (used) throw new Error('البند مستخدم في موازنات أو فواتير، عدّل اسمه بدل حذفه');
+          guard(d, me(), 'manage_categories');
+          const used = d.invoices.some((i) => i.lines.some((l) => l.categoryId === id)) || d.budgetRequests.some((r) => r.lines.some((l) => l.categoryId === id));
+          if (used) throw new Error('لا يُحذف تصنيف عليه فواتير أو موازنات. أخفِه بدلاً من حذفه.');
           d.budgetCategories = d.budgetCategories.filter((x) => x.id !== id);
         });
       },
-      createCustody(input: { ownerKind: Custody['ownerKind']; ownerId: ID; recipientId: ID; installments: { amount: number; dueDate: string; condition?: string }[] }) {
+
+      // ── طلبات الميزانية ──
+      submitRequest(input: { ownerKind: BudgetRequest['ownerKind']; ownerId: ID; amount: number; lines: BudgetLine[]; detailed: boolean; note?: string }) {
+        mutate((d) => submitRequestIn(d, me(), input));
+      },
+      financeDecide(requestId: ID, approve: boolean, reason?: string) {
         mutate((d) => {
-          const total = input.installments.reduce((s, i) => s + i.amount, 0);
-          const c: Custody = {
-            id: uid('cu'), ownerKind: input.ownerKind, ownerId: input.ownerId, recipientId: input.recipientId, total, status: 'setup', createdAt: nowISO(),
-            installments: input.installments.map((i, idx) => ({ id: uid('in'), ...i, status: idx === 0 ? 'awaiting_iban' : 'scheduled' })),
-          };
-          d.custodies.push(c);
-          pushNotification(d, [input.recipientId], 'custody_issued', 'صُرفت لك عهدة: ارفع بيانات الآيبان', '/app/custody');
+          guard(d, me(), 'approve_within');
+          const r = findRequest(d, requestId);
+          if (r.status !== 'pending_finance') throw new Error('الطلب ليس بانتظار مسؤول المالية');
+          if (r.requestedBy === me()) throw new Error('لا يعتمد صاحب الطلب طلبه بنفسه');
+          if (!approve && !reason?.trim()) throw new Error('اكتب سبب الرفض ليعرف مقدّم الطلب ما يعدّله');
+          r.status = approve ? 'approved' : 'rejected';
+          r.history.push({ at: nowISO(), byId: me(), action: approve ? 'finance_approve' : 'finance_reject', note: reason });
+          audit(d, me(), approve ? 'موافقة على طلب ميزانية' : 'رفض طلب ميزانية', `${ownerTitle(d, r.ownerKind, r.ownerId)} — ${r.amount} ر.س${reason ? ` — ${reason}` : ''}`);
+          pushNotification(d, [r.requestedBy], approve ? 'approval_approved' : 'approval_rejected', approve ? `وافقت المالية على ميزانية ${ownerTitle(d, r.ownerKind, r.ownerId)}` : `رُفض طلب ميزانية ${ownerTitle(d, r.ownerKind, r.ownerId)}: ${reason}`, ownerLink(r.ownerKind, r.ownerId));
+        });
+      },
+      /** القائد العام (لما يتجاوز المرصود): يعتمد، أو يرفض، أو يطلب موازنة تفصيلية. ولا يصرف */
+      leaderDecide(requestId: ID, decision: 'approve' | 'reject' | 'detail', reason?: string) {
+        mutate((d) => {
+          if (!d.persons.find((p) => p.id === me())?.isGeneralLeader) throw new Error('هذا القرار للقائد العام فقط');
+          const r = findRequest(d, requestId);
+          if (r.status !== 'pending_leader') throw new Error('الطلب ليس بانتظار القائد العام');
+          if (decision !== 'approve' && !reason?.trim()) throw new Error('اكتب السبب أو المطلوب');
+          r.status = decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'needs_detail';
+          r.history.push({ at: nowISO(), byId: me(), action: decision === 'approve' ? 'leader_approve' : decision === 'reject' ? 'leader_reject' : 'leader_request_detail', note: reason });
+          audit(d, me(), { approve: 'اعتماد تجاوز المرصود', reject: 'رفض تجاوز المرصود', detail: 'طلب موازنة تفصيلية' }[decision], `${ownerTitle(d, r.ownerKind, r.ownerId)} — ${r.amount} ر.س (المرصود ${r.allocated})`);
+          const t = ownerTitle(d, r.ownerKind, r.ownerId);
+          if (decision === 'approve') {
+            pushNotification(d, [r.requestedBy], 'approval_approved', `اعتمد القائد العام ميزانية ${t}`, ownerLink(r.ownerKind, r.ownerId));
+            pushNotification(d, [financeOwnerId(d)!], 'custody_issued', `اعتمد القائد العام ميزانية ${t}: اصرف العهدة`, '/app/finance');
+          } else pushNotification(d, [r.requestedBy], 'approval_rejected', decision === 'reject' ? `رفض القائد العام ميزانية ${t}: ${reason}` : `طلب القائد العام موازنة تفصيلية لـ ${t}: ${reason}`, ownerLink(r.ownerKind, r.ownerId));
+        });
+      },
+      /** صرف العهدة بعد اعتماد الطلب. ممنوع خارج أنواع الصرف المسموح */
+      disburse(requestId: ID, input: { recipientId: ID; installments: { amount: number; dueDate: string; condition?: string }[] }) {
+        mutate((d) => {
+          guard(d, me(), 'disburse');
+          const r = findRequest(d, requestId);
+          assertSpendable(d, r.spendKind);
+          if (r.status !== 'approved') throw new Error('لا تُصرف العهدة إلا بعد اعتماد الطلب');
+          if (d.custodies.some((c) => c.requestId === r.id)) throw new Error('صُرفت عهدة هذا الطلب مسبقاً');
+          createCustodyIn(d, { ownerKind: r.ownerKind, ownerId: r.ownerId, requestId: r.id, ...input });
+          r.history.push({ at: nowISO(), byId: me(), action: 'disbursed' });
+          audit(d, me(), 'صرف عهدة', `${ownerTitle(d, r.ownerKind, r.ownerId)} — ${input.installments.reduce((s, i) => s + i.amount, 0)} ر.س لـ ${personName(d, input.recipientId)} (${input.installments.length} دفعات)`);
+        });
+      },
+      /** صرف مباشر بلا طلب (للاجتماعات مثلاً): يمر بنفس قاعدة الصرف المسموح */
+      disburseDirect(ownerKind: BudgetRequest['ownerKind'], ownerId: ID, input: { recipientId: ID; installments: { amount: number; dueDate: string; condition?: string }[] }) {
+        mutate((d) => {
+          guard(d, me(), 'disburse');
+          assertSpendable(d, spendKindOf(d, ownerKind, ownerId));
+          createCustodyIn(d, { ownerKind, ownerId, ...input });
+          audit(d, me(), 'صرف عهدة مباشرة', `${ownerTitle(d, ownerKind, ownerId)} — ${input.installments.reduce((s, i) => s + i.amount, 0)} ر.س`);
+        });
+      },
+      setMeetingAllocation(meetingId: ID, amount: number) {
+        mutate((d) => {
+          ownerOnly(d, me());
+          d.meetings.find((m) => m.id === meetingId)!.allocated = amount;
+          audit(d, me(), 'مرصود اجتماع', `${d.meetings.find((m) => m.id === meetingId)!.title} — ${amount} ر.س (للتخطيط)`);
         });
       },
       submitIban(custodyId: ID, iban: string) {
@@ -619,19 +760,22 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
           const c = d.custodies.find((x) => x.id === custodyId)!;
           c.iban = iban;
           c.installments.forEach((i) => i.status === 'awaiting_iban' && (i.status = 'awaiting_transfer'));
-          pushNotification(d, financeIds(d), 'custody_issued', 'رُفع الآيبان: العهدة جاهزة للتحويل', '/app/finance');
+          pushNotification(d, financeIdsWith(d, 'disburse'), 'custody_issued', 'رُفع الآيبان: العهدة جاهزة للتحويل', '/app/finance?tab=custody');
         });
       },
       transfer(custodyId: ID, installmentId: ID, receipt: string) {
         mutate((d) => {
+          guard(d, me(), 'disburse');
           const c = d.custodies.find((x) => x.id === custodyId)!;
           const i = c.installments.find((x) => x.id === installmentId)!;
           Object.assign(i, { status: 'awaiting_confirm', transferReceipt: receipt, transferredAt: nowISO() } satisfies Partial<Installment>);
-          pushNotification(d, [c.recipientId], 'custody_issued', `حُوّلت دفعة ${i.amount} ر.س: أكّد الاستلام`, '/app/custody');
+          audit(d, me(), 'تحويل دفعة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${i.amount} ر.س إلى ${personName(d, c.recipientId)}`);
+          pushNotification(d, [c.recipientId], 'custody_issued', `حُوّلت دفعة ${i.amount} ر.س: أكّد الاستلام`, '/app/requests');
         });
       },
       releaseInstallment(custodyId: ID, installmentId: ID) {
         mutate((d) => {
+          guard(d, me(), 'disburse');
           const c = d.custodies.find((x) => x.id === custodyId)!;
           const i = c.installments.find((x) => x.id === installmentId)!;
           i.status = c.iban ? 'awaiting_transfer' : 'awaiting_iban';
@@ -640,36 +784,45 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       confirmReceipt(custodyId: ID, installmentId: ID) {
         mutate((d) => {
           const c = d.custodies.find((x) => x.id === custodyId)!;
+          if (c.recipientId !== me()) throw new Error('تأكيد الاستلام لمستلم العهدة فقط');
           const i = c.installments.find((x) => x.id === installmentId)!;
           i.status = 'received';
           i.confirmedAt = nowISO();
           if (c.status === 'setup') c.status = 'active'; // المستلم يؤكد الاستلام فتتفعل العهدة
         });
       },
-      addInvoice(custodyId: ID, inv: { categoryId: ID; statement: string; amount: number; image: string }) {
+      addInvoice(custodyId: ID, inv: { total: number; lines: InvoiceLine[]; image: string }) {
         mutate((d) => {
+          const err = invoiceError(inv.total, inv.lines, inv.image);
+          if (err) throw new Error(err);
           d.invoices.push({ id: uid('iv'), custodyId, ...inv, uploadedBy: me(), status: 'pending', at: nowISO() });
+          pushNotification(d, financeIdsWith(d, 'review_invoices'), 'general', 'فاتورة جديدة بانتظار المراجعة', '/app/finance?tab=invoices');
         });
       },
-      replaceInvoice(invoiceId: ID, patch: Partial<Pick<Invoice, 'statement' | 'amount' | 'image' | 'categoryId'>>) {
+      updateInvoice(invoiceId: ID, inv: { total: number; lines: InvoiceLine[]; image: string }) {
         mutate((d) => {
+          const err = invoiceError(inv.total, inv.lines, inv.image);
+          if (err) throw new Error(err);
           const i = d.invoices.find((x) => x.id === invoiceId)!;
-          Object.assign(i, patch, { status: 'pending', rejectReason: undefined, at: nowISO() });
+          Object.assign(i, inv, { status: 'pending', rejectReason: undefined, at: nowISO() });
         });
       },
       reviewInvoice(invoiceId: ID, accept: boolean, reason?: string) {
         mutate((d) => {
+          guard(d, me(), 'review_invoices');
+          if (!accept && !reason?.trim()) throw new Error('اكتب سبب الرفض ليعرف المستلم ما يعدّله');
           const i = d.invoices.find((x) => x.id === invoiceId)!;
           i.status = accept ? 'accepted' : 'rejected';
           i.rejectReason = accept ? undefined : reason;
           const c = d.custodies.find((x) => x.id === i.custodyId)!;
-          if (!accept) pushNotification(d, [c.recipientId], 'invoice_rejected', `رُفضت فاتورة "${i.statement}": ${reason}`, '/app/custody');
+          audit(d, me(), accept ? 'قبول فاتورة' : 'رفض فاتورة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${i.total} ر.س${reason ? ` — ${reason}` : ''}`);
+          if (!accept) pushNotification(d, [c.recipientId], 'invoice_rejected', `رُفضت فاتورة بقيمة ${i.total} ر.س: ${reason}`, '/app/requests');
         });
       },
       requestClose(custodyId: ID) {
         mutate((d) => {
           d.custodies.find((x) => x.id === custodyId)!.status = 'closing';
-          pushNotification(d, financeIds(d), 'general', 'طلب إغلاق عهدة', '/app/finance');
+          pushNotification(d, financeIdsWith(d, 'close_custody'), 'general', 'طلب إغلاق عهدة', '/app/finance?tab=custody');
         });
       },
       refund(custodyId: ID, amount: number, receipt: string) {
@@ -678,30 +831,92 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       requestOverspend(custodyId: ID, amount: number, reason: string) {
         mutate((d) => {
           d.custodies.find((x) => x.id === custodyId)!.overspend = { amount, reason };
-          pushNotification(d, [...financeIds(d), leaderId(d)], 'general', 'طلب موافقة على مصروف زائد عن الموازنة', '/app/finance');
+          pushNotification(d, [financeOwnerId(d)!, leaderId(d)], 'general', 'طلب موافقة على مصروف زائد عن الموازنة', '/app/finance?tab=custody');
         });
       },
       approveOverspend(custodyId: ID, as: 'finance' | 'admin') {
         mutate((d) => {
           const c = d.custodies.find((x) => x.id === custodyId)!;
-          if (!c.overspend) return;
-          if (as === 'finance') c.overspend.financeApproved = true;
-          else c.overspend.adminApproved = true;
+          if (!c.overspend) return false;
+          if (as === 'finance') { guard(d, me(), 'close_custody'); c.overspend.financeApproved = true; }
+          else {
+            if (!d.persons.find((p) => p.id === me())?.isGeneralLeader) throw new Error('موافقة الإدارة للقائد العام');
+            c.overspend.adminApproved = true;
+          }
+          audit(d, me(), 'موافقة على مصروف زائد', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${c.overspend.amount} ر.س`);
         });
       },
       closeCustody(custodyId: ID) {
         mutate((d) => {
+          guard(d, me(), 'close_custody');
           const c = d.custodies.find((x) => x.id === custodyId)!;
           c.status = 'closed';
           c.closedAt = nowISO();
+          audit(d, me(), 'إغلاق عهدة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${c.total} ر.س`);
           d.tasks.filter((t) => t.tripId === c.ownerId && t.tag === 'custody_close').forEach((t) => Object.assign(t, { status: 'done', doneAt: nowISO() }));
         });
       },
       setFee(personId: ID, paid: boolean, note?: string) {
         mutate((d) => {
+          ownerOnly(d, me());
           const f = d.fees.find((x) => x.personId === personId);
           if (f) Object.assign(f, { paid, paidAt: paid ? todayISO() : undefined, note });
           else d.fees.push({ personId, amount: d.settings.feeAmount, paid, paidAt: paid ? todayISO() : undefined, note });
+        });
+      },
+    },
+
+    // ───────────── الاجتماعات ─────────────
+    meetings: {
+      create(input: Omit<Meeting, 'id' | 'createdBy' | 'status' | 'attendeeIds' | 'decisions' | 'outputs' | 'createdAt'>): ID {
+        const id = uid('mt');
+        mutate((d) => {
+          const c = d.persons.find((p) => p.id === me());
+          const isLeaderOfGroup = d.groups.some((g) => g.leaderId === me());
+          if (c?.kind !== 'staff' && !isLeaderOfGroup) throw new Error('إنشاء الاجتماعات لأعضاء الإدارة وقادة المجموعات');
+          d.meetings.push({ ...input, id, createdBy: me(), status: 'planned', attendeeIds: [], decisions: [], outputs: [], createdAt: nowISO() });
+          pushNotification(d, input.inviteeIds.filter((x) => x !== me()), 'meeting', `دعوة لاجتماع: ${input.title}`, `/app/meetings/${id}`);
+        });
+        return id;
+      },
+      update(id: ID, patch: Partial<Meeting>) {
+        mutate((d) => {
+          const m = findMeeting(d, id);
+          if (m.ownerId !== me() && m.createdBy !== me()) throw new Error('التعديل لمسؤول الاجتماع');
+          Object.assign(m, patch);
+        });
+      },
+      markHeld(id: ID, attendeeIds: ID[]) {
+        mutate((d) => {
+          const m = findMeeting(d, id);
+          if (m.ownerId !== me()) throw new Error('تسجيل الانعقاد لمسؤول الاجتماع');
+          m.status = 'held';
+          m.attendeeIds = attendeeIds;
+        });
+      },
+      /** المحضر: ما دار، والقرارات، والمخرجات، ومهام تُنشأ وتُربط بالاجتماع */
+      saveMinutes(id: ID, minutes: { discussion: string; decisions: string[]; outputs: string[]; tasks: { title: string; assigneeId: ID; dueDate: string }[] }) {
+        mutate((d) => {
+          const m = findMeeting(d, id);
+          if (m.ownerId !== me()) throw new Error('كتابة المحضر لمسؤول الاجتماع فقط');
+          Object.assign(m, { discussion: minutes.discussion, decisions: minutes.decisions, outputs: minutes.outputs, status: 'minutes' });
+          minutes.tasks.forEach((t) => {
+            d.tasks.push({ id: uid('tk'), title: t.title, scope: 'general', meetingId: id, assigneeId: t.assigneeId, createdBy: me(), dueDate: t.dueDate, status: 'new', proofType: 'none', createdAt: nowISO() });
+            pushNotification(d, [t.assigneeId], 'task_assigned', `مهمة من اجتماع "${m.title}": ${t.title}`, '/app/tasks');
+          });
+          pushNotification(d, m.inviteeIds.filter((x) => x !== me()), 'meeting', `رُفع محضر اجتماع: ${m.title}`, `/app/meetings/${id}`);
+        });
+      },
+      close(id: ID) {
+        mutate((d) => {
+          const m = findMeeting(d, id);
+          if (m.ownerId !== me()) throw new Error('الإغلاق لمسؤول الاجتماع');
+          m.status = 'closed';
+          // الاجتماع الدوري: يُجدول الموعد التالي تلقائياً
+          if (m.kind === 'periodic' && m.recurrence !== 'none') {
+            const days = { weekly: 7, biweekly: 14, monthly: 30, none: 0 }[m.recurrence];
+            d.meetings.push({ ...m, id: uid('mt'), date: addDays(m.date, days), status: 'planned', attendeeIds: [], decisions: [], outputs: [], discussion: undefined, createdAt: nowISO() });
+          }
         });
       },
     },

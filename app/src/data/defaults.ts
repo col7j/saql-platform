@@ -1,5 +1,6 @@
 // القيم الافتراضية للإعدادات. كلها تُنسخ إلى قاعدة البيانات وتُعدّل من شاشة الإعدادات.
-import type { BudgetCategory, Settings, TaskTemplate } from '@/domain/types';
+import type { BudgetCategory, ProgramBudget, Settings, TaskTemplate } from '@/domain/types';
+import { DEFAULT_SPENDABLE } from '@/domain/finance';
 
 export function defaultSettings(startDate: string, endDate: string): Settings {
   return {
@@ -96,11 +97,12 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     scheduleEditAfterStartNeedsApproval: false,
     overspendNeedsApproval: true,
     trackingCommentsNeedReview: true,
-    importantNotifications: ['approval_rejected', 'deadline_passed', 'custody_issued', 'groups_published', 'leader_absent_focus', 'committee_member_request'],
+    importantNotifications: ['budget_request', 'approval_rejected', 'deadline_passed', 'custody_issued', 'groups_published', 'leader_absent_focus', 'committee_member_request'],
     showHijri: true,
     feesInPlatform: false,
     feeAmount: 500,
     budgetVisibleToStaff: false,
+    spendableTypes: [...DEFAULT_SPENDABLE],
     trackingLink: { active: false },
     site: {
       heroTitle: 'صقل',
@@ -132,15 +134,30 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
 }
 
 export const defaultBudgetCategories: BudgetCategory[] = [
-  { id: 'bc_transport', name: 'المواصلات', appliesTo: ['trip', 'focus'] },
-  { id: 'bc_food', name: 'التغذية', appliesTo: ['trip', 'focus', 'individual'] },
-  { id: 'bc_housing', name: 'السكن', appliesTo: ['trip'] },
-  { id: 'bc_hosting', name: 'الضيافة', appliesTo: ['trip', 'focus'] },
-  { id: 'bc_guests', name: 'مكافآت الضيوف', appliesTo: ['trip', 'focus'] },
-  { id: 'bc_tickets', name: 'تذاكر ودخول', appliesTo: ['trip'] },
-  { id: 'bc_print', name: 'أدوات ومطبوعات', appliesTo: ['trip', 'focus'] },
-  { id: 'bc_other', name: 'أخرى', appliesTo: ['trip', 'focus', 'individual'] },
+  { id: 'bc_transport', name: 'المواصلات', items: [{ id: 'bi_bus', name: 'حافلة/باص' }, { id: 'bi_car', name: 'سيارات وتوصيل' }, { id: 'bi_fuel', name: 'وقود' }] },
+  { id: 'bc_food', name: 'التغذية', items: [{ id: 'bi_meals', name: 'وجبات رئيسية' }, { id: 'bi_snacks', name: 'وجبات خفيفة' }] },
+  { id: 'bc_housing', name: 'السكن', items: [{ id: 'bi_house_trainers', name: 'سكن المدربين' }, { id: 'bi_house_part', name: 'سكن المشاركين' }] },
+  { id: 'bc_hosting', name: 'الضيافة', items: [{ id: 'bi_coffee', name: 'قهوة وتمر' }, { id: 'bi_water', name: 'ماء ومشروبات' }] },
+  { id: 'bc_guests', name: 'مكافآت الضيوف', items: [{ id: 'bi_lecturer', name: 'محاضر' }, { id: 'bi_trainer', name: 'مدرب ورشة' }] },
+  { id: 'bc_tickets', name: 'تذاكر ودخول', items: [{ id: 'bi_entry', name: 'رسوم دخول' }] },
+  { id: 'bc_print', name: 'أدوات ومطبوعات', items: [{ id: 'bi_print', name: 'مطبوعات' }, { id: 'bi_gifts', name: 'دروع وهدايا' }] },
+  { id: 'bc_other', name: 'أخرى', items: [] },
 ];
+
+/** ميزانية مقترحة تُعبّأ في المعالج. لا تُعتمد حتى يحفظها المسؤول المالي (setupDone) */
+export function defaultProgramBudget(): ProgramBudget {
+  return {
+    setupDone: false,
+    focus: { mode: 'per_item', perItem: 150, total: 1000, divisor: 16 },
+    umrahPerGroup: 1500,
+    internalTrip: { mode: 'per_item', perItem: 3500, total: 14000, divisor: 4 },
+    externalTrip: { mode: 'per_item', perItem: 15000, total: 60000, divisor: 4 },
+    opening: 4000,
+    closing: 20000,
+    meetingDefault: 0,
+    focusLimits: { min: 4, max: 8 },
+  };
+}
 
 export function defaultTaskTemplates(financeId: string, mediaId: string): TaskTemplate[] {
   return [

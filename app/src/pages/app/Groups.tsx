@@ -72,8 +72,8 @@ function Formation() {
           {!published && (
             <>
               <Field label="تاريخ ووقت النشر"><Input type="datetime-local" value={publishAt} onChange={(e) => setPublishAt(e.target.value)} /></Field>
-              <Button variant="secondary" disabled={!publishAt} onClick={() => act(() => repos.groups.schedulePublish(new Date(publishAt).toISOString()), 'جُدول النشر')}>جدولة النشر</Button>
-              <Button onClick={() => act(() => repos.groups.publishNow(), 'نُشرت المجموعات ووصلت التنبيهات')}>نشر الآن</Button>
+              <Button variant="secondary" disabled={!publishAt} onClick={() => act(() => repos.groups.schedulePublish(new Date(publishAt).toISOString()), 'جُدول النشر')}>جدول النشر</Button>
+              <Button onClick={() => act(() => repos.groups.publishNow(), 'نُشرت المجموعات ووصلت التنبيهات')}>انشر الآن</Button>
             </>
           )}
           {published && <Button variant="ghost" size="sm" onClick={() => act(() => repos.groups.unpublish(), 'عاد التشكيل مسودة (للنموذج فقط)')}>إرجاع لمسودة (لتجربة مرحلة ما قبل التشكيل)</Button>}
@@ -113,7 +113,7 @@ function Formation() {
         </Card>
       )}
       <Modal open={!!transfer} onClose={() => setTransfer(null)} title={`نقل ${personName(db, transfer?.personId)}`}
-        footer={<Button onClick={() => act(() => { repos.groups.transfer(transfer!.personId, transfer!.to, reason); setTransfer(null); setReason(''); }, 'تم النقل وسُجّل')}>تأكيد النقل</Button>}>
+        footer={<Button onClick={() => act(() => { repos.groups.transfer(transfer!.personId, transfer!.to, reason); setTransfer(null); setReason(''); }, 'تم النقل وسُجّل')}>أكّد النقل</Button>}>
         <p className="text-sm">إلى: <b>{db.groups.find((g) => g.id === transfer?.to)?.name}</b></p>
         <Field label="سبب النقل" className="mt-3"><Input value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
         <p className="mt-2 text-xs text-ink-400">سيرى الميسّر الجديد سجل الملاحظات السابق.</p>

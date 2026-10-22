@@ -4,11 +4,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { addDays, fmtDate, fmtTime, todayISO } from '@/domain/dates';
 import { focusStatusLabel, focusStatusTone } from '@/domain/labels';
 import { facilitatorTargetProgress, focusDone } from '@/domain/workflow';
-import type { BudgetLine, FocusMeeting } from '@/domain/types';
+import type { FocusMeeting } from '@/domain/types';
+import { focusCounter, isSpendable, perItem } from '@/domain/finance';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
-import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Progress, Select, Tabs, Toggle, cx } from '@/ui';
+import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Progress, Select, StepWizard, Tabs, Toggle, cx } from '@/ui';
 import { GroupBadge } from '@/ui/domain';
-import { BudgetEditor } from './BudgetEditor';
 
 export default function FocusPage() {
   const db = useDB();
@@ -28,7 +28,7 @@ export default function FocusPage() {
       <PageHeader
         title="لقاءات التركيز"
         subtitle="لقاءات قصيرة على مستوى المجموعة، وفيها يكسب المشارك نقاط التقديم"
-        actions={me.facilitatorOf.length > 0 && <Button onClick={() => setCreating(true)} icon={<Icons.Plus className="h-4 w-4" />}>إنشاء لقاء تركيز</Button>}
+        actions={me.facilitatorOf.length > 0 && <Button onClick={() => setCreating(true)} icon={<Icons.Plus className="h-4 w-4" />}>أنشئ لقاء تركيز</Button>}
       />
       {me.facilitatorOf.length > 0 && (() => {
         const p = facilitatorTargetProgress(db, me.person.id);
@@ -36,6 +36,7 @@ export default function FocusPage() {
           <Card className="mb-5">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex-1"><div className="mb-1 flex justify-between text-sm"><span>المستهدف الأدنى من الإدارة</span><span className="num">{p.focusDone} / {p.focusTarget}</span></div><Progress value={(p.focusDone / p.focusTarget) * 100} /></div>
+              {me.facilitatorOf.map((g) => { const c = focusCounter(db, g.id); return <Badge key={g.id} tone={c.withBudget >= c.max ? 'orange' : 'blue'}>بميزانية: {c.withBudget} من {c.max}{c.overflow ? ` (+${c.overflow} بلا ميزانية)` : ''}</Badge>; })}
               <Badge tone={p.umrahDone ? 'green' : 'orange'} icon={<Icons.Moon className="h-3 w-3" />}>لقاء العمرة: {p.umrahDone ? 'نُفّذ' : 'لم يُنفّذ'}</Badge>
             </div>
           </Card>
@@ -85,71 +86,97 @@ function CreateFocusModal({ onClose }: { onClose: () => void }) {
     title: '', isUmrah: false, topicMode: 'fixed' as FocusMeeting['topicMode'], topic: '', topicOptions: '', dateMode: 'fixed' as FocusMeeting['dateMode'], date: addDays(todayISO(), 7), dateOptions: '',
     start: '20:00', end: '21:00', location: '', presenterMode: 'members' as FocusMeeting['presenterMode'], presenterIds: [] as string[], axes: {} as Record<string, string>, guestName: '',
   });
-  const [lines, setLines] = useState<BudgetLine[]>([]);
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
+  // ترتيب اللقاء القادم في المجموعة، ومرصوده الافتراضي
+  const nextIndex = db.focusMeetings.filter((x) => x.groupId === groupId).length + 1;
+  const { max } = db.programBudget.focusLimits;
+  const hasSlot = nextIndex <= max;
+  const defaultAmount = f.isUmrah ? db.programBudget.umrahPerGroup : perItem(db.programBudget.focus);
+  const [requestBudget, setRequestBudget] = useState(true);
+  const [amount, setAmount] = useState<number | null>(null);
+  const finalAmount = amount ?? defaultAmount;
+  const budgetReady = db.programBudget.setupDone && isSpendable(db, 'focus');
+
   const submit = () => act(() => {
-    if (!f.title.trim()) throw new Error('عنوان اللقاء مطلوب');
-    if (f.presenterMode === 'members' && !f.presenterIds.length) throw new Error('اختر مقدّماً واحداً على الأقل');
     const id = repos.focus.create({
-      groupId, title: f.title, isUmrah: f.isUmrah, topicMode: f.topicMode, topic: f.topicMode === 'fixed' ? f.topic : undefined, topicOptions: f.topicMode === 'options' ? f.topicOptions.split('،').map((s) => s.trim()).filter(Boolean) : [],
-      dateMode: f.dateMode, date: f.dateMode === 'fixed' ? f.date : undefined, dateOptions: f.dateMode === 'options' ? f.dateOptions.split('،').map((s) => s.trim()).filter(Boolean) : [], start: f.start, end: f.end, location: f.location,
+      groupId, title: f.title, isUmrah: f.isUmrah, topicMode: f.topicMode, topic: f.topicMode === 'fixed' ? f.topic : undefined, topicOptions: f.topicMode === 'options' ? f.topicOptions.split('،').map((x) => x.trim()).filter(Boolean) : [],
+      dateMode: f.dateMode, date: f.dateMode === 'fixed' ? f.date : undefined, dateOptions: f.dateMode === 'options' ? f.dateOptions.split('،').map((x) => x.trim()).filter(Boolean) : [], start: f.start, end: f.end, location: f.location,
       presenterMode: f.presenterMode, presenterIds: f.presenterMode === 'members' ? f.presenterIds : [], presenterAxes: f.axes, guestName: f.presenterMode === 'guest' ? f.guestName : undefined,
-      budget: { lines, status: lines.length ? 'pending' : 'none' },
-    });
+    }, hasSlot && budgetReady && requestBudget ? { amount: finalAmount } : undefined);
     onClose();
     nav(`/app/focus/${id}`);
-  }, 'أُنشئ اللقاء ووصل التنبيه للمقدّم');
+  }, hasSlot && budgetReady && requestBudget ? 'أُنشئ اللقاء وأُرسل طلب الميزانية' : 'أُنشئ اللقاء');
 
   return (
-    <Modal open onClose={onClose} title="إنشاء لقاء تركيز" wide footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={submit}>إنشاء (مسودة)</Button></>}>
-      <div className="grid gap-4 sm:grid-cols-2">
-        {me.facilitatorOf.length > 1 && <Field label="المجموعة"><Select value={groupId} onChange={(e) => setGroupId(e.target.value)} options={me.facilitatorOf.map((g) => ({ value: g.id, label: g.name }))} /></Field>}
-        <Field label="العنوان" className="sm:col-span-2"><Input value={f.title} onChange={(e) => set({ title: e.target.value })} /></Field>
-        <div className="sm:col-span-2"><Toggle checked={f.isUmrah} onChange={(v) => set({ isUmrah: v, title: v && !f.title ? 'لقاء العمرة' : f.title })} label="لقاء العمرة (علامة خاصة، ميزانية أعلى، دورة مبسطة)" /></div>
-
-        <Field label="المقدّم">
-          <Select value={f.presenterMode} onChange={(e) => set({ presenterMode: e.target.value as FocusMeeting['presenterMode'] })} options={[{ value: 'members', label: 'عضو أو أكثر من المجموعة' }, { value: 'guest', label: 'ضيف (من الإدارة أو خارج البرنامج)' }, { value: 'facilitator', label: 'الميسّر نفسه' }, { value: 'none', label: 'لا أحد' }]} />
-        </Field>
-        {f.presenterMode === 'guest' && <Field label="اسم الضيف"><Input value={f.guestName} onChange={(e) => set({ guestName: e.target.value })} /></Field>}
-        {f.presenterMode === 'members' && (
-          <div className="sm:col-span-2">
-            <span className="label">المقدّمون (كل واحد يأخذ محوراً)</span>
-            <div className="space-y-2">
-              {group.memberIds.map((m) => {
+    <Modal open onClose={onClose} title="لقاء تركيز جديد">
+      <StepWizard onCancel={onClose} finishLabel="أنشئ اللقاء" onFinish={submit} steps={[
+        {
+          title: 'العنوان', valid: !!f.title.trim(), hint: 'اكتب عنوان اللقاء',
+          content: (
+            <div className="space-y-3">
+              {me.facilitatorOf.length > 1 && <Field label="المجموعة"><Select value={groupId} onChange={(e) => setGroupId(e.target.value)} options={me.facilitatorOf.map((g) => ({ value: g.id, label: g.name }))} /></Field>}
+              <Field label="عنوان اللقاء"><Input value={f.title} onChange={(e) => set({ title: e.target.value })} /></Field>
+              <Toggle checked={f.isUmrah} onChange={(v) => { set({ isUmrah: v, title: v && !f.title ? 'لقاء العمرة' : f.title }); setAmount(null); }} label="لقاء العمرة (علامة خاصة وميزانية مستقلة)" />
+              <p className="text-xs text-ink-500">هذا اللقاء رقم {nextIndex} في {group.name}.</p>
+            </div>
+          ),
+        },
+        {
+          title: 'المقدّم', valid: f.presenterMode !== 'members' || f.presenterIds.length > 0, hint: 'اختر مقدّماً واحداً على الأقل',
+          content: (
+            <div className="space-y-3">
+              <Select value={f.presenterMode} onChange={(e) => set({ presenterMode: e.target.value as FocusMeeting['presenterMode'] })} options={[{ value: 'members', label: 'عضو أو أكثر من المجموعة' }, { value: 'guest', label: 'ضيف' }, { value: 'facilitator', label: 'أنا (الميسّر)' }, { value: 'none', label: 'بلا مقدّم' }]} aria-label="نوع المقدّم" />
+              {f.presenterMode === 'guest' && <Field label="اسم الضيف"><Input value={f.guestName} onChange={(e) => set({ guestName: e.target.value })} /></Field>}
+              {f.presenterMode === 'members' && group.memberIds.map((m) => {
                 const on = f.presenterIds.includes(m);
-                const presented = db.focusMeetings.filter((x) => x.presenterIds.includes(m)).length;
                 return (
                   <div key={m} className="flex flex-wrap items-center gap-2">
-                    <button type="button" onClick={() => set({ presenterIds: on ? f.presenterIds.filter((x) => x !== m) : [...f.presenterIds, m] })} className={cx('chip border', on ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-500')}>
-                      {on && <Icons.Check className="h-3 w-3" />}{personName(db, m)}
-                    </button>
-                    <span className="text-[11px] text-ink-400">قدّم {presented} مرة</span>
-                    {on && <Input className="flex-1 py-1 text-xs" placeholder="المحور" value={f.axes[m] ?? ''} onChange={(e) => set({ axes: { ...f.axes, [m]: e.target.value } })} />}
+                    <button type="button" onClick={() => set({ presenterIds: on ? f.presenterIds.filter((x) => x !== m) : [...f.presenterIds, m] })} className={cx('chip min-h-[40px] border px-3', on ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-500')}>{on && <Icons.Check className="h-3 w-3" />}{personName(db, m)}</button>
+                    <span className="text-[11px] text-ink-400">قدّم {db.focusMeetings.filter((x) => x.presenterIds.includes(m)).length} مرة</span>
+                    {on && <Input className="flex-1" placeholder="المحور" value={f.axes[m] ?? ''} onChange={(e) => set({ axes: { ...f.axes, [m]: e.target.value } })} />}
                   </div>
                 );
               })}
             </div>
-          </div>
-        )}
-
-        <Field label="الموضوع"><Select value={f.topicMode} onChange={(e) => set({ topicMode: e.target.value as FocusMeeting['topicMode'] })} options={[{ value: 'fixed', label: 'إلزامي' }, { value: 'options', label: 'خيارات' }, { value: 'free', label: 'حرية للمقدّم' }]} /></Field>
-        {f.topicMode === 'fixed' && <Field label="الموضوع الإلزامي"><Input value={f.topic} onChange={(e) => set({ topic: e.target.value })} /></Field>}
-        {f.topicMode === 'options' && <Field label="خيارات الموضوع (افصل بـ ،)"><Input value={f.topicOptions} onChange={(e) => set({ topicOptions: e.target.value })} /></Field>}
-        {f.topicMode === 'free' && <div />}
-
-        <Field label="التاريخ"><Select value={f.dateMode} onChange={(e) => set({ dateMode: e.target.value as FocusMeeting['dateMode'] })} options={[{ value: 'fixed', label: 'موعد إلزامي' }, { value: 'options', label: 'خيارات' }, { value: 'free', label: 'حرية للمقدّم' }]} /></Field>
-        {f.dateMode === 'fixed' && <Field label="الموعد"><Input type="date" value={f.date} onChange={(e) => set({ date: e.target.value })} /></Field>}
-        {f.dateMode === 'options' && <Field label="خيارات التواريخ YYYY-MM-DD (افصل بـ ،)"><Input dir="ltr" value={f.dateOptions} onChange={(e) => set({ dateOptions: e.target.value })} /></Field>}
-        {f.dateMode === 'free' && <div />}
-        <Field label="من"><Input type="time" value={f.start} onChange={(e) => set({ start: e.target.value })} /></Field>
-        <Field label="إلى"><Input type="time" value={f.end} onChange={(e) => set({ end: e.target.value })} /></Field>
-        <Field label="المكان" className="sm:col-span-2"><Input value={f.location} onChange={(e) => set({ location: e.target.value })} /></Field>
-      </div>
-      <div className="mt-5">
-        <div className="mb-2 text-sm font-bold">الميزانية التقديرية (تُرسل للجنة المالية)</div>
-        <BudgetEditor lines={lines} onChange={setLines} ownerKind="focus" />
-      </div>
-      <Notice>الميسّر مسؤول عن عهدة لقاءات التركيز. المالية تقبل، أو تطلب تعديل البنود، أو تقبل بمبلغ أقل.</Notice>
+          ),
+        },
+        {
+          title: 'الموضوع والموعد', valid: (f.topicMode !== 'fixed' || !!f.topic.trim()) && f.end > f.start, hint: 'اكتب الموضوع، وتأكد أن النهاية بعد البداية',
+          content: (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="الموضوع"><Select value={f.topicMode} onChange={(e) => set({ topicMode: e.target.value as FocusMeeting['topicMode'] })} options={[{ value: 'fixed', label: 'إلزامي' }, { value: 'options', label: 'خيارات' }, { value: 'free', label: 'حرية للمقدّم' }]} /></Field>
+              {f.topicMode === 'fixed' ? <Field label="الموضوع الإلزامي"><Input value={f.topic} onChange={(e) => set({ topic: e.target.value })} /></Field>
+                : f.topicMode === 'options' ? <Field label="الخيارات (افصل بـ ،)"><Input value={f.topicOptions} onChange={(e) => set({ topicOptions: e.target.value })} /></Field> : <div />}
+              <Field label="التاريخ"><Select value={f.dateMode} onChange={(e) => set({ dateMode: e.target.value as FocusMeeting['dateMode'] })} options={[{ value: 'fixed', label: 'موعد إلزامي' }, { value: 'options', label: 'خيارات' }, { value: 'free', label: 'حرية للمقدّم' }]} /></Field>
+              {f.dateMode === 'fixed' ? <Field label="الموعد"><Input type="date" value={f.date} onChange={(e) => set({ date: e.target.value })} /></Field>
+                : f.dateMode === 'options' ? <Field label="التواريخ YYYY-MM-DD (افصل بـ ،)"><Input dir="ltr" value={f.dateOptions} onChange={(e) => set({ dateOptions: e.target.value })} /></Field> : <div />}
+              <Field label="من"><Input type="time" value={f.start} onChange={(e) => set({ start: e.target.value })} /></Field>
+              <Field label="إلى"><Input type="time" value={f.end} onChange={(e) => set({ end: e.target.value })} /></Field>
+              <Field label="المكان" className="sm:col-span-2"><Input value={f.location} onChange={(e) => set({ location: e.target.value })} /></Field>
+            </div>
+          ),
+        },
+        {
+          title: 'الميزانية',
+          content: !hasSlot ? (
+            <Notice tone="orange">هذا اللقاء رقم {nextIndex}، والحد الأعلى للقاءات بميزانية {max} لكل مجموعة. سيُنشأ اللقاء بلا ميزانية مرصودة، فلا يُطلب له ميزانية.</Notice>
+          ) : !budgetReady ? (
+            <Notice>{db.programBudget.setupDone ? 'الصرف على لقاءات التركيز غير مسموح حالياً.' : 'لم يُعدّ المسؤول المالي الميزانية بعد. أنشئ اللقاء الآن، واطلب الميزانية من صفحته بعد إعدادها.'}</Notice>
+          ) : (
+            <div className="space-y-3">
+              <Toggle checked={requestBudget} onChange={setRequestBudget} label="أرسل طلب الميزانية مع إنشاء اللقاء" />
+              {requestBudget && (
+                <>
+                  <Field label="المبلغ (ر.س)" hint={`المبلغ الافتراضي ${defaultAmount} حدده المسؤول المالي، ويمكنك تعديله`}>
+                    <Input className="num" type="number" min={0} value={finalAmount} onChange={(e) => setAmount(Math.max(0, +e.target.value))} />
+                  </Field>
+                  <p className="text-xs text-ink-500">{finalAmount <= defaultAmount ? 'ضمن المرصود: يذهب الطلب لمسؤول اللجنة المالية مباشرة.' : 'يتجاوز المرصود: يذهب الطلب للقائد العام أولاً.'}</p>
+                </>
+              )}
+            </div>
+          ),
+        },
+      ]} />
     </Modal>
   );
 }

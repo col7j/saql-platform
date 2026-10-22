@@ -26,7 +26,7 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
           <div className="grid gap-3">
             <Field label="نموذج تقييم فريق العمل"><Textarea disabled={!isLead} rows={3} value={forms.teamEvalForm} onChange={(e) => setForms({ ...forms, teamEvalForm: e.target.value })} placeholder="كيف كان أداء الفريق؟ ما الذي نجح وما الذي تعثر؟" /></Field>
             <Field label="نموذج إغلاق التجربة"><Textarea disabled={!isLead} rows={3} value={forms.experienceForm} onChange={(e) => setForms({ ...forms, experienceForm: e.target.value })} placeholder="ما الذي تعلمناه من التجربة؟" /></Field>
-            {isLead && <div><Button onClick={() => act(() => repos.trips.updateClosure(trip.id, { teamEvalForm: forms.teamEvalForm || undefined, experienceForm: forms.experienceForm || undefined }), 'حُفظت النماذج')}>حفظ النماذج</Button></div>}
+            {isLead && <div><Button onClick={() => act(() => repos.trips.updateClosure(trip.id, { teamEvalForm: forms.teamEvalForm || undefined, experienceForm: forms.experienceForm || undefined }), 'حُفظت النماذج')}>احفظ النماذج</Button></div>}
           </div>
         </Card>
 
@@ -35,8 +35,8 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
           <Field label="نص التقرير العام" className="mt-3"><Textarea disabled={!(isLead || me.isLeader) || !isApproved(db, trip.id, 'final_report')} rows={4} value={forms.publicReport} onChange={(e) => setForms({ ...forms, publicReport: e.target.value })} placeholder="الحضور، وما تم، وأبرز اللحظات (بدون بيانات شخصية أو مالية)" /></Field>
           {(isLead || me.isLeader) && isApproved(db, trip.id, 'final_report') && (
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button onClick={() => act(() => repos.trips.updateClosure(trip.id, { publicReport: forms.publicReport }), 'صُدّر التقرير العام')} icon={<Icons.Megaphone className="h-4 w-4" />}>تصدير التقرير العام</Button>
-              <Button variant="secondary" onClick={() => act(() => repos.trips.updateClosure(trip.id, { photos: [...trip.closure.photos, `ph_${Date.now()}`] }), 'أُضيفت صورة')} icon={<Icons.ImagePlus className="h-4 w-4" />}>إضافة صورة عامة ({trip.closure.photos.length})</Button>
+              <Button onClick={() => act(() => repos.trips.updateClosure(trip.id, { publicReport: forms.publicReport }), 'صُدّر التقرير العام')} icon={<Icons.Megaphone className="h-4 w-4" />}>صدّر التقرير العام</Button>
+              <Button variant="secondary" onClick={() => act(() => repos.trips.updateClosure(trip.id, { photos: [...trip.closure.photos, `ph_${Date.now()}`] }), 'أُضيفت صورة')} icon={<Icons.ImagePlus className="h-4 w-4" />}>أضف صورة عامة ({trip.closure.photos.length})</Button>
             </div>
           )}
         </Card>
@@ -47,13 +47,13 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
               <div className="mb-2 text-sm font-bold">تقييم متابع الرحلات (من 10)</div>
               <Input type="number" min={0} max={10} step={0.5} disabled={!isTracker} value={ev.trackerScore} onChange={(e) => setEv({ ...ev, trackerScore: +e.target.value })} />
               <Textarea className="mt-2" disabled={!isTracker} rows={2} placeholder="ملاحظات" value={ev.trackerNote} onChange={(e) => setEv({ ...ev, trackerNote: e.target.value })} />
-              {isTracker && <Button size="sm" className="mt-2" onClick={() => act(() => repos.trips.evaluate(trip.id, { trackerScore: ev.trackerScore, trackerNote: ev.trackerNote }), 'حُفظ تقييم المتابع')}>حفظ</Button>}
+              {isTracker && <Button size="sm" className="mt-2" onClick={() => act(() => repos.trips.evaluate(trip.id, { trackerScore: ev.trackerScore, trackerNote: ev.trackerNote }), 'حُفظ تقييم المتابع')}>احفظ</Button>}
             </div>
             <div className="rounded-2xl border border-ink-100 p-3">
               <div className="mb-2 text-sm font-bold">تقييم القائد العام (من 10)</div>
               <Input type="number" min={0} max={10} step={0.5} disabled={!me.isLeader} value={ev.leaderScore} onChange={(e) => setEv({ ...ev, leaderScore: +e.target.value })} />
               <Textarea className="mt-2" disabled={!me.isLeader} rows={2} placeholder="ملاحظات" value={ev.leaderNote} onChange={(e) => setEv({ ...ev, leaderNote: e.target.value })} />
-              {me.isLeader && <Button size="sm" className="mt-2" onClick={() => act(() => repos.trips.evaluate(trip.id, { leaderScore: ev.leaderScore, leaderNote: ev.leaderNote }), 'حُفظ تقييم القائد العام')}>حفظ</Button>}
+              {me.isLeader && <Button size="sm" className="mt-2" onClick={() => act(() => repos.trips.evaluate(trip.id, { leaderScore: ev.leaderScore, leaderNote: ev.leaderNote }), 'حُفظ تقييم القائد العام')}>احفظ</Button>}
             </div>
           </div>
           {trip.executor.kind === 'group' && (

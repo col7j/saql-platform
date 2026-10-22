@@ -12,7 +12,7 @@ export default function Login() {
   const toast = useStore((s) => s.toast);
   const nav = useNavigate();
   const [email, setEmail] = useState('');
-  const quick = ['p_lead', 's1', 's2', 's5', 'u1', 'u7', 'u3', 'u6'];
+  const quick = ['p_lead', 's5', 's1', 's2', 's3', 'u1', 'u7', 'u6'];
 
   const login = (id: string) => {
     setUser(id);
@@ -44,7 +44,7 @@ export default function Login() {
             <Field label="كلمة المرور" hint="في النموذج الأولي لا يلزم إدخال كلمة مرور">
               <Input type="password" disabled placeholder="••••••••" />
             </Field>
-            <Button className="w-full" type="submit">دخول</Button>
+            <Button className="w-full" type="submit">ادخل</Button>
           </form>
           <div className="mt-6">
             <Notice>للتجربة: اختر أحد الحسابات التالية، أو استخدم شريط "الدخول كـ" في الأعلى للدخول بأي شخص.</Notice>

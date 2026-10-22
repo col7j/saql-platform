@@ -30,7 +30,7 @@ export default function TasksPage() {
   return (
     <div>
       <PageHeader title={me.isStaff ? 'لوحة المهام' : 'مهامي'} subtitle="الحالات: جديدة، قيد التنفيذ، منتهية، ومتأخرة تلقائياً عند فوات الموعد. الإثبات إلزامي عند طلبه"
-        actions={<Button onClick={() => setOpen(true)} icon={<Icons.Plus className="h-4 w-4" />}>{me.isStaff ? 'مهمة جديدة' : 'مهمة لزميل في مجموعتي'}</Button>} />
+        actions={<Button onClick={() => setOpen(true)} icon={<Icons.Plus className="h-4 w-4" />}>{me.isStaff ? 'أنشئ مهمة' : 'أسند مهمة لزميل'}</Button>} />
       <div className="flex flex-wrap items-start justify-between gap-2">
         <Tabs value={view} onChange={setView} tabs={[{ key: 'board', label: 'لوحة' }, { key: 'list', label: 'قائمة' }]} />
         <Select className="mb-4 w-48" value={scope} onChange={(e) => setScope(e.target.value as typeof scope)} options={[{ value: 'all', label: 'كل المهام' }, { value: 'mine', label: 'المسندة لي' }, { value: 'general', label: 'عامة (الإدارة)' }, { value: 'committee', label: 'اللجان' }, { value: 'trip_team', label: 'تجهيز الرحلات' }, { value: 'group', label: 'المجموعة' }]} />

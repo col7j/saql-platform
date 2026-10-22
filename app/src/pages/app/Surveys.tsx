@@ -26,7 +26,7 @@ function ParticipantSurveys() {
       <PageHeader title="الاستبيانات" subtitle="إلزامية في الرحلات، واختيارية في لقاءات التركيز. تساعدنا على قياس أثر البرنامج" />
       {list.length === 0 ? <Empty title="لا استبيانات متاحة" /> : (
         <div className="grid gap-3 md:grid-cols-2">
-          {[...list].sort((a, b) => Number(done(a)) - Number(done(b))).map((s) => (
+          {[...list].sort((a, b) => Number(done(a)) - Number(done(b))).map((s, i) => (
             <Card key={s.id}>
               <div className="flex flex-wrap items-center gap-1.5">
                 <Badge tone={s.phase === 'pre' ? 'blue' : 'purple'}>{s.phase === 'pre' ? 'قبلي' : 'بعدي'}</Badge>
@@ -35,7 +35,7 @@ function ParticipantSurveys() {
               </div>
               <h3 className="mt-2 font-bold">{s.title}</h3>
               <p className="text-xs text-ink-500">{ctxTitle(db, s)} · {s.questions.length} أسئلة</p>
-              <Button className="mt-3" size="sm" variant={done(s) ? 'secondary' : 'primary'} onClick={() => setFilling(s)}>{done(s) ? 'تعديل إجابتي' : 'تعبئة'}</Button>
+              <Button className="mt-3" size="sm" variant={!done(s) && i === 0 ? 'primary' : 'secondary'} onClick={() => setFilling(s)}>{done(s) ? 'عدّل إجابتي' : 'عبّئ الاستبيان'}</Button>
             </Card>
           ))}
         </div>
@@ -66,7 +66,7 @@ function FillModal({ survey, onClose }: { survey: Survey; onClose: () => void })
     </div>
   );
   return (
-    <Modal open onClose={onClose} title={survey.title} wide footer={<Button disabled={!complete} onClick={() => act(() => { repos.surveys.respond(survey.id, ans); onClose(); }, 'شكراً، سُجّلت إجاباتك')}>إرسال</Button>}>
+    <Modal open onClose={onClose} title={survey.title} wide footer={<Button disabled={!complete} onClick={() => act(() => { repos.surveys.respond(survey.id, ans); onClose(); }, 'شكراً، سُجّلت إجاباتك')}>أرسل</Button>}>
       <div className="space-y-3">
         {specific.map(renderQ)}
         {general.length > 0 && <div className="pt-2 text-xs font-bold text-ink-500">الرضا والأثر العام</div>}
@@ -84,7 +84,7 @@ function StaffSurveys() {
   const participants = db.persons.filter((p) => p.kind === 'participant').length;
   return (
     <div>
-      <PageHeader title="الاستبيانات وقياس الأثر" subtitle="فريق الإعداد يجهّز الأسئلة، والبعدي يقابل القبلي بصياغة مختلفة" actions={<Button onClick={() => setBuilding(true)} icon={<Icons.Plus className="h-4 w-4" />}>استبيان جديد</Button>} />
+      <PageHeader title="الاستبيانات وقياس الأثر" subtitle="فريق الإعداد يجهّز الأسئلة، والبعدي يقابل القبلي بصياغة مختلفة" actions={<Button onClick={() => setBuilding(true)} icon={<Icons.Plus className="h-4 w-4" />}>أنشئ استبياناً</Button>} />
       <Tabs value={tab} onChange={setTab} tabs={[{ key: 'list', label: 'كل الاستبيانات' }, { key: 'impact', label: 'قياس الأثر (قبلي/بعدي)' }]} />
       {tab === 'list' ? (
         <Card pad={false}>
@@ -182,7 +182,7 @@ function Builder({ onClose }: { onClose: () => void }) {
     onClose();
   }, 'أُنشئ الاستبيانان القبلي والبعدي');
   return (
-    <Modal open onClose={onClose} title="استبيان قبلي/بعدي جديد" wide footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={save}>إنشاء</Button></>}>
+    <Modal open onClose={onClose} title="استبيان قبلي/بعدي جديد" wide footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={save}>أنشئ</Button></>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="العنوان"><Input value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
         <Field label="مرتبط بـ"><Select value={ctx} onChange={(e) => { setCtx(e.target.value); setMandatory(!e.target.value.startsWith('f:')); }} options={[{ value: 'program', label: 'البرنامج عامة' }, ...db.trips.map((t) => ({ value: `t:${t.id}`, label: `رحلة: ${t.title}` })), ...db.focusMeetings.map((f) => ({ value: `f:${f.id}`, label: `لقاء تركيز: ${f.title}` }))]} /></Field>
@@ -199,12 +199,12 @@ function Builder({ onClose }: { onClose: () => void }) {
             <button onClick={() => setPairs(pairs.filter((_, j) => j !== i))} className="text-ink-300 hover:text-red-600"><Icons.X className="h-4 w-4" /></button>
           </div>
         ))}
-        <Button size="sm" variant="secondary" onClick={() => setPairs([...pairs, { pre: '', post: '', type: 'scale' }])}>+ سؤال</Button>
+        <Button size="sm" variant="secondary" onClick={() => setPairs([...pairs, { pre: '', post: '', type: 'scale' }])}>أضف سؤالاً</Button>
       </div>
       <div className="mt-4">
         <div className="mb-2 text-xs font-bold text-ink-500">الاستبيان العام (رضا وأثر): جزء من البعدي</div>
         {general.map((g, i) => <Input key={i} className="mb-2" value={g} onChange={(e) => setGeneral(general.map((x, j) => (j === i ? e.target.value : x)))} />)}
-        <Button size="sm" variant="secondary" onClick={() => setGeneral([...general, ''])}>+ سؤال عام</Button>
+        <Button size="sm" variant="secondary" onClick={() => setGeneral([...general, ''])}>أضف سؤالاً عاماً</Button>
       </div>
     </Modal>
   );

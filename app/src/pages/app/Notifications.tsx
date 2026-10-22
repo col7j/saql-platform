@@ -16,7 +16,7 @@ export default function NotificationsPage() {
       <PageHeader
         title="الإشعارات"
         subtitle="كل الإشعارات داخل المنصة، والمهمة منها تصل أيضاً على البريد (حسب الإعدادات)"
-        actions={<Button variant="secondary" size="sm" onClick={() => repos.notifications.markAllRead()} icon={<Icons.CheckCheck className="h-4 w-4" />}>تعليم الكل كمقروء</Button>}
+        actions={<Button variant="secondary" size="sm" onClick={() => repos.notifications.markAllRead()} icon={<Icons.CheckCheck className="h-4 w-4" />}>علّم الكل كمقروء</Button>}
       />
       <Tabs value={tab} onChange={setTab} tabs={[{ key: 'all', label: `الكل (${mine.length})` }, { key: 'unread', label: `غير المقروء (${mine.filter((n) => !n.read).length})` }, { key: 'email', label: 'وصلت بالبريد' }]} />
       <Card pad={false}>

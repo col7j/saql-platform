@@ -26,7 +26,7 @@ export default function TripsPage() {
       <PageHeader
         title="الرحلات"
         subtitle={`داخلية بفريق العمل (لقاء تطويري): ${counts.staffInternal} · داخلية بالمجموعات: ${counts.groupInternal * db.groups.length} · خارجية بالمجموعات: ${counts.groupExternal * db.groups.length} · خارجية بفريق العمل: ${counts.staffExternal}`}
-        actions={me.isLeader && <Button onClick={() => setCreating(true)} icon={<Icons.Plus className="h-4 w-4" />}>إنشاء رحلة</Button>}
+        actions={me.isLeader && <Button onClick={() => setCreating(true)} icon={<Icons.Plus className="h-4 w-4" />}>أنشئ رحلة</Button>}
       />
       <Tabs value={tab} onChange={setTab} tabs={[{ key: 'upcoming', label: 'القادمة والجارية' }, { key: 'mine', label: 'ما أنفّذه' }, { key: 'past', label: 'السابقة' }, { key: 'all', label: 'الكل' }]} />
       {list.length === 0 ? <Empty title="لا رحلات هنا" /> : (
@@ -99,7 +99,7 @@ function CreateTripModal({ onClose }: { onClose: () => void }) {
     }, 'أُنشئت الرحلة وأُنشئت مهامها التلقائية');
 
   return (
-    <Modal open onClose={onClose} title="إنشاء رحلة" wide footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={submit}>إنشاء</Button></>}>
+    <Modal open onClose={onClose} title="إنشاء رحلة" wide footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={submit}>أنشئ</Button></>}>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="اسم الرحلة" className="sm:col-span-2"><Input value={f.title} onChange={(e) => set({ title: e.target.value })} placeholder="مثال: رحلة أُحُد الخارجية" /></Field>
         <Field label="النوع">

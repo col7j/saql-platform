@@ -91,7 +91,7 @@ function AspectEditor({ participantId, aspect, editable }: { participantId: stri
   const color = aspectColor[a.key];
   return (
     <Card title={<span style={{ color }}>الجانب {aspectLabel[a.key]}</span>} subtitle="رؤية تريد الوصول إليها، وتحتها خطوات عملية (العدد حر)"
-      action={editable && dirty && <Button size="sm" onClick={() => act(() => { repos.plans.saveAspect(participantId, a); setDirty(false); }, 'حُفظ الجانب')}>حفظ</Button>}>
+      action={editable && dirty && <Button size="sm" onClick={() => act(() => { repos.plans.saveAspect(participantId, a); setDirty(false); }, 'حُفظ الجانب')}>احفظ</Button>}>
       <Field label="الرؤية">
         {editable ? <Textarea rows={2} value={a.vision} onChange={(e) => upd({ vision: e.target.value })} placeholder="إلى أين تريد أن تصل في هذا الجانب؟" /> : <p className="text-sm">{a.vision || <span className="text-ink-300">لم تُكتب بعد</span>}</p>}
       </Field>
@@ -173,7 +173,7 @@ function FollowUpModal({ participantId, step, onClose }: { participantId: string
     onClose();
   }, needHelp ? 'سُجّلت المتابعة ووصل الميسّر طلب المساعدة' : 'سُجّلت المتابعة');
   return (
-    <Modal open onClose={onClose} title={`وش صار في "${step.title}"؟`} footer={<Button disabled={!answer} onClick={submit}>حفظ</Button>}>
+    <Modal open onClose={onClose} title={`وش صار في "${step.title}"؟`} footer={<Button disabled={!answer} onClick={submit}>احفظ</Button>}>
       <div className="grid grid-cols-2 gap-2">
         {([['done', 'أنجزتها', Icons.CheckCircle2], ['started', 'بدأت وأكمل', Icons.PlayCircle], ['challenge', 'واجهت تحديات', Icons.AlertTriangle], ['not', 'لم أبدأ بعد', Icons.PauseCircle]] as const).map(([k, l, I]) => (
           <button key={k} onClick={() => setAnswer(k)} className={cx('flex items-center gap-2 rounded-xl border p-3 text-sm', answer === k ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-ink-200')}><I className="h-4 w-4" />{l}</button>

@@ -151,7 +151,7 @@ export default function TrackingPage() {
               <Textarea placeholder="اكتب تعليقك" value={text} onChange={(e) => setText(e.target.value)} />
               <div className="flex items-center justify-between">
                 <span className="text-xs text-ink-400">{s.trackingCommentsNeedReview ? 'تظهر التعليقات بعد مراجعة الإدارة' : 'يظهر التعليق مباشرة'}</span>
-                <Button size="sm" disabled={!text.trim()} onClick={() => act(() => { repos.settings.addTrackingComment(name, text); setText(''); }, s.trackingCommentsNeedReview ? 'أُرسل التعليق للمراجعة' : 'نُشر التعليق')}>إرسال</Button>
+                <Button size="sm" disabled={!text.trim()} onClick={() => act(() => { repos.settings.addTrackingComment(name, text); setText(''); }, s.trackingCommentsNeedReview ? 'أُرسل التعليق للمراجعة' : 'نُشر التعليق')}>أرسل</Button>
               </div>
             </div>
           </div>

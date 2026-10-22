@@ -24,7 +24,7 @@ function ParticipantView() {
   const slots = db.slots.filter((s) => s.facilitatorId === g?.facilitatorId && !s.bookedBy && s.date >= today && (s.invite === 'open' || s.invite === me.person.id));
   return (
     <div>
-      <PageHeader title="اللقاءات الفردية" subtitle="لقاء مع ميسّر مجموعتك لمتابعة خطتك الشخصية" actions={<Button onClick={() => setReqOpen(true)} icon={<Icons.CalendarPlus className="h-4 w-4" />}>طلب موعد</Button>} />
+      <PageHeader title="اللقاءات الفردية" subtitle="لقاء مع ميسّر مجموعتك لمتابعة خطتك الشخصية" actions={<Button onClick={() => setReqOpen(true)} icon={<Icons.CalendarPlus className="h-4 w-4" />}>اطلب موعداً</Button>} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card title="أوقات متاحة للحجز" subtitle="إذا حُجز موعد لا يظهر لغيرك">
@@ -33,7 +33,7 @@ function ParticipantView() {
                 {slots.map((s) => (
                   <div key={s.id} className="flex items-center justify-between rounded-xl border border-ink-100 px-3 py-2.5">
                     <div><div className="text-sm font-medium">{fmtDate(s.date, { weekday: true })}</div><div className="num text-xs text-ink-500">{fmtTime(s.start)} – {fmtTime(s.end)}</div>{s.invite === me.person.id && <Badge tone="orange" className="mt-1">طلب منك الميسّر الحجز</Badge>}</div>
-                    <Button size="sm" onClick={() => act(() => repos.individual.book(s.id), 'حُجز الموعد')}>حجز</Button>
+                    <Button size="sm" onClick={() => act(() => repos.individual.book(s.id), 'حُجز الموعد')}>احجز</Button>
                   </div>
                 ))}
               </div>
@@ -72,8 +72,8 @@ function MeetingList({ list, viewer }: { list: IndividualMeeting[]; viewer: 'par
               </div>
               <div className="flex items-center gap-2">
                 <Badge tone={m.status === 'done' ? 'green' : m.status === 'requested' ? 'orange' : 'blue'}>{{ requested: 'طلب بانتظار الميسّر', booked: 'محجوز', done: 'تم', cancelled: 'ملغى' }[m.status]}</Badge>
-                {viewer === 'facilitator' && m.status === 'requested' && <Button size="sm" onClick={() => setApproving(m)}>تأكيد موعد</Button>}
-                {viewer === 'facilitator' && m.status === 'booked' && <Button size="sm" onClick={() => setCompleting(m)}>رفع الملاحظات</Button>}
+                {viewer === 'facilitator' && m.status === 'requested' && <Button size="sm" onClick={() => setApproving(m)}>حدّد الموعد</Button>}
+                {viewer === 'facilitator' && m.status === 'booked' && <Button size="sm" onClick={() => setCompleting(m)}>اكتب الملاحظات</Button>}
                 {m.status === 'booked' && <Button size="sm" variant="ghost" onClick={() => act(() => repos.individual.cancel(m.id), 'أُلغي اللقاء')}>إلغاء</Button>}
               </div>
             </div>
@@ -114,7 +114,7 @@ function FacilitatorView() {
               <Field label="إلى"><Input type="time" value={f.end} onChange={(e) => setF({ ...f, end: e.target.value })} /></Field>
               <Field label="الدعوة"><Select value={f.invite} onChange={(e) => setF({ ...f, invite: e.target.value })} options={[{ value: 'open', label: 'دعوة عامة' }, ...members.map((m) => ({ value: m, label: personName(db, m) }))]} /></Field>
             </div>
-            <Button className="mt-3" onClick={() => act(() => repos.individual.addSlot(f), 'نُشر الوقت')}>نشر</Button>
+            <Button className="mt-3" onClick={() => act(() => repos.individual.addSlot(f), 'نُشر الوقت')}>انشر</Button>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {slots.map((s) => (
                 <div key={s.id} className="flex items-center justify-between rounded-xl border border-ink-100 px-3 py-2 text-sm">
@@ -145,7 +145,7 @@ function FacilitatorView() {
 function RequestModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [f, setF] = useState({ date: addDays(todayISO(), 3), start: '17:00', note: '' });
   return (
-    <Modal open={open} onClose={onClose} title="طلب لقاء فردي" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={() => act(() => { repos.individual.request(f.date, f.start, f.note); onClose(); }, 'أُرسل الطلب للميسّر')}>إرسال</Button></>}>
+    <Modal open={open} onClose={onClose} title="طلب لقاء فردي" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={() => act(() => { repos.individual.request(f.date, f.start, f.note); onClose(); }, 'أُرسل الطلب للميسّر')}>أرسل</Button></>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="التاريخ المقترح"><Input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
         <Field label="الوقت المقترح"><Input type="time" value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} /></Field>
@@ -158,7 +158,7 @@ function RequestModal({ open, onClose }: { open: boolean; onClose: () => void })
 function ApproveModal({ m, onClose }: { m: IndividualMeeting; onClose: () => void }) {
   const [f, setF] = useState({ date: m.date, start: m.start, end: m.start.replace(/^(\d\d)/, (h) => String(Math.min(23, +h + 1)).padStart(2, '0')) });
   return (
-    <Modal open onClose={onClose} title="تأكيد موعد" footer={<Button onClick={() => act(() => { repos.individual.approveRequest(m.id, f.date, f.start, f.end); onClose(); }, 'تأكد الموعد')}>تأكيد</Button>}>
+    <Modal open onClose={onClose} title="تأكيد موعد" footer={<Button onClick={() => act(() => { repos.individual.approveRequest(m.id, f.date, f.start, f.end); onClose(); }, 'تأكد الموعد')}>أكّد</Button>}>
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="التاريخ"><Input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
         <Field label="من"><Input type="time" value={f.start} onChange={(e) => setF({ ...f, start: e.target.value })} /></Field>
@@ -173,7 +173,7 @@ function CompleteModal({ m, onClose }: { m: IndividualMeeting; onClose: () => vo
   const [f, setF] = useState({ plan: '', meeting: '', attTitle: '', attUrl: '', attType: 'pdf' as 'pdf' | 'video' | 'link' });
   return (
     <Modal open onClose={onClose} title={`ملاحظات اللقاء مع ${personName(db, m.participantId)}`}
-      footer={<Button onClick={() => act(() => { repos.individual.complete(m.id, f.plan, f.meeting, f.attTitle ? { title: f.attTitle, url: f.attUrl, type: f.attType } : undefined); onClose(); }, 'حُفظت الملاحظات')}>حفظ وإنهاء</Button>}>
+      footer={<Button onClick={() => act(() => { repos.individual.complete(m.id, f.plan, f.meeting, f.attTitle ? { title: f.attTitle, url: f.attUrl, type: f.attType } : undefined); onClose(); }, 'حُفظت الملاحظات')}>احفظ وأنهِ</Button>}>
       <div className="grid gap-3">
         <Field label="ملاحظات على الخطة"><Textarea value={f.plan} onChange={(e) => setF({ ...f, plan: e.target.value })} /></Field>
         <Field label="ملاحظات على اللقاء"><Textarea value={f.meeting} onChange={(e) => setF({ ...f, meeting: e.target.value })} /></Field>

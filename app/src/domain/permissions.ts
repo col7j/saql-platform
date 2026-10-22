@@ -1,5 +1,6 @@
 // منطق الصلاحيات (قسم 3). دوال نقية تأخذ قاعدة البيانات ومعرّف الشخص، ولا تعتمد على الواجهة.
 import { now } from './dates';
+import { canOpenFinance, canViewBudget, financePermsOf, isFinanceMember, isFinanceOwner } from './finance';
 import type { Committee, DB, FocusMeeting, Group, ID, Material, Person, Trip, TripDoc } from './types';
 
 export interface Capabilities {
@@ -48,9 +49,8 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
     .filter((m) => m.personId === person.id)
     .map((m) => ({ committee: db.committees.find((c) => c.id === m.committeeId)!, role: m.role, canSeeFinance: m.canSeeFinance }))
     .filter((c) => c.committee);
-  const finance = committees.find((c) => c.committee.kind === 'finance');
-  const isFinance = !!finance;
-  const isFinanceLead = finance?.role === 'leader';
+  const isFinance = isFinanceMember(db, person.id);
+  const isFinanceLead = isFinanceOwner(db, person.id);
   const isMedia = committees.some((c) => c.committee.kind === 'media');
   const isTracker = db.settings.trackerId === person.id;
   const isSiteEditor = isLeader || db.capacities.some((c) => c.personId === person.id && c.kind === 'site_editor');
@@ -64,7 +64,7 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
   else labels.push('مشارك');
   facilitatorOf.forEach((g) => labels.push(`ميسّر ${g.name}`));
   if (leaderOf) labels.push(`قائد ${leaderOf.name}`);
-  committees.forEach((c) => labels.push(`${c.role === 'leader' ? 'قائد' : 'عضو'} ${c.committee.name}`));
+  committees.forEach((c) => labels.push(c.committee.kind === 'finance' && c.role === 'leader' ? 'مسؤول اللجنة المالية' : `${c.role === 'leader' ? 'قائد' : 'عضو'} ${c.committee.name}`));
   if (isTracker) labels.push('متابع الرحلات');
   if (isSiteEditor && !isLeader) labels.push('محرّر الموقع');
   if (staffTripsLed.length) labels.push('قائد فريق رحلة');
@@ -142,24 +142,20 @@ export function canCommentOnTripDoc(db: DB, personId: ID, trip: Trip): boolean {
   return canViewTripPlans(db, personId, trip);
 }
 
-/** هل يرى الشخص الموازنة التقديرية للرحلة؟ (قسم 11.4) */
+/** أرقام موازنة الرحلة: اللجنة المالية (بصلاحية العرض) والقائد العام، وقائد الفريق يرى ميزانية رحلته فقط */
 export function canSeeEstimatedBudget(db: DB, personId: ID, trip?: Trip): boolean {
-  const c = getCapabilities(db, personId);
-  if (c.isLeader || c.isFinance) return true;
-  if (trip && isTripTeam(db, personId, trip)) return true; // الفريق المنفذ يعدّ موازنته
-  if (c.isStaff && db.settings.budgetVisibleToStaff) return true;
-  return false;
+  if (canViewBudget(db, personId)) return true;
+  return !!trip && tripTeamLeaderId(db, trip) === personId;
 }
 
-/** المبالغ المصروفة والفواتير والتحليل: اللجنة المالية والقائد العام فقط */
+/** دخول القسم المالي: أعضاء اللجنة المالية والقائد العام فقط */
 export function canSeeFinance(db: DB, personId: ID): boolean {
-  const c = getCapabilities(db, personId);
-  return c.isLeader || c.isFinance || c.committees.some((m) => m.canSeeFinance);
+  return canOpenFinance(db, personId);
 }
 
+/** أي صلاحية تنفيذية مالية مفوّضة */
 export function canManageFinance(db: DB, personId: ID): boolean {
-  const c = getCapabilities(db, personId);
-  return c.isFinance;
+  return financePermsOf(db, personId).some((p) => p !== 'view_budget');
 }
 
 export function canTrackTrip(db: DB, personId: ID, trip: Trip): boolean {
@@ -275,50 +271,73 @@ export interface NavItem {
   to: string;
   label: string;
   icon: string;
-  section: string;
+  priority: number;
 }
 
-export function navFor(db: DB, personId: ID): NavItem[] {
+/** القائمة الجانبية: الرئيسية + 4 عناصر حسب الدور + "المزيد" (6 كحد أقصى). الباقي في صفحة "المزيد" */
+export const PRIMARY_NAV = 5;
+export function navFor(db: DB, personId: ID): { primary: NavItem[]; more: NavItem[] } {
   const c = getCapabilities(db, personId);
-  const items: NavItem[] = [];
-  const add = (to: string, label: string, icon: string, section: string) => items.push({ to, label, icon, section });
   const published = groupsPublished(db);
+  const map = new Map<string, NavItem>();
+  const add = (to: string, label: string, icon: string, priority: number) => {
+    const ex = map.get(to);
+    if (!ex || ex.priority > priority) map.set(to, { to, label: ex && ex.priority <= priority ? ex.label : label, icon, priority });
+  };
+  const hasRequests = c.leaderOf || c.facilitatorOf.length || c.staffTripsLed.length || db.budgetRequests.some((r) => r.requestedBy === personId) || db.custodies.some((x) => x.recipientId === personId);
 
-  add('/app', 'الرئيسية', 'home', 'عام');
-  add('/app/calendar', 'التقويم', 'calendar', 'عام');
-  add('/app/notifications', 'الإشعارات', 'bell', 'عام');
+  add('/app', 'الرئيسية', 'home', 0);
+  add('/app/trips', 'الرحلات', 'map', 40);
+  add('/app/calendar', 'التقويم', 'calendar', 70);
+  add('/app/library', 'المكتبة', 'book', 60);
+  add('/app/surveys', 'الاستبيانات', 'clipboard', 75);
+  add('/app/groups', 'المجموعات', 'grid', 80);
+  add('/app/leaderboard', 'الترتيب', 'trophy', 85);
+  if (c.isStaff || published) add('/app/focus', 'لقاءات التركيز', 'target', 50);
+  if (c.isStaff || c.leaderOf) add('/app/meetings', 'الاجتماعات', 'meeting', 55);
 
-  add('/app/trips', 'الرحلات', 'map', 'البرنامج');
-  if (c.isStaff || published) add('/app/focus', 'لقاءات التركيز', 'target', 'البرنامج');
-  if (c.isParticipant && c.group) add('/app/individual', 'اللقاءات الفردية', 'users', 'البرنامج');
-  if (c.facilitatorOf.length) add('/app/individual', 'اللقاءات الفردية', 'users', 'البرنامج');
-  if (c.isParticipant) add('/app/plan', 'خطتي الشخصية', 'compass', 'البرنامج');
-  if (c.isLeader || c.facilitatorOf.length) add('/app/plans', 'الخطط الشخصية', 'compass', 'البرنامج');
-  add('/app/surveys', 'الاستبيانات', 'clipboard', 'البرنامج');
-  add('/app/library', 'المكتبة', 'book', 'البرنامج');
-  add('/app/groups', 'المجموعات', 'grid', 'البرنامج');
-  add('/app/leaderboard', 'الترتيب والتقييم', 'trophy', 'البرنامج');
-  if (c.isTracker || db.trips.some((t) => t.trackerSubstitute?.status === 'approved' && t.trackerSubstitute.candidateId === personId))
-    add('/app/tracker', 'متابعة الرحلات', 'radar', 'البرنامج');
-  if (c.isParticipant && !published) add('/app/contact', 'تواصل مع الإدارة', 'message', 'البرنامج');
-
-  if (c.isStaff) {
-    add('/app/tasks', 'لوحة المهام', 'check', 'الإدارة');
-    add('/app/committees', 'اللجان', 'layers', 'الإدارة');
-    add('/app/people', 'الأشخاص', 'contact', 'الإدارة');
-  } else if (c.committees.length) {
-    add('/app/committees', 'لجاني', 'layers', 'الإدارة');
+  if (c.isParticipant) {
+    add('/app/trips', 'الرحلات', 'map', 10);
+    add('/app/focus', 'لقاءات التركيز', 'target', 20);
+    add('/app/plan', 'خطتي', 'compass', 30);
+    add('/app/library', 'المكتبة', 'book', 40);
+    if (c.group) add('/app/individual', 'لقائي مع الميسّر', 'users', 50);
+    add('/app/tasks', 'مهامي', 'check', 65);
+    if (!published) add('/app/contact', 'راسل الإدارة', 'message', 15);
   }
-  if (c.isParticipant) add('/app/tasks', 'مهامي', 'check', 'البرنامج');
-  if (canSeeFinance(db, personId)) add('/app/finance', 'المالية', 'wallet', 'الإدارة');
-  if (c.leaderOf || c.facilitatorOf.length || c.staffTripsLed.length || db.custodies.some((x) => x.recipientId === personId))
-    add('/app/custody', 'عهدتي', 'receipt', 'البرنامج');
-  if (c.isLeader) add('/app/inbox', 'رسائل المشاركين', 'message', 'الإدارة');
-  if (c.isStaff) add('/app/tracking-link', 'رابط المتابعة', 'link', 'الإدارة');
-  if (c.isSiteEditor) add('/app/site-editor', 'تحرير الموقع', 'globe', 'الإدارة');
-  if (c.isLeader) add('/app/settings', 'الإعدادات', 'settings', 'الإدارة');
+  if (c.leaderOf) {
+    add('/app/trips', 'رحلتي', 'map', 5);
+    add('/app/requests', 'طلباتي', 'receipt', 15);
+  }
+  if (c.facilitatorOf.length) {
+    add('/app/focus', 'اللقاءات', 'target', 5);
+    add('/app/groups', 'مجموعتي', 'grid', 10);
+    add('/app/individual', 'اللقاءات الفردية', 'users', 15);
+    add('/app/requests', 'طلباتي', 'receipt', 20);
+    add('/app/plans', 'الخطط الشخصية', 'compass', 35);
+  }
+  if (hasRequests) add('/app/requests', 'طلباتي', 'receipt', 45);
+  if (c.isTracker) add('/app/tracker', 'متابعة الرحلات', 'radar', 3);
+  if (db.trips.some((t) => t.trackerSubstitute?.status === 'approved' && t.trackerSubstitute.candidateId === personId)) add('/app/tracker', 'متابعة الرحلات', 'radar', 8);
+  if (c.isStaff) {
+    add('/app/tasks', 'المهام', 'check', 30);
+    add('/app/committees', 'اللجان', 'layers', 45);
+    add('/app/people', 'الأشخاص', 'contact', 65);
+    add('/app/tracking-link', 'رابط المتابعة', 'link', 90);
+  } else if (c.committees.length) add('/app/committees', 'لجنتي', 'layers', 35);
+  if (c.isMedia) add('/app/committees', 'لجنتي', 'layers', 6);
+  if (canSeeFinance(db, personId)) add('/app/finance', 'المالية', 'wallet', c.isFinance ? 1 : 12);
+  if (c.isLeader) {
+    add('/app/trips', 'الرحلات', 'map', 5);
+    add('/app/groups', 'المجموعات', 'grid', 15);
+    add('/app/meetings', 'الاجتماعات', 'meeting', 20);
+    add('/app/plans', 'الخطط الشخصية', 'compass', 50);
+    add('/app/insights', 'المؤشرات', 'chart', 25);
+    add('/app/inbox', 'رسائل المشاركين', 'message', 88);
+    add('/app/settings', 'الإعدادات', 'settings', 60);
+  } else if (c.isStaff) add('/app/insights', 'المؤشرات', 'chart', 70);
+  if (c.isSiteEditor) add('/app/site-editor', 'تحرير الموقع', 'globe', 92);
 
-  // إزالة التكرار بحسب الرابط
-  const seen = new Set<string>();
-  return items.filter((i) => (seen.has(i.to) ? false : (seen.add(i.to), true)));
+  const all = [...map.values()].sort((a, b) => a.priority - b.priority);
+  return { primary: all.slice(0, PRIMARY_NAV), more: all.slice(PRIMARY_NAV) };
 }

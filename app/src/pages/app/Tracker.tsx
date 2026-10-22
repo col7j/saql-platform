@@ -59,7 +59,7 @@ function TrackTrip({ trip }: { trip: Trip }) {
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Card><div className="text-xs text-ink-500">البنود الموثّقة</div><div className="num text-xl font-bold">{documented}/{rows.length}</div><Progress value={(documented / (rows.length || 1)) * 100} className="mt-2" /></Card>
         <Card><div className="text-xs text-ink-500">الالتزام بالخطة (أ أو ب)</div><div className="num text-xl font-bold">{adh == null ? '—' : `${Math.round(adh * 100)}%`}</div></Card>
-        <Card className="col-span-2"><div className="flex h-full items-center justify-between gap-2"><span className="text-sm">بعد الانتهاء: قيّم الرحلة مع القائد العام</span><LinkButton size="sm" to={`/app/trips/${trip.id}?tab=closure`}>تقييم الرحلة</LinkButton></div></Card>
+        <Card className="col-span-2"><div className="flex h-full items-center justify-between gap-2"><span className="text-sm">بعد الانتهاء: قيّم الرحلة مع القائد العام</span><LinkButton size="sm" to={`/app/trips/${trip.id}?tab=closure`}>قيّم الرحلة</LinkButton></div></Card>
       </div>
 
       <Card title="تثبيت الجدول الفعلي" pad={false}>
@@ -103,7 +103,7 @@ function Row({ trip, item, alt, entry, live }: { trip: Trip; item: ScheduleItem;
           <Input type="time" value={s} onChange={(x) => setS(x.target.value)} />
           <Input type="time" value={e} onChange={(x) => setE(x.target.value)} />
           <Select value={cat} onChange={(x) => setCat(x.target.value)} options={db.settings.scheduleCategories.map((c) => ({ value: c.id, label: c.name }))} />
-          <Button size="sm" disabled={!note} onClick={() => rec('none')}>تثبيت</Button>
+          <Button size="sm" disabled={!note} onClick={() => rec('none')}>ثبّت</Button>
         </div>
       )}
     </div>
