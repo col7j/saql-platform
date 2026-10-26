@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { buildSeed } from '@/data/seed';
 import { createLocalRepositories } from '@/data/repositories';
 import { allocatedFor, canDisburse, focusCounter, hasFinancePerm, invoiceError, perItem, requestFor, requestStage } from '@/domain/finance';
-import { canSeeFinance, navFor } from '@/domain/permissions';
+import { canSeeFinance } from '@/domain/permissions';
+import { navFor } from '@/domain/access';
 import type { DB } from '@/domain/types';
 
 let db: DB;
@@ -12,7 +13,7 @@ const repos = createLocalRepositories((recipe) => {
   const draft = structuredClone(db);
   if (recipe(draft) === false) return;
   db = draft;
-}, () => who);
+}, () => who, () => db);
 const as = (id: string) => (who = id);
 const setup = () => {
   as('s5');
@@ -146,8 +147,7 @@ describe('القائمة الجانبية', () => {
   it('كل الأقسام ظاهرة، والتقويم من الأساسية لكل دور', () => {
     db.persons.forEach((p) => {
       const nav = navFor(db, p.id);
-      expect(nav.sections[0].title).toBe('الأساسية');
-      expect(nav.sections[0].items.map((i) => i.to)).toContain('/app/calendar');
+      expect(nav.all.map((i) => i.to)).toContain('/app/calendar');
       expect(nav.all.some((i) => i.to === '/app/more')).toBe(false);
     });
   });

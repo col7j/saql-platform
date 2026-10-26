@@ -9,7 +9,7 @@ import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, de
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
-export const DB_VERSION = 6;
+export const DB_VERSION = 7;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {

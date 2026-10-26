@@ -1,6 +1,7 @@
 // القسم المالي: يملكه مسؤول اللجنة المالية، ويرى كل عضو ما فُوِّض به فقط
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { financeTabsFor } from '@/domain/access';
 import { fmtDateTime } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { SAR } from '@/domain/labels';
@@ -36,18 +37,8 @@ export default function FinancePage() {
       </div>
     );
 
-  const view = canViewBudget(db, pid);
-  const tabs: Tab[] = ([
-    ['requests', true],
-    ['custody', view || hasFinancePerm(db, pid, 'disburse') || hasFinancePerm(db, pid, 'close_custody')],
-    ['invoices', hasFinancePerm(db, pid, 'review_invoices') || view],
-    ['budget', view],
-    ['categories', hasFinancePerm(db, pid, 'manage_categories') || view],
-    ['team', owner || view],
-    ['audit', owner || me.isLeader],
-    ['fees', view],
-    ['analysis', view],
-  ] as [Tab, boolean][]).filter(([, ok]) => ok).map(([t]) => t);
+  // التبويبات من فحص الوصول نفسه (ما لم يُبنَ بعد يُستبعد)
+  const tabs = financeTabsFor(db, pid).filter((t): t is Tab => t in tabLabel);
   const tab = (tabs.includes(params.get('tab') as Tab) ? params.get('tab') : 'requests') as Tab;
   const main = tabs.slice(0, 4);
   const extra = tabs.slice(4);

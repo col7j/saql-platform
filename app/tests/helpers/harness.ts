@@ -12,7 +12,7 @@ export function harness(as: string) {
     db = draft;
   };
   return {
-    repos: createLocalRepositories(mutate, () => user),
+    repos: createLocalRepositories(mutate, () => user, () => db),
     get db() { return db; },
     as(id: string) { user = id; },
   };

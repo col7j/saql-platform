@@ -52,7 +52,7 @@ const mutate = (recipe: (d: DB) => unknown) => {
 };
 
 /** واجهة البيانات المستخدمة في الشاشات */
-export const repos: Repositories = createLocalRepositories(mutate, () => useStore.getState().userId ?? '');
+export const repos: Repositories = createLocalRepositories(mutate, () => useStore.getState().userId ?? '', () => useStore.getState().db);
 
 export function useDB() {
   return useStore((s) => s.db);

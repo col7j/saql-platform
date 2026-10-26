@@ -425,3 +425,15 @@ export function MoreMenu({ items, label = 'المزيد' }: { items: { label: st
     </div>
   );
 }
+
+/** رفض الوصول: صفحة صريحة بلا أي محتوى، ونفسها للصفحة غير الموجودة حتى لا يُعرف وجودها */
+export function AccessDenied() {
+  return (
+    <div className="mx-auto max-w-md py-16 text-center" role="alert">
+      <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600"><L.Lock className="h-7 w-7" /></span>
+      <h1 className="text-xl font-bold">لا تملك صلاحية الوصول</h1>
+      <p className="mt-2 text-sm text-ink-500">هذه الصفحة غير متاحة لحسابك.</p>
+      <a href="#/app" className="mt-5 inline-block text-sm text-brand-600">العودة للرئيسية</a>
+    </div>
+  );
+}

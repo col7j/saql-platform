@@ -3,7 +3,8 @@
 // لتحويل النموذج إلى منصة حقيقية: نكتب تنفيذاً آخر لنفس الواجهة يتصل بالخادم.
 import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
-import { groupOf, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
+import { canManageCommittee, canSeeCommittee, groupOf, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
+import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
 import { hasTempGrant, tempPermissionLabel } from '@/domain/grants';
@@ -135,8 +136,34 @@ function submitRequestIn(d: DB, pid: ID, input: { ownerKind: BudgetRequest['owne
   else pushNotification(d, [leaderId(d)], 'budget_request', `طلب ميزانية يتجاوز المرصود: ${t} (${amount} من ${allocated} ر.س)`, '/app/finance');
 }
 
-export function createLocalRepositories(mutate: Mutate, me: () => ID) {
+export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () => DB) {
+  /** يرفض بنفس الرسالة الممنوع وغير الموجود */
+  const deny = () => {
+    throw new Error(ACCESS_DENIED);
+  };
+  const canSeeCommitteeIn = (d: DB, committeeId: ID) => d.committees.some((c) => c.id === committeeId) && canSeeCommittee(d, me(), committeeId);
+  const manageCommitteeIn = (d: DB, committeeId: ID) => {
+    if (!canSeeCommitteeIn(d, committeeId) || !canManageCommittee(d, me(), committeeId)) deny();
+  };
   return {
+    // ───────────── الوصول: نفس الفحص الذي يستخدمه التوجيه، وقراءات تُرفض لمن لا يملك الصلاحية ─────────────
+    access: {
+      canOpen(pathname: string, search = '') {
+        return routeAccess(read(), me(), pathname, search);
+      },
+      committee(id: ID) {
+        const d = read();
+        return canSeeCommitteeIn(d, id) ? d.committees.find((c) => c.id === id)! : deny();
+      },
+      person(id: ID) {
+        const d = read();
+        return routeAccess(d, me(), `/app/people/${id}`) ? d.persons.find((p) => p.id === id)! : deny();
+      },
+      meeting(id: ID) {
+        const d = read();
+        return meetingVisibleTo(d, me(), id) ? d.meetings.find((m) => m.id === id)! : deny();
+      },
+    },
     // ───────────── الأشخاص والمجموعات ─────────────
     people: {
       /** القائد العام ينشئ الشخص ويحدد نوعه، ثم يدير مسؤول اللجنة التقنية حساب دخوله */
@@ -499,6 +526,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
     tasks: {
       create(input: Omit<Task, 'id' | 'createdAt' | 'createdBy' | 'status'> & { status?: Task['status'] }) {
         mutate((d) => {
+          if (input.committeeId && !canSeeCommitteeIn(d, input.committeeId)) deny();
           const t: Task = { status: 'new', ...input, id: uid('tk'), createdAt: nowISO(), createdBy: me() };
           d.tasks.push(t);
           pushNotification(d, [t.assigneeId], 'task_assigned', `أُسندت لك مهمة: ${t.title}`, t.tripId ? `/app/trips/${t.tripId}` : '/app/tasks');
@@ -1030,6 +1058,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       },
       saveKpi(committeeId: ID, kpi: CommitteeKPI) {
         mutate((d) => {
+          manageCommitteeIn(d, committeeId);
           const c = d.committees.find((x) => x.id === committeeId)!;
           const i = c.kpis.findIndex((k) => k.id === kpi.id);
           if (i >= 0) c.kpis[i] = kpi;
@@ -1038,12 +1067,14 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       },
       removeKpi(committeeId: ID, kpiId: ID) {
         mutate((d) => {
+          manageCommitteeIn(d, committeeId);
           const c = d.committees.find((x) => x.id === committeeId)!;
           c.kpis = c.kpis.filter((k) => k.id !== kpiId);
         });
       },
       addMember(committeeId: ID, personId: ID, role: 'leader' | 'member', canSeeFinance: boolean) {
         mutate((d) => {
+          if (!isLeaderId(d, me())) deny();
           d.memberships = d.memberships.filter((m) => !(m.committeeId === committeeId && m.personId === personId));
           d.memberships.push({ id: uid('cm'), committeeId, personId, role, canSeeFinance });
           assertNoCapacityConflict(d, [personId]);
@@ -1051,16 +1082,21 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
         });
       },
       removeMember(committeeId: ID, personId: ID) {
-        mutate((d) => (d.memberships = d.memberships.filter((m) => !(m.committeeId === committeeId && m.personId === personId))));
+        mutate((d) => {
+          if (!isLeaderId(d, me())) deny();
+          d.memberships = d.memberships.filter((m) => !(m.committeeId === committeeId && m.personId === personId));
+        });
       },
       requestMember(committeeId: ID, personId: ID, note?: string) {
         mutate((d) => {
+          manageCommitteeIn(d, committeeId);
           d.memberRequests.push({ id: uid('mr'), committeeId, personId, requestedBy: me(), note, status: 'pending', at: nowISO() });
           pushNotification(d, [leaderId(d)], 'committee_member_request', `طلب إضافة ${d.persons.find((p) => p.id === personId)?.name} إلى ${d.committees.find((c) => c.id === committeeId)?.name}`, `/app/committees/${committeeId}`);
         });
       },
       decideRequest(requestId: ID, approve: boolean, role: 'leader' | 'member' = 'member', canSeeFinance = false) {
         mutate((d) => {
+          if (!isLeaderId(d, me())) deny();
           const r = d.memberRequests.find((x) => x.id === requestId)! as MemberRequest;
           r.status = approve ? 'approved' : 'rejected';
           r.decidedAt = nowISO();

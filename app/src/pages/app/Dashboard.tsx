@@ -1,5 +1,6 @@
 // الرئيسية: ترحيب بهوية صقل، ثم المنافسة (ترتيب المجموعات وأعلى 5) والمطلوب منك الآن، ثم القادم
 import { Link } from 'react-router-dom';
+import { homeFor } from '@/domain/access';
 import { pendingActions, type PendingAction } from '@/domain/actions';
 import { calKindColor, calKindLabel, eventsFor } from '@/domain/calendar';
 import { fmtTime, now, parseDate, relativeDays, todayISO } from '@/domain/dates';
@@ -30,6 +31,11 @@ export default function Dashboard() {
   const hour = now().getHours();
   const greeting = hour < 12 ? 'صباح الخير' : 'مساء الخير';
   const first = me.person.name.split(' ')[0];
+  // محتوى الرئيسية لكل دور من الإعدادات (بيانات)
+  const home = homeFor(db, pid);
+  const showCompetition = home.includes('competition') && groupsPublished(db);
+  const competitionFirst = showCompetition && home.indexOf('competition') < home.indexOf('actions');
+  const mainWidgets = home.filter((w) => w === 'actions' || w === 'upcoming');
 
   return (
     <div className="space-y-6">
@@ -56,7 +62,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      {me.isParticipant && !groupsPublished(db) && (
+      {home.includes('contact_notice') && me.isParticipant && !groupsPublished(db) && (
         <div className="rounded-2xl border border-accent-200 bg-accent-50 p-4 text-sm">
           لم تُشكَّل المجموعات بعد. شارك في فعاليات فريق العمل، وراسل الإدارة إن احتجت شيئاً.
           <LinkButton to="/app/contact" variant="accent" size="sm" className="ms-2">راسل الإدارة</LinkButton>
@@ -64,15 +70,14 @@ export default function Dashboard() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-5">
-        {/* المنافسة: للمشاركين أولاً على الجوال */}
-        {groupsPublished(db) && (
-          <div className={cx('space-y-6 lg:col-span-2', me.isParticipant ? 'order-first lg:order-last' : 'order-last')}>
+        {/* المنافسة: لمن تتضمنها رئيسيته، وأولاً على الجوال إن سبقت المطلوب */}
+        {showCompetition && (
+          <div className={cx('space-y-6 lg:col-span-2', competitionFirst ? 'order-first lg:order-last' : 'order-last')}>
             <Competition />
           </div>
         )}
-        <div className="space-y-6 lg:col-span-3">
-          <ActionsSection actions={actions} />
-          <Upcoming />
+        <div className={cx('space-y-6', showCompetition ? 'lg:col-span-3' : 'lg:col-span-5')}>
+          {mainWidgets.map((w) => (w === 'actions' ? <ActionsSection key={w} actions={actions} /> : <Upcoming key={w} />))}
         </div>
       </div>
     </div>

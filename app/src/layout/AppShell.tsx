@@ -1,9 +1,10 @@
 import { Component, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { getCapabilities, navFor } from '@/domain/permissions';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { navFor } from '@/domain/access';
+import { getCapabilities } from '@/domain/permissions';
 import { todayISO } from '@/domain/dates';
-import { useDB, useMe, useStore } from '@/state/store';
-import { Avatar, ConfirmHost, Icons, NavIcon, Toasts, cx } from '@/ui';
+import { repos, useDB, useMe, useStore } from '@/state/store';
+import { AccessDenied, Avatar, ConfirmHost, Icons, NavIcon, Toasts, cx } from '@/ui';
 
 /** شريط "الدخول كـ" للنموذج الأولي فقط */
 export function RoleSwitcher() {
@@ -75,6 +76,15 @@ export function AppShell() {
   const unread = db.notifications.filter((n) => n.toId === me.person.id && !n.read).length;
   const [drawer, setDrawer] = useState(false);
   useEffect(() => setDrawer(false), [loc.pathname]);
+  // العنصر نشط بالمسار، وإن حمل تبويباً (?tab=) فبالتبويب أيضاً
+  const isActive = (to: string) => {
+    const [path, query] = to.split('?');
+    if (path === '/app') return loc.pathname === '/app';
+    if (!(loc.pathname === path || loc.pathname.startsWith(path + '/'))) return false;
+    if (!query) return !all.some((x) => x.to !== to && x.to.startsWith(path + '?') && loc.search.includes(x.to.split('?')[1]));
+    return loc.search.includes(query);
+  };
+  const allowed = repos.access.canOpen(loc.pathname, loc.search);
   const linkCls = (active: boolean) => cx('group flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-[15px] transition', active ? 'bg-brand-grad font-medium text-white shadow-md shadow-brand-600/20' : 'text-ink-700 hover:bg-brand-50 hover:text-brand-800');
 
   // القائمة الجانبية: كل الأقسام ظاهرة ومقسّمة إلى مجموعات
@@ -99,11 +109,11 @@ export function AppShell() {
             <div className="px-3 pb-1 text-[11px] font-bold tracking-wide text-ink-400">{sec.title}</div>
             <div className="space-y-0.5">
               {sec.items.map((i) => (
-                <NavLink key={i.to} to={i.to} end={i.to === '/app'} className={({ isActive }) => linkCls(isActive)}>
+                <Link key={i.to} to={i.to} className={linkCls(isActive(i.to))}>
                   <NavIcon name={i.icon} className="h-5 w-5" />
                   <span className="flex-1">{i.label}</span>
                   {i.to === '/app/notifications' && unread > 0 && <span className="num rounded-full bg-accent-500 px-1.5 text-[10px] font-bold text-white">{unread}</span>}
-                </NavLink>
+                </Link>
               ))}
             </div>
           </div>
@@ -118,7 +128,7 @@ export function AppShell() {
   );
   // الشريط السفلي للجوال: الرئيسية، التقويم، وأهم عنصرين للدور، وزر القائمة الكاملة
   const roleItems = all.filter((i) => !['/app', '/app/calendar', '/app/notifications'].includes(i.to)).slice(0, 2);
-  const bottom = [all.find((i) => i.to === '/app')!, all.find((i) => i.to === '/app/calendar')!, ...roleItems];
+  const bottom = [all.find((i) => i.to === '/app'), all.find((i) => i.to === '/app/calendar'), ...roleItems].filter((x): x is NonNullable<typeof x> => !!x);
 
   return (
     <div className="min-h-screen pb-20 lg:pb-0">
@@ -140,17 +150,17 @@ export function AppShell() {
           </header>
           <main className="px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
             <ErrorBoundary key={loc.pathname + loc.search}>
-              <Outlet />
+              {allowed ? <Outlet /> : <AccessDenied />}
             </ErrorBoundary>
           </main>
         </div>
       </div>
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-ink-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         {bottom.map((i) => (
-          <NavLink key={i.to} to={i.to} end={i.to === '/app'} className={({ isActive }) => cx('flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px]', isActive ? 'font-bold text-brand-700' : 'text-ink-500')}>
+          <Link key={i.to} to={i.to} className={cx('flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px]', isActive(i.to) ? 'font-bold text-brand-700' : 'text-ink-500')}>
             <NavIcon name={i.icon} className="h-5 w-5" />
             <span className="max-w-full truncate px-1">{i.label}</span>
-          </NavLink>
+          </Link>
         ))}
         <button onClick={() => setDrawer(true)} className="flex min-h-[56px] flex-col items-center justify-center gap-0.5 text-[11px] text-ink-500">
           <Icons.Menu className="h-5 w-5" />

@@ -39,6 +39,7 @@ export function settingsKeyBlockReason(db: DB, pid: ID, key: keyof Settings): st
   if (isEvaluationKey(key)) return 'إعدادات التقييم تُحفظ من تبويبها وتُقفل بعد الحفظ';
   if (key === 'scheduleCategories') return hasTempGrant(db, pid, 'manage_schedule_categories') ? null : 'تصنيفات الجدول للقائد العام أو من يفوّضه';
   if (key === 'site') return hasTempGrant(db, pid, 'edit_site') ? null : 'الموقع العام للقائد العام أو من يفوّضه';
+  if (key === 'ui') return canManageAccounts(db, pid) ? null : 'قوائم الأدوار ورئيسياتها لمسؤول اللجنة التقنية';
   if (key === 'importantNotifications') return canManageAccounts(db, pid) ? null : 'إعدادات الإشعارات لمسؤول اللجنة التقنية';
   return isLeader(db, pid) ? null : 'هذا الإعداد للقائد العام';
 }
