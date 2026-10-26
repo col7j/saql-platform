@@ -19,7 +19,8 @@ npm run dev
 ## الملفات
 | الملف | المحتوى |
 |---|---|
-| `saql-platform-spec.md` | وثيقة تصور المنصة (المرجع) |
+| `docs/saql-decisions.md` | وثيقة القرارات العامة المعتمدة (الأحدث، وتغلب عند التعارض) |
+| `docs/saql-platform-spec.md` | وثيقة تصور المنصة (الأقدم) |
 | `ASSUMPTIONS.md` | القرارات التي اتُّخذت حيث كانت الوثيقة صامتة، وتحتاج مراجعة المشرفين |
 | `app/` | كود النموذج (React + TypeScript + Vite + Tailwind) |
 | `brand assets/` | الشعارات وخط ثمانية |
