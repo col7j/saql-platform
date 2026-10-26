@@ -1,5 +1,5 @@
 // القيم الافتراضية للإعدادات. كلها تُنسخ إلى قاعدة البيانات وتُعدّل من شاشة الإعدادات.
-import type { BudgetCategory, ProgramBudget, Settings, TaskTemplate } from '@/domain/types';
+import type { BudgetCategory, CapacityRule, ProgramBudget, Settings, TaskTemplate } from '@/domain/types';
 import { DEFAULT_SPENDABLE } from '@/domain/finance';
 
 export function defaultSettings(startDate: string, endDate: string): Settings {
@@ -168,3 +168,13 @@ export function defaultTaskTemplates(financeId: string, mediaId: string): TaskTe
     { id: 'tpl_close', committeeId: financeId, title: 'الإغلاق المالي', proofType: 'none', tag: 'custody_close', dueOffsetDays: 14, appliesTo: 'all' },
   ];
 }
+
+/** قواعد تعارض الصفات المعتمدة (وثيقة القرارات + إجابات المالك). تُنسخ للبيانات وتُطبَّق عند إضافة أي صفة */
+export const defaultCapacityRules: CapacityRule[] = [
+  { id: 'cr_finance_only', a: 'head:finance', b: 'any', message: 'مسؤول المالية عضو إدارة فقط بلا أي صفة ثانية' },
+  { id: 'cr_head_fac', a: 'committee_head', b: 'facilitator', message: 'مسؤول اللجنة لا يكون ميسّراً' },
+  { id: 'cr_tech_tracker', a: 'head:tech', b: 'tracker', message: 'مسؤول اللجنة التقنية لا يكون متابع الرحلات الدائم (يجوز بديلاً مؤقتاً لرحلة محددة)' },
+  { id: 'cr_tracker_fac', a: 'tracker', b: 'facilitator', message: 'متابع الرحلات الدائم لا يكون ميسّراً' },
+  { id: 'cr_tracker_head', a: 'tracker', b: 'committee_head', message: 'متابع الرحلات الدائم لا يكون مسؤول لجنة (يجوز عضواً)' },
+  { id: 'cr_sub_fac', a: 'trip_substitute', b: 'trip_facilitator', message: 'المتابع البديل لا يكون ميسّر المجموعة المنفِّذة للرحلة' },
+];

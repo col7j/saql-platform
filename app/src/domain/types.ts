@@ -20,14 +20,61 @@ export interface Person {
   title?: string; // وصف قصير لعضو الإدارة
 }
 
-/** صفة مخزّنة صراحةً (الصفات الأخرى تُشتق من المجموعات واللجان والرحلات) */
-export type StoredCapacityKind = 'site_editor';
+/**
+ * مفتاح صفة في قواعد التعارض. الصفات نفسها تُشتق من المجموعات واللجان والرحلات والإعدادات،
+ * وهذه المفاتيح توحّدها حتى تُكتب القواعد كبيانات.
+ */
+export type CapacityKey =
+  | 'facilitator' // ميسّر مجموعة
+  | 'group_leader' // قائد مجموعة
+  | 'tracker' // متابع الرحلات الدائم
+  | 'committee_head' // مسؤول أي لجنة
+  | 'committee_member' // عضو أي لجنة
+  | `head:${CommitteeKind}`
+  | `member:${CommitteeKind}`
+  | 'staff_trip_team' // عضو فريق رحلة لفريق العمل
+  | 'trip_substitute' // بديل مؤقت لمتابع الرحلات في رحلة محددة
+  | 'trip_facilitator'; // ميسّر المجموعة المنفِّذة لرحلة محددة
+
+/** قاعدة تعارض: الصفة a لا تجتمع مع b، و'any' تعني أن a حصرية لا تجتمع مع أي صفة أخرى */
+export interface CapacityRule {
+  id: ID;
+  a: CapacityKey;
+  b: CapacityKey | 'any';
+  message: string;
+}
+
 export interface Capacity {
   id: ID;
   personId: ID;
-  kind: StoredCapacityKind;
+  kind: 'site_editor';
   grantedBy: ID;
   at: ISODateTime;
+}
+
+/** صلاحيات مؤقتة يمنحها القائد العام لأشخاص يحددهم حتى تاريخ معيّن */
+export type TempPermission = 'register_participants' | 'edit_site' | 'manage_schedule_categories';
+export interface TempGrant {
+  id: ID;
+  personId: ID;
+  permission: TempPermission;
+  grantedBy: ID;
+  at: ISODateTime;
+  expiresAt: ISODate; // آخر يوم صالح
+  revokedAt?: ISODateTime;
+}
+
+/** حساب الدخول: يديره مسؤول اللجنة التقنية وحده */
+export interface Account {
+  personId: ID;
+  username: string;
+  /** في النموذج الأولي: SHA-256 مع ملح. في المنصة الحقيقية يُستبدل بتشفير على الخادم */
+  passwordHash?: string;
+  salt?: string;
+  mustChangePassword: boolean;
+  disabled: boolean;
+  updatedAt: ISODateTime;
+  updatedBy: ID;
 }
 
 // ───────────── المجموعات ─────────────
@@ -74,7 +121,7 @@ export interface AdminMessage {
 }
 
 // ───────────── اللجان والمهام ─────────────
-export type CommitteeKind = 'finance' | 'media' | 'general' | 'other';
+export type CommitteeKind = 'finance' | 'media' | 'tech' | 'general' | 'other';
 export interface CommitteeKPI {
   id: ID;
   title: string;
@@ -570,6 +617,8 @@ export interface AuditEntry {
   byId: ID;
   action: string;
   detail: string;
+  /** المجال: المالية، الأدوار والصفات، الحسابات، الإعدادات (السجلات القديمة بلا مجال = المالية) */
+  area?: 'finance' | 'roles' | 'accounts' | 'settings';
 }
 
 // ───────────── الاجتماعات ─────────────
@@ -746,6 +795,8 @@ export interface DB {
   seededAt: ISODateTime;
   persons: Person[];
   capacities: Capacity[];
+  /** قواعد تعارض الصفات: تُطبَّق عند إضافة أي صفة */
+  capacityRules: CapacityRule[];
   groups: Group[];
   formation: GroupFormation;
   transfers: TransferLog[];

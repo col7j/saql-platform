@@ -15,6 +15,7 @@ export interface Capabilities {
   isFinance: boolean; // عضو اللجنة المالية
   isFinanceLead: boolean;
   isMedia: boolean;
+  isTechLead: boolean; // مسؤول اللجنة التقنية: المستخدمون وكلمات المرور وفتح قفل الإعدادات
   isTracker: boolean; // متابع الرحلات الثابت
   isSiteEditor: boolean;
   staffTripsLed: Trip[]; // قائد فريق رحلة لفريق العمل
@@ -52,6 +53,7 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
   const isFinance = isFinanceMember(db, person.id);
   const isFinanceLead = isFinanceOwner(db, person.id);
   const isMedia = committees.some((c) => c.committee.kind === 'media');
+  const isTechLead = committees.some((c) => c.committee.kind === 'tech' && c.role === 'leader');
   const isTracker = db.settings.trackerId === person.id;
   const isSiteEditor = isLeader || db.capacities.some((c) => c.personId === person.id && c.kind === 'site_editor');
   const staffTripsLed = db.trips.filter((t) => t.executor.kind === 'staff' && t.executor.leaderId === person.id);
@@ -64,7 +66,9 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
   else labels.push('مشارك');
   facilitatorOf.forEach((g) => labels.push(`ميسّر ${g.name}`));
   if (leaderOf) labels.push(`قائد ${leaderOf.name}`);
-  committees.forEach((c) => labels.push(c.committee.kind === 'finance' && c.role === 'leader' ? 'مسؤول اللجنة المالية' : `${c.role === 'leader' ? 'قائد' : 'عضو'} ${c.committee.name}`));
+  committees
+    .filter((c) => c.committee.kind !== 'general')
+    .forEach((c) => labels.push(c.committee.kind === 'finance' && c.role === 'leader' ? 'مسؤول المالية' : `${c.role === 'leader' ? 'مسؤول' : 'عضو'} ${c.committee.name}`));
   if (isTracker) labels.push('متابع الرحلات');
   if (isSiteEditor && !isLeader) labels.push('محرّر الموقع');
   if (staffTripsLed.length) labels.push('قائد فريق رحلة');
@@ -72,7 +76,7 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
 
   return {
     person, isLeader, isStaff, isParticipant, facilitatorOf, leaderOf, group, committees,
-    isFinance, isFinanceLead, isMedia, isTracker, isSiteEditor, staffTripsLed, staffTripsMember, presenterIn, labels,
+    isFinance, isFinanceLead, isMedia, isTechLead, isTracker, isSiteEditor, staffTripsLed, staffTripsMember, presenterIn, labels,
   };
 }
 

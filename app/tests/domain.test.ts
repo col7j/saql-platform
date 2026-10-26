@@ -15,8 +15,10 @@ describe('الصفات والصلاحيات', () => {
     expect(c.isFinance).toBe(true);
     expect(c.isFinanceLead).toBe(false);
     const owner = getCapabilities(db, 's5');
-    expect(owner.isTracker).toBe(true);
+    expect(owner.isTracker).toBe(false); // مسؤول المالية بلا صفة ثانية
     expect(owner.isFinanceLead).toBe(true);
+    expect(getCapabilities(db, 's6').isTechLead).toBe(true);
+    expect(getCapabilities(db, 's7').isTracker).toBe(true);
   });
   it('خطط المجموعة لا تراها المجموعات الأخرى أبداً، وتراها الإدارة', () => {
     expect(canViewTripPlans(db, 'u2', trip('t7'))).toBe(true); // من أُحُد

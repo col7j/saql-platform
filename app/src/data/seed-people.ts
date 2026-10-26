@@ -5,10 +5,12 @@ export const LEADER_ID = 'p_lead';
 
 const staffRaw: [string, string, string][] = [
   ['s1', 'خالد العمري', 'ميسّر مجموعة أُحُد · عضو اللجنة المالية'],
-  ['s2', 'فيصل الجهني', 'ميسّر مجموعة قُباء · قائد اللجنة الإعلامية'],
+  ['s2', 'فيصل الجهني', 'ميسّر مجموعة قُباء · عضو اللجنة الإعلامية'],
   ['s3', 'أنس المطيري', 'ميسّر مجموعة سَلع · عضو اللجنة المالية'],
   ['s4', 'سلمان الأحمدي', 'ميسّر مجموعة العقيق · عضو اللجنة الإعلامية'],
-  ['s5', 'ماجد الصاعدي', 'مسؤول اللجنة المالية · متابع الرحلات'],
+  ['s5', 'ماجد الصاعدي', 'مسؤول المالية'],
+  ['s6', 'طارق السهلي', 'مسؤول اللجنة التقنية · مسؤول اللجنة الإعلامية'],
+  ['s7', 'عادل الرفاعي', 'متابع الرحلات · عضو اللجنة التقنية'],
 ];
 
 const participantNames = [
@@ -65,20 +67,24 @@ export function buildCommittees(): { committees: Committee[]; memberships: Commi
         { id: 'k5', title: 'نشرة لكل رحلة خارجية', target: 5, taskTag: 'newsletter' },
       ],
     },
+    { id: 'c_tech', name: 'اللجنة التقنية', kind: 'tech', description: 'المستخدمون وكلمات المرور، وفتح قفل الإعدادات.', kpis: [] },
     { id: 'c_gen', name: 'لجنة الإدارة العامة', kind: 'general', description: 'كل أعضاء فريق العمل.', kpis: [] },
   ];
   let n = 0;
   const m = (committeeId: string, personId: string, role: 'leader' | 'member', canSeeFinance: boolean): CommitteeMembership => ({ id: `cm_${++n}`, committeeId, personId, role, canSeeFinance });
   const memberships: CommitteeMembership[] = [
-    // مسؤول اللجنة المالية ليس ميسّراً حتى لا يعتمد طلبات مجموعته
+    // مسؤول المالية بلا أي صفة ثانية (قواعد التعارض في defaults.ts)
     { ...m('c_fin', 's5', 'leader', true), financePerms: ['view_budget', 'manage_categories', 'approve_within', 'disburse', 'review_invoices', 'close_custody'] },
     { ...m('c_fin', 's1', 'member', true), financePerms: ['view_budget', 'approve_within', 'review_invoices'] },
     { ...m('c_fin', 's3', 'member', false), financePerms: [] }, // بلا صلاحيات مفوّضة: لا يرى أزرار الصرف
-    m('c_media', 's2', 'leader', false),
+    m('c_media', 's6', 'leader', false),
+    m('c_media', 's2', 'member', false),
     m('c_media', 's4', 'member', false),
     m('c_media', 'u9', 'member', false), // مشارك ضمن الإعلامية بموافقة القائد العام
+    m('c_tech', 's6', 'leader', false),
+    m('c_tech', 's7', 'member', false),
     m('c_gen', LEADER_ID, 'leader', false),
-    ...['s1', 's2', 's3', 's4', 's5'].map((id) => m('c_gen', id, 'member', false)),
+    ...['s1', 's2', 's3', 's4', 's5', 's6', 's7'].map((id) => m('c_gen', id, 'member', false)),
   ];
   return { committees, memberships };
 }

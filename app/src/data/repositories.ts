@@ -4,6 +4,7 @@
 import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { groupOf, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
+import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
 import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
 import type {
   AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
@@ -14,7 +15,7 @@ import { docKindLabel } from '@/domain/labels';
 import {
   allocatedFor, assertSpendable, financeOwnerId, hasFinancePerm, invoiceError, isFinanceOwner, linesTotal, ownerLink, ownerTitle, routeFor, spendKindLabel, spendKindOf, FINANCE_PERMS,
 } from '@/domain/finance';
-import type { BudgetRequest, FinancePermission, InvoiceLine, Meeting, ProgramBudget, SpendKind } from '@/domain/types';
+import type { AuditEntry, BudgetRequest, FinancePermission, InvoiceLine, Meeting, ProgramBudget, SpendKind } from '@/domain/types';
 
 /** إن أعادت الوصفة false فلا تغيير يُحفظ */
 export type Mutate = (recipe: (draft: DB) => unknown) => void;
@@ -52,8 +53,9 @@ export interface CreateTripInput {
 function personName(d: DB, id: ID) {
   return d.persons.find((p) => p.id === id)?.name ?? '—';
 }
-function audit(d: DB, byId: ID, action: string, detail: string) {
-  d.audit.unshift({ id: uid('au'), at: nowISO(), byId, action, detail });
+/** سجل تدقيق لا يُحذف. المجال الافتراضي المالية */
+function audit(d: DB, byId: ID, action: string, detail: string, area: AuditEntry['area'] = 'finance') {
+  d.audit.unshift({ id: uid('au'), at: nowISO(), byId, action, detail, area });
 }
 function guard(d: DB, pid: ID, perm: FinancePermission) {
   if (!hasFinancePerm(d, pid, perm)) throw new Error(`لا تملك صلاحية «${FINANCE_PERMS.find((p) => p.key === perm)!.label}». يمنحها مسؤول اللجنة المالية.`);
@@ -132,7 +134,11 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
     },
     groups: {
       update(groupId: ID, patch: Partial<{ name: string; leaderId: ID; facilitatorId: ID; color: string }>) {
-        mutate((d) => Object.assign(d.groups.find((g) => g.id === groupId)!, patch));
+        mutate((d) => {
+          Object.assign(d.groups.find((g) => g.id === groupId)!, patch);
+          assertNoCapacityConflict(d, [patch.facilitatorId, patch.leaderId]);
+          if (patch.facilitatorId) audit(d, me(), 'إسناد صفة', `ميسّر ${d.groups.find((g) => g.id === groupId)!.name} — ${personName(d, patch.facilitatorId)}`, 'roles');
+        });
       },
       create(name: string) {
         mutate((d) => d.groups.push({ id: uid('g'), name, color: '#00b9d1', memberIds: [] }));
@@ -213,6 +219,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
             closure: { photos: [] }, evaluation: { manual: {} }, punctuality: {},
           };
           d.trips.push(trip);
+          if (trip.executor.kind === 'staff') assertNoCapacityConflict(d, [trip.executor.leaderId, ...trip.executor.memberIds]);
           (['initial', 'detailed'] as const).forEach((kind) => d.docs.push({ id: uid('doc'), tripId: id, kind, status: 'draft', version: 1, fields: {}, history: [] }));
           d.tasks.push(...tasksFromTemplates(d, trip, me()));
           const team = tripTeamIds(d, trip);
@@ -227,6 +234,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
           const t = findTrip(d, tripId);
           const dateChanged = patch.startDate && patch.startDate !== t.startDate;
           Object.assign(t, patch);
+          if (t.executor.kind === 'staff') assertNoCapacityConflict(d, [t.executor.leaderId, ...t.executor.memberIds]);
           if (dateChanged) pushNotification(d, [...allParticipants(d), ...staffIds(d)], 'general', `تعديل تاريخ ${t.title}`, `/app/trips/${tripId}`);
         });
       },
@@ -379,6 +387,8 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       },
       requestTrackerSubstitute(tripId: ID, candidateId: ID, reason?: string) {
         mutate((d) => {
+          const conflict = substituteConflict(d, candidateId, findTrip(d, tripId));
+          if (conflict) throw new Error(`${personName(d, candidateId)}: ${conflict}`);
           findTrip(d, tripId).trackerSubstitute = { candidateId, reason, status: 'pending' };
           pushNotification(d, [leaderId(d)], 'general', 'طلب متابع بديل لرحلة', `/app/trips/${tripId}`);
         });
@@ -944,6 +954,8 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
         mutate((d) => {
           d.memberships = d.memberships.filter((m) => !(m.committeeId === committeeId && m.personId === personId));
           d.memberships.push({ id: uid('cm'), committeeId, personId, role, canSeeFinance });
+          assertNoCapacityConflict(d, [personId]);
+          audit(d, me(), 'إسناد صفة', `${role === 'leader' ? 'مسؤول' : 'عضو'} ${d.committees.find((c) => c.id === committeeId)?.name} — ${personName(d, personId)}`, 'roles');
         });
       },
       removeMember(committeeId: ID, personId: ID) {
@@ -960,7 +972,11 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
           const r = d.memberRequests.find((x) => x.id === requestId)! as MemberRequest;
           r.status = approve ? 'approved' : 'rejected';
           r.decidedAt = nowISO();
-          if (approve) d.memberships.push({ id: uid('cm'), committeeId: r.committeeId, personId: r.personId, role, canSeeFinance });
+          if (approve) {
+            d.memberships.push({ id: uid('cm'), committeeId: r.committeeId, personId: r.personId, role, canSeeFinance });
+            assertNoCapacityConflict(d, [r.personId]);
+            audit(d, me(), 'إسناد صفة', `${role === 'leader' ? 'مسؤول' : 'عضو'} ${d.committees.find((c) => c.id === r.committeeId)?.name} — ${personName(d, r.personId)}`, 'roles');
+          }
           pushNotification(d, [r.requestedBy, ...(approve ? [r.personId] : [])], 'committee_member_request', `${approve ? 'وافق' : 'رفض'} القائد العام طلب إضافة العضو`, `/app/committees/${r.committeeId}`);
         });
       },
@@ -998,6 +1014,8 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       setTracker(personId: ID) {
         mutate((d) => {
           d.settings.trackerId = personId;
+          assertNoCapacityConflict(d, [personId]);
+          audit(d, me(), 'إسناد صفة', `متابع الرحلات الدائم — ${personName(d, personId)}`, 'roles');
           pushNotification(d, [personId], 'general', 'عُيّنت متابعاً للرحلات', '/app/tracker');
         });
       },

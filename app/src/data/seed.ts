@@ -5,11 +5,11 @@ import type {
   Attendance, AuditEntry, BudgetRequest, Custody, Meeting, DB, FocusMeeting, IndividualMeeting, AvailabilitySlot, Invoice, LifeAspect, Material, Notification,
   PersonalPlan, Survey, Task,
 } from '@/domain/types';
-import { defaultBudgetCategories, defaultProgramBudget, defaultSettings, defaultTaskTemplates } from './defaults';
+import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, defaultSettings, defaultTaskTemplates } from './defaults';
 import { buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -29,7 +29,7 @@ export function buildSeed(): DB {
   const groups = buildGroups();
   const { committees, memberships } = buildCommittees();
   const settings = defaultSettings(addDays(T, -60), addDays(T, 150));
-  settings.trackerId = 's5';
+  settings.trackerId = 's7';
   const participants = persons.filter((p) => p.kind === 'participant');
   const { trips, docs, budgets, actual } = buildTrips(T, nowDate);
 
@@ -41,7 +41,7 @@ export function buildSeed(): DB {
   for (const t of trips.filter((x) => ['t1', 't2', 't3'].includes(x.id))) {
     participants.forEach((p) => {
       const present = t.id === 't2' ? !absentPlan.has(p.id) : rand() > 0.12;
-      mark('trip', t.id, p.id, present, t.id === 't3' ? 'u2' : 's5', iso(t.startDate, 9));
+      mark('trip', t.id, p.id, present, t.id === 't3' ? 'u2' : 's7', iso(t.startDate, 9));
     });
   }
   // الرحلة الجارية: حضّر المكلّف جزءاً من المشاركين
@@ -403,6 +403,7 @@ export function buildSeed(): DB {
     version: DB_VERSION,
     seededAt: new Date().toISOString(),
     persons,
+    capacityRules: structuredClone(defaultCapacityRules),
     capacities: [{ id: 'cap1', personId: 's4', kind: 'site_editor', grantedBy: LEADER_ID, at: iso(addDays(T, -50)) }],
     groups,
     formation: { status: 'published', publishAt: iso(addDays(T, -45), 20), publishedAt: iso(addDays(T, -45), 20) },

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
+import { substituteConflict } from '@/domain/capacities';
 import { fmtDate, fmtDateTime, relativeDays } from '@/domain/dates';
 import { tripTypeLabel } from '@/domain/labels';
 import {
@@ -123,7 +124,8 @@ function Overview({ tripId, onTab }: { tripId: string; onTab: (t: TabKey) => voi
   const trackerId = effectiveTrackerId(db, trip);
   const conflict = db.settings.trackerId ? trackerConflict(db, db.settings.trackerId, trip) : null;
   const teamIds = tripTeamIds(db, trip);
-  const staffNonFac = db.persons.filter((p) => p.kind === 'staff' && p.id !== facId && !p.isGeneralLeader);
+  // البديل: من فريق العمل بلا تعارض (قواعد التعارض تمنع ميسّر المجموعة المنفِّذة ومن لا يقبل صفة ثانية)
+  const substituteCandidates = db.persons.filter((p) => p.kind === 'staff' && !p.isGeneralLeader && p.id !== db.settings.trackerId && !substituteConflict(db, p.id, trip));
 
   return (
     <div className="grid gap-6 lg:grid-cols-3">
@@ -197,7 +199,7 @@ function Overview({ tripId, onTab }: { tripId: string; onTab: (t: TabKey) => voi
               </div>
             )}
             {(me.isTracker || me.isLeader) && trip.trackerSubstitute?.status !== 'approved' && <Button size="sm" variant="secondary" onClick={() => setSubOpen(true)}>{me.isTracker ? 'اعتذار وترشيح بديل' : 'تعيين بديل'}</Button>}
-            <SubstituteModal open={subOpen} onClose={() => setSubOpen(false)} tripId={trip.id} candidates={staffNonFac.filter((p) => p.id !== db.settings.trackerId).map((p) => p.id)} />
+            <SubstituteModal open={subOpen} onClose={() => setSubOpen(false)} tripId={trip.id} candidates={substituteCandidates.map((p) => p.id)} />
           </Card>
         )}
 
@@ -219,7 +221,7 @@ function SubstituteModal({ open, onClose, tripId, candidates }: { open: boolean;
   const [reason, setReason] = useState('');
   return (
     <Modal open={open} onClose={onClose} title="متابع بديل" footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button onClick={() => act(() => { repos.trips.requestTrackerSubstitute(tripId, c, reason); if (me.isLeader) repos.trips.decideTrackerSubstitute(tripId, true); onClose(); }, 'أُرسل الطلب')}>أرسل</Button></>}>
-      <Notice>البديل من أعضاء الإدارة، ولا يكون ميسّر هذه الرحلة. يوافق القائد العام ثم يتولى البديل المتابعة كاملة.</Notice>
+      <Notice>البديل لهذه الرحلة فقط، ولا يكون ميسّر المجموعة المنفِّذة لها. يوافق القائد العام ثم يتولى البديل المتابعة كاملة.</Notice>
       <Field label="البديل" className="mt-3"><Select value={c} onChange={(e) => setC(e.target.value)} options={candidates.map((x) => ({ value: x, label: personName(db, x) }))} /></Field>
       <Field label="سبب الاعتذار" className="mt-3"><Input value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
     </Modal>

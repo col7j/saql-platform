@@ -154,7 +154,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     doc('t1', 'detailed', 'approved', iso(addDays(d, -12)), detailedFields, approvedChain('t1', null, addDays(d, -12)));
     doc('t1', 'final_report', 'approved', iso(addDays(d, 4)), { summary: 'تقرير اللقاء التطويري الأول', achievements: 'تعارف المشاركين، وبناء التوقعات.', recommendations: 'تقديم موعد الغداء.' }, approvedChain('t1', null, addDays(d, 4)));
     internalBudget('t1');
-    r.items.forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't1', refItemId: it.id, followed: i === 6 ? 'none' : i === 1 ? 'B' : 'A', note: i === 6 ? 'تأخر الضيف 20 دقيقة: وقت بدل ضائع' : undefined, actualStart: it.start, actualEnd: it.end, byId: 's5', at: iso(d, 18) }));
+    r.items.forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't1', refItemId: it.id, followed: i === 6 ? 'none' : i === 1 ? 'B' : 'A', note: i === 6 ? 'تأخر الضيف 20 دقيقة: وقت بدل ضائع' : undefined, actualStart: it.start, actualEnd: it.end, byId: 's7', at: iso(d, 18) }));
   }
 
   // 2) لقاء الخطة الشخصية (فريق عمل) — منفذ، قيد الإغلاق
@@ -176,7 +176,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     doc('t2', 'detailed', 'approved', iso(addDays(d, -11)), detailedFields, approvedChain('t2', null, addDays(d, -11)));
     doc('t2', 'final_report', 'submitted', iso(addDays(d, 6)), { summary: 'تقرير لقاء الخطة الشخصية', achievements: 'عبّأ 20 مشاركاً عجلة الحياة.', recommendations: 'متابعة الغائبين بلقاء تعويضي.' });
     internalBudget('t2');
-    r.items.forEach((it) => actual.push({ id: nid('ac'), tripId: 't2', refItemId: it.id, followed: 'A', byId: 's5', at: iso(d, 18) }));
+    r.items.forEach((it) => actual.push({ id: nid('ac'), tripId: 't2', refItemId: it.id, followed: 'A', byId: 's7', at: iso(d, 18) }));
   }
 
   // 3) رحلة أُحُد الداخلية — منفذة ومغلقة بالكامل
@@ -199,7 +199,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     doc('t3', 'detailed', 'approved', iso(addDays(d, -11)), detailedFields, [ap('s1', 'facilitator', 'reject', iso(addDays(d, -12)), 'الجدول لا يتضمن وقتاً للصلاة'), ap('s1', 'facilitator', 'approve', iso(addDays(d, -11), 14), undefined, 2), ap(LEADER_ID, 'leader', 'approve', iso(addDays(d, -10)), undefined, 2)], 2);
     doc('t3', 'final_report', 'approved', iso(addDays(d, 5)), { summary: 'تقرير رحلة أُحُد الداخلية', achievements: 'تنفيذ كامل البرنامج ومشاركة كل المجموعات.', recommendations: 'تقليل وقت التنقل.' }, approvedChain('t3', 's1', addDays(d, 5)));
     internalBudget('t3');
-    r.items.forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't3', refItemId: it.id, followed: i === 6 ? 'none' : 'A', note: i === 6 ? 'بدأت الورشة متأخرة 15 دقيقة' : undefined, actualStart: i === 6 ? it.start.replace(/:(\d\d)$/, ':15') : it.start, actualEnd: it.end, categoryId: it.categoryId, byId: 's5', at: iso(d, 18) }));
+    r.items.forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't3', refItemId: it.id, followed: i === 6 ? 'none' : 'A', note: i === 6 ? 'بدأت الورشة متأخرة 15 دقيقة' : undefined, actualStart: i === 6 ? it.start.replace(/:(\d\d)$/, ':15') : it.start, actualEnd: it.end, categoryId: it.categoryId, byId: 's7', at: iso(d, 18) }));
   }
 
   // 4) رحلة قُباء الداخلية — يوم التنفيذ (الآن)
@@ -222,7 +222,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     doc('t4', 'detailed', 'approved', iso(addDays(T, -9)), detailedFields, approvedChain('t4', 's2', addDays(T, -9)));
     internalBudget('t4');
     // المتابع وثّق أول بندين
-    r.items.slice(0, 2).forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't4', refItemId: it.id, followed: i === 0 ? 'A' : 'B', byId: 's5', at: new Date().toISOString() }));
+    r.items.slice(0, 2).forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't4', refItemId: it.id, followed: i === 0 ? 'A' : 'B', byId: 's7', at: new Date().toISOString() }));
   }
 
   // 5) رحلة سَلع الداخلية — منشورة (قادمة)
@@ -302,7 +302,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
   // 11) رحلة ينبع (فريق عمل خارجية) — مبسطة معتمدة مباشرة من القائد العام
   {
     const d = addDays(T, 110);
-    trips.push(baseTrip({ id: 't11', title: 'اللقاء الختامي: رحلة ينبع', milestone: 'closing', type: 'external', executor: { kind: 'staff', leaderId: 's1', memberIds: ['s2', 's5'] }, startDate: d, endDate: addDays(d, 2), location: 'ينبع البحر' }, T));
+    trips.push(baseTrip({ id: 't11', title: 'اللقاء الختامي: رحلة ينبع', milestone: 'closing', type: 'external', executor: { kind: 'staff', leaderId: 's1', memberIds: ['s2', 's6'] }, startDate: d, endDate: addDays(d, 2), location: 'ينبع البحر' }, T));
     doc('t11', 'initial', 'approved', iso(addDays(T, -5)), initialFields('ينبع البحر'), [ap(LEADER_ID, 'leader', 'approve', iso(addDays(T, -4)))]);
     doc('t11', 'detailed', 'draft', null, { summary: '', details: '' });
   }

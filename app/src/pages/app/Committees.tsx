@@ -11,7 +11,7 @@ import { Avatar, Badge, Button, Card, Empty, Field, Icons, Input, Modal, PageHea
 import { PersonChip } from '@/ui/domain';
 import { TaskModal, TaskRow } from './TaskParts';
 
-const kindLabel: Record<CommitteeKind, string> = { finance: 'مالية', media: 'إعلامية', general: 'إدارة عامة', other: 'أخرى' };
+const kindLabel: Record<CommitteeKind, string> = { finance: 'مالية', media: 'إعلامية', tech: 'تقنية', general: 'إدارة عامة', other: 'أخرى' };
 
 export default function CommitteesPage() {
   const db = useDB();

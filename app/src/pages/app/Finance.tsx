@@ -262,10 +262,10 @@ function Audit() {
   const db = useDB();
   return (
     <Card title="سجل التدقيق" subtitle="من، ماذا، متى: كل تفويض وكل قرار وكل صرف" pad={false}>
-      {db.audit.length === 0 ? <div className="p-5"><Empty title="لا سجلات بعد" /></div> : (
+      {db.audit.filter((a) => (a.area ?? 'finance') === 'finance').length === 0 ? <div className="p-5"><Empty title="لا سجلات بعد" /></div> : (
         <Table>
           <thead><tr><th>متى</th><th>من</th><th>ماذا</th><th>التفاصيل</th></tr></thead>
-          <tbody>{db.audit.map((a) => <tr key={a.id}><td className="whitespace-nowrap text-xs">{fmtDateTime(a.at)}</td><td><PersonChip id={a.byId} size={22} /></td><td className="font-medium">{a.action}</td><td className="text-xs text-ink-600">{a.detail}</td></tr>)}</tbody>
+          <tbody>{db.audit.filter((a) => (a.area ?? 'finance') === 'finance').map((a) => <tr key={a.id}><td className="whitespace-nowrap text-xs">{fmtDateTime(a.at)}</td><td><PersonChip id={a.byId} size={22} /></td><td className="font-medium">{a.action}</td><td className="text-xs text-ink-600">{a.detail}</td></tr>)}</tbody>
         </Table>
       )}
     </Card>
