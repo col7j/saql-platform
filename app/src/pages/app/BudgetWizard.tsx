@@ -4,7 +4,7 @@ import { defaultDivisor, perItem } from '@/domain/finance';
 import { SAR } from '@/domain/labels';
 import type { AllocationRule, ProgramBudget } from '@/domain/types';
 import { act, repos, useDB } from '@/state/store';
-import { Field, Input, StepWizard, cx } from '@/ui';
+import { Field, Input, StepWizard, Textarea, cx } from '@/ui';
 
 function RuleEditor({ rule, onChange, unitLabel, defaultDiv }: { rule: AllocationRule; onChange: (r: AllocationRule) => void; unitLabel: string; defaultDiv: number }) {
   const per = perItem(rule);
@@ -35,6 +35,9 @@ function RuleEditor({ rule, onChange, unitLabel, defaultDiv }: { rule: Allocatio
 export function BudgetWizard({ onDone, onCancel }: { onDone?: () => void; onCancel?: () => void }) {
   const db = useDB();
   const [b, setB] = useState<ProgramBudget>(structuredClone(db.programBudget));
+  // بعد الاعتماد تُقفل الموازنة، والتعديل يذهب طلباً للقائد العام
+  const locked = db.programBudget.setupDone;
+  const [reason, setReason] = useState('');
   const set = (p: Partial<ProgramBudget>) => setB({ ...b, ...p });
   const num = (v: string) => Math.max(0, +v || 0);
   const groups = db.groups.length;
@@ -45,10 +48,15 @@ export function BudgetWizard({ onDone, onCancel }: { onDone?: () => void; onCanc
     ['الرحلات الخارجية', `${SAR(perItem(b.externalTrip))} لكل رحلة`],
     ['اللقاء الافتتاحي', SAR(b.opening)],
     ['اللقاء الختامي', SAR(b.closing)],
-    ['الاجتماعات (للتخطيط)', b.meetingDefault ? `${SAR(b.meetingDefault)} لكل اجتماع` : 'بلا مرصود'],
+    ['الاجتماعات', b.meetingDefault ? `${SAR(b.meetingDefault)} لكل اجتماع` : 'بلا مرصود'],
+    ['احتياجات البرنامج', SAR(b.programNeeds)],
   ];
   return (
-    <StepWizard onCancel={onCancel} finishLabel="احفظ الميزانية" onFinish={() => act(() => { repos.finance.setupBudget(b); onDone?.(); }, 'حُفظت الميزانية، وأصبح استقبال الطلبات متاحاً')} steps={[
+    <StepWizard onCancel={onCancel} finishLabel={locked ? 'أرسل طلب التعديل' : 'احفظ الموازنة واقفلها'} onFinish={() => act(() => {
+      if (locked) repos.finance.requestEdit({ target: { kind: 'program_budget' }, patch: { budget: b }, summary: 'تعديل الموازنة العامة', reason });
+      else repos.finance.setupBudget(b);
+      onDone?.();
+    }, locked ? 'رُفع طلب تعديل الموازنة للقائد العام' : 'حُفظت الموازنة وقُفلت، وأصبح استقبال الطلبات متاحاً')} steps={[
       {
         title: 'لقاءات التركيز',
         valid: perItem(b.focus) > 0 && b.focusLimits.min <= b.focusLimits.max,
@@ -85,21 +93,25 @@ export function BudgetWizard({ onDone, onCancel }: { onDone?: () => void; onCanc
         ),
       },
       {
-        title: 'الاجتماعات (اختياري)',
+        title: 'الاجتماعات واحتياجات البرنامج',
         content: (
           <div className="space-y-3">
-            <Field label="مبلغ مرصود لكل اجتماع (ر.س)" hint="للتخطيط فقط. الصرف على الاجتماعات ممنوع إلا إذا فعّلته من أنواع الصرف المسموح">
+            <Field label="مرصود كل اجتماع (ر.س)" hint="صرف فعلي بعهدة لمسؤول الاجتماع، ويُعدَّل لكل اجتماع">
               <Input className="num" type="number" value={b.meetingDefault} onChange={(e) => set({ meetingDefault: num(e.target.value) })} />
+            </Field>
+            <Field label="احتياجات البرنامج (إجمالي ر.س)" hint="صرف مباشر أو عهدة أو عقود">
+              <Input className="num" type="number" value={b.programNeeds} onChange={(e) => set({ programNeeds: num(e.target.value) })} />
             </Field>
           </div>
         ),
       },
       {
-        title: 'مراجعة وحفظ',
+        title: 'مراجعة وحفظ', valid: !locked || !!reason.trim(), hint: 'اكتب سبب التعديل',
         content: (
           <div className="space-y-2">
             {summary.map(([k, v]) => <div key={k} className="flex justify-between rounded-xl bg-ink-50 px-3 py-2 text-sm"><span>{k}</span><b className="num">{v}</b></div>)}
-            <p className="text-xs text-ink-500">كل ما سبق قابل للتعديل لاحقاً من تبويب «الميزانية».</p>
+            {locked ? <Field label="سبب التعديل (يُرفع للقائد العام)"><Textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+              : <p className="text-xs text-ink-500">بعد الحفظ تُقفل الموازنة، وأي تعديل لاحق يُرفع طلباً يوافق عليه القائد العام.</p>}
           </div>
         ),
       },

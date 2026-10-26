@@ -63,7 +63,7 @@ export default function PersonPage() {
             {p.major && <KeyVal k="التخصص" v={p.major} />}
             {g && <KeyVal k="المجموعة" v={<GroupBadge id={g.id} />} />}
             {p.kind === 'participant' && <KeyVal k="الحضور" v={`${att.filter((a) => a.present).length} / ${att.length}`} />}
-            {fee && canSeeFinance(db, me.person.id) && <KeyVal k="الرسوم" v={<Badge tone={fee.paid ? 'green' : 'red'}>{fee.paid ? 'مسددة' : 'غير مسددة'}</Badge>} />}
+            {fee && canSeeFinance(db, me.person.id) && <KeyVal k="الرسوم" v={<Badge tone={fee.status === 'paid' ? 'green' : fee.status === 'partial' ? 'orange' : 'red'}>{{ paid: 'مسددة', partial: `جزئي ${fee.paidAmount}`, unpaid: 'غير مسددة' }[fee.status]}{fee.exemption ? ` (${fee.exemption})` : ''}</Badge>} />}
             {p.kind === 'participant' && canSeePersonalPlan(db, me.person.id, p.id) && <Link to={`/app/plans/${p.id}`} className="mt-2 block text-sm text-brand-600">عرض الخطة الشخصية</Link>}
           </Card>
           {transfers.length > 0 && <Card title="سجل النقل">{transfers.map((t) => <p key={t.id} className="text-sm">{db.groups.find((x) => x.id === t.fromGroupId)?.name} ← {db.groups.find((x) => x.id === t.toGroupId)?.name} <span className="text-xs text-ink-400">({fmtDateTime(t.at)})</span></p>)}</Card>}

@@ -1,23 +1,22 @@
-// المنطق المالي: الصلاحيات المفوّضة، قاعدة الصرف المسموح، المرصود، مسار الطلب، الحالة والخطوة التالية.
-// دوال نقية لا تعتمد على الواجهة.
-import type {
-  AllocationRule, BudgetOwnerKind, BudgetRequest, DB, FinancePermission, FocusMeeting, ID, InvoiceLine, SpendKind, Trip,
-} from './types';
+// المنطق المالي: الصلاحيات المفوّضة، أنواع الصرف، المرصود، مسار الطلب، الحالة والخطوة التالية.
+// دوال نقية لا تعتمد على الواجهة. حسابات المحفظة والعهدة ونماذج الصرف في ledger.ts
+import { tripTeamLeaderId } from './permissions';
+import type { AllocationRule, BudgetOwnerKind, BudgetRequest, DB, FinancePermission, FocusMeeting, ID, Trip, SpendKind } from './types';
 
 // ───────────── الصلاحيات ─────────────
 export const FINANCE_PERMS: { key: FinancePermission; label: string; hint: string }[] = [
-  { key: 'view_budget', label: 'عرض الميزانية', hint: 'يرى الميزانية والأرقام والتحليل' },
-  { key: 'manage_categories', label: 'إدارة التصنيفات', hint: 'يضيف ويعدّل ويخفي التصنيفات والبنود' },
+  { key: 'view_budget', label: 'عرض الموازنة', hint: 'يرى الموازنة العامة والمحفظة والتحليل' },
+  { key: 'manage_categories', label: 'إدارة التصنيفات', hint: 'يضيف ويعدّل ويخفي تصنيفات الصرف وبنودها' },
   { key: 'approve_within', label: 'الموافقة ضمن المرصود', hint: 'يوافق أو يرفض الطلبات التي لا تتجاوز المرصود' },
-  { key: 'disburse', label: 'صرف العهد', hint: 'يصرف العهدة ويحوّل الدفعات' },
-  { key: 'review_invoices', label: 'مراجعة الفواتير', hint: 'يقبل الفواتير أو يرفضها بسبب' },
-  { key: 'close_custody', label: 'إغلاق العهد', hint: 'يعتمد الإغلاق المالي' },
+  { key: 'disburse', label: 'الصرف والإيداع', hint: 'يسجّل الإيداعات، ويحوّل العهد، ويصرف مباشرة ويدفع العقود' },
+  { key: 'review_invoices', label: 'مراجعة نماذج الصرف', hint: 'يراجع كل بند: يعدّل التصنيف والمبلغ ثم يقبل أو يرفض' },
+  { key: 'close_custody', label: 'إغلاق العهد', hint: 'يسوّي الفائض أو العجز ويعتمد الإغلاق' },
 ];
 
 export function financeCommitteeId(db: DB): ID | undefined {
   return db.committees.find((c) => c.kind === 'finance')?.id;
 }
-/** مسؤول اللجنة المالية: المالك الوحيد للجانب المالي */
+/** مسؤول المالية: المالك الوحيد للجانب المالي */
 export function financeOwnerId(db: DB): ID | undefined {
   const cid = financeCommitteeId(db);
   return db.memberships.find((m) => m.committeeId === cid && m.role === 'leader')?.personId;
@@ -37,29 +36,39 @@ export function financePermsOf(db: DB, pid: ID): FinancePermission[] {
 export function hasFinancePerm(db: DB, pid: ID, perm: FinancePermission) {
   return financePermsOf(db, pid).includes(perm);
 }
-function isLeader(db: DB, pid: ID) {
+export function isLeaderId(db: DB, pid: ID) {
   return !!db.persons.find((p) => p.id === pid)?.isGeneralLeader;
 }
-/** من يدخل القسم المالي: أعضاء اللجنة المالية والقائد العام فقط */
+/** من يدخل القسم المالي: أعضاء اللجنة المالية والقائد العام (مراقب) */
 export function canOpenFinance(db: DB, pid: ID) {
-  return isLeader(db, pid) || isFinanceMember(db, pid);
+  return isLeaderId(db, pid) || isFinanceMember(db, pid);
 }
-/** من يرى أرقام الميزانية العامة */
+/** الموازنة العامة: القائد العام ومن يحدده مسؤول المالية */
 export function canViewBudget(db: DB, pid: ID) {
-  return isLeader(db, pid) || hasFinancePerm(db, pid, 'view_budget');
+  return isLeaderId(db, pid) || hasFinancePerm(db, pid, 'view_budget');
 }
 
-// ───────────── قاعدة الصرف المسموح ─────────────
+// ───────────── أنواع الصرف ─────────────
 export const spendKindLabel: Record<SpendKind, string> = {
-  opening: 'اللقاء الافتتاحي',
-  focus: 'لقاءات التركيز (ومنها العمرة)',
   internal_trip: 'الرحلات الداخلية',
   external_trip: 'الرحلات الخارجية',
+  focus: 'لقاءات التركيز (ومنها العمرة)',
+  opening: 'اللقاء الافتتاحي',
   closing: 'اللقاء الختامي',
   meeting: 'الاجتماعات',
+  program_needs: 'احتياجات البرنامج',
 };
-export const ALL_SPEND_KINDS: SpendKind[] = ['opening', 'focus', 'internal_trip', 'external_trip', 'closing', 'meeting'];
-export const DEFAULT_SPENDABLE: SpendKind[] = ['opening', 'focus', 'internal_trip', 'external_trip', 'closing'];
+export const ALL_SPEND_KINDS: SpendKind[] = ['internal_trip', 'external_trip', 'focus', 'opening', 'closing', 'meeting', 'program_needs'];
+export const spendKindGroup: Record<SpendKind, 'تنفيذ البرنامج' | 'إداري'> = {
+  internal_trip: 'تنفيذ البرنامج', external_trip: 'تنفيذ البرنامج', focus: 'تنفيذ البرنامج',
+  opening: 'إداري', closing: 'إداري', meeting: 'إداري', program_needs: 'إداري',
+};
+/** نوع العهدة لقاعدة العهد المتزامنة: لا يتكرر النوع (الرحلات الداخلية والخارجية نوع واحد) */
+export function custodyFamily(kind: SpendKind): string {
+  return kind === 'internal_trip' || kind === 'external_trip' ? 'trips' : kind;
+}
+/** ما يُصرف عليه بعهدة يفتحها مسؤول المالية مباشرة بلا طلب (يقفلها صاحبها) */
+export const DIRECT_CUSTODY_KINDS: SpendKind[] = ['opening', 'closing', 'program_needs'];
 
 export function spendKindOfTrip(trip: Pick<Trip, 'milestone' | 'type'>): SpendKind {
   if (trip.milestone) return trip.milestone;
@@ -68,21 +77,9 @@ export function spendKindOfTrip(trip: Pick<Trip, 'milestone' | 'type'>): SpendKi
 export function spendKindOf(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID): SpendKind {
   if (ownerKind === 'focus') return 'focus';
   if (ownerKind === 'meeting') return 'meeting';
+  if (ownerKind === 'need') return 'program_needs';
   const t = db.trips.find((x) => x.id === ownerId);
   return t ? spendKindOfTrip(t) : 'internal_trip';
-}
-export function isSpendable(db: DB, kind: SpendKind) {
-  return db.settings.spendableTypes.includes(kind);
-}
-/** رسالة المنع إن كان النوع غير مسموح (null = مسموح) */
-export function spendBlockReason(db: DB, kind: SpendKind): string | null {
-  if (isSpendable(db, kind)) return null;
-  const allowed = db.settings.spendableTypes.map((k) => spendKindLabel[k]).join('، ');
-  return `لا يُسمح بالصرف أو العهد على «${spendKindLabel[kind]}». الصرف مسموح فقط على: ${allowed}. يمكن للمسؤول المالي تغيير ذلك من إعدادات الميزانية.`;
-}
-export function assertSpendable(db: DB, kind: SpendKind) {
-  const r = spendBlockReason(db, kind);
-  if (r) throw new Error(r);
 }
 
 // ───────────── المرصود ─────────────
@@ -122,6 +119,7 @@ export function allocatedFor(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID): n
     const m = db.meetings.find((x) => x.id === ownerId);
     return m?.allocated ?? b.meetingDefault;
   }
+  if (ownerKind === 'need') return 0; // احتياجات البرنامج مرصودها إجمالي لا لكل بند
   const t = db.trips.find((x) => x.id === ownerId);
   if (!t) return 0;
   const kind = spendKindOfTrip(t);
@@ -131,7 +129,13 @@ export function allocatedFor(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID): n
 }
 
 // ───────────── الطلبات ─────────────
-export function routeFor(amount: number, allocated: number): 'pending_finance' | 'pending_leader' {
+/** مسار الطلب الأول: ميزانية رحلة المجموعة تمر بالميسّر ثم القائد العام، ورحلات فريق العمل للقائد العام مباشرة،
+ *  وبقية الطلبات حسب المرصود: ضمنه لمسؤول المالية، وأعلى منه للقائد العام */
+export function firstStatusFor(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID, amount: number, allocated: number): BudgetRequest['status'] {
+  if (ownerKind === 'trip') {
+    const t = db.trips.find((x) => x.id === ownerId);
+    return t?.executor.kind === 'group' ? 'pending_facilitator' : 'pending_leader';
+  }
   return amount <= allocated ? 'pending_finance' : 'pending_leader';
 }
 export function requestFor(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID): BudgetRequest | undefined {
@@ -151,10 +155,34 @@ export function linesTotal(lines: { qty: number; price: number }[]) {
 export function ownerTitle(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID) {
   if (ownerKind === 'trip') return db.trips.find((t) => t.id === ownerId)?.title ?? 'رحلة';
   if (ownerKind === 'focus') return db.focusMeetings.find((f) => f.id === ownerId)?.title ?? 'لقاء تركيز';
+  if (ownerKind === 'need') return db.programNeeds.find((n) => n.id === ownerId)?.title ?? 'احتياج';
   return db.meetings.find((m) => m.id === ownerId)?.title ?? 'اجتماع';
 }
 export function ownerLink(ownerKind: BudgetOwnerKind, ownerId: ID) {
-  return ownerKind === 'trip' ? `/app/trips/${ownerId}?tab=budget` : ownerKind === 'focus' ? `/app/focus/${ownerId}` : `/app/meetings/${ownerId}`;
+  if (ownerKind === 'trip') return `/app/trips/${ownerId}?tab=budget`;
+  if (ownerKind === 'focus') return `/app/focus/${ownerId}`;
+  if (ownerKind === 'need') return '/app/finance?tab=needs';
+  return `/app/meetings/${ownerId}`;
+}
+/** ميسّر المجموعة المنفِّذة لرحلة (لمسار ميزانية الرحلة) */
+export function tripBudgetFacilitatorId(db: DB, ownerId: ID): ID | undefined {
+  const t = db.trips.find((x) => x.id === ownerId);
+  if (!t || t.executor.kind !== 'group') return undefined;
+  const gid = t.executor.groupId;
+  return db.groups.find((g) => g.id === gid)?.facilitatorId;
+}
+/** من يقدّم الطلب: الميسّر للقاء التركيز، وقائد الفريق للرحلة، ومسؤول الاجتماع للاجتماع */
+export function submitterOf(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID): ID | undefined {
+  if (ownerKind === 'focus') {
+    const fm = db.focusMeetings.find((f) => f.id === ownerId);
+    return db.groups.find((g) => g.id === fm?.groupId)?.facilitatorId;
+  }
+  if (ownerKind === 'trip') {
+    const t = db.trips.find((x) => x.id === ownerId);
+    return t ? tripTeamLeaderId(db, t) : undefined;
+  }
+  if (ownerKind === 'meeting') return db.meetings.find((m) => m.id === ownerId)?.ownerId;
+  return undefined;
 }
 
 export type Tone = 'gray' | 'blue' | 'green' | 'red' | 'orange' | 'purple';
@@ -171,85 +199,46 @@ export function requestStage(db: DB, r: BudgetRequest): Stage {
   const name = (id?: ID) => db.persons.find((p) => p.id === id)?.name ?? '—';
   const owner = financeOwnerId(db);
   const leader = db.persons.find((p) => p.isGeneralLeader)?.id;
+  const over = r.amount > r.allocated;
   switch (r.status) {
     case 'draft':
       return { label: 'مسودة', tone: 'gray', next: 'أرسل الطلب', waitingOn: name(r.requestedBy), waitingOnId: r.requestedBy };
+    case 'pending_facilitator': {
+      const fac = tripBudgetFacilitatorId(db, r.ownerId);
+      return { label: 'بانتظار الميسّر', tone: 'blue', next: 'يعتمد الميسّر أو يعيدها بسبب', waitingOn: name(fac), waitingOnId: fac };
+    }
     case 'pending_finance':
       return { label: 'بانتظار مسؤول المالية', tone: 'blue', next: 'يوافق أو يرفض بسبب', waitingOn: name(owner), waitingOnId: owner };
     case 'pending_leader':
-      return { label: 'بانتظار القائد العام (يتجاوز المرصود)', tone: 'orange', next: 'يعتمد، أو يرفض، أو يطلب موازنة تفصيلية', waitingOn: name(leader), waitingOnId: leader };
+      return { label: over ? 'بانتظار القائد العام (يتجاوز المرصود)' : 'بانتظار القائد العام', tone: over ? 'orange' : 'blue', next: 'يعتمد، أو يرفض، أو يطلب موازنة تفصيلية', waitingOn: name(leader), waitingOnId: leader };
     case 'needs_detail':
       return { label: 'مطلوب موازنة تفصيلية', tone: 'orange', next: 'عبّئ جدول الموازنة وأرسله للقائد العام', waitingOn: name(r.requestedBy), waitingOnId: r.requestedBy };
     case 'rejected':
       return { label: 'مرفوض: أُعيد لمقدّم الطلب', tone: 'red', next: 'عدّل الطلب وأعد إرساله', waitingOn: name(r.requestedBy), waitingOnId: r.requestedBy };
   }
   const c = custodyForRequest(db, r);
-  if (!c) return { label: 'معتمد: بانتظار صرف العهدة', tone: 'blue', next: 'يصرف المسؤول المالي العهدة', waitingOn: name(owner), waitingOnId: owner };
+  if (!c) return { label: 'معتمد: بانتظار صرف العهدة', tone: 'blue', next: 'يحوّل مسؤول المالية العهدة مع الإيصال', waitingOn: name(owner), waitingOnId: owner };
   if (c.status === 'closed') return { label: 'مغلق', tone: 'green', next: 'لا إجراء', waitingOn: '—' };
-  if (c.status === 'closing') return { label: 'قيد الإغلاق المالي', tone: 'purple', next: 'تعتمد المالية الإغلاق', waitingOn: name(owner), waitingOnId: owner };
-  const inst = c.installments;
-  if (inst.some((i) => i.status === 'awaiting_iban')) return { label: 'صُرفت العهدة: بانتظار الآيبان', tone: 'orange', next: 'يرفع المستلم رقم الآيبان', waitingOn: name(c.recipientId), waitingOnId: c.recipientId };
-  if (inst.some((i) => i.status === 'awaiting_transfer')) return { label: 'بانتظار تحويل المالية', tone: 'blue', next: 'تحوّل المالية الدفعة وترفع الإيصال', waitingOn: name(owner), waitingOnId: owner };
-  if (inst.some((i) => i.status === 'awaiting_confirm')) return { label: 'بانتظار تأكيد الاستلام', tone: 'orange', next: 'يؤكد المستلم استلام الدفعة', waitingOn: name(c.recipientId), waitingOnId: c.recipientId };
-  const pending = db.invoices.filter((i) => i.custodyId === c.id && i.status === 'pending').length;
-  if (pending) return { label: `${pending} فواتير بانتظار المراجعة`, tone: 'blue', next: 'تراجع المالية الفواتير', waitingOn: name(owner), waitingOnId: owner };
-  const rejected = db.invoices.filter((i) => i.custodyId === c.id && i.status === 'rejected').length;
-  if (rejected) return { label: 'فاتورة مرفوضة تحتاج تعديلاً', tone: 'red', next: 'يعدّل المستلم الفاتورة ويعيد رفعها', waitingOn: name(c.recipientId), waitingOnId: c.recipientId };
-  return { label: 'العهدة مفعّلة: التنفيذ ورفع الفواتير', tone: 'green', next: 'يرفع المستلم الفواتير ثم يطلب الإغلاق', waitingOn: name(c.recipientId), waitingOnId: c.recipientId };
+  if (c.status === 'closing') return { label: 'قيد الإغلاق المالي', tone: 'purple', next: 'تراجع المالية البنود وتسوّي ثم تعتمد الإغلاق', waitingOn: name(owner), waitingOnId: owner };
+  const pending = db.spendForms.filter((f) => f.custodyId === c.id).flatMap((f) => f.lines).filter((l) => l.status === 'pending').length;
+  if (pending) return { label: `${pending} بنود صرف بانتظار المراجعة`, tone: 'blue', next: 'تراجع المالية كل بند', waitingOn: name(owner), waitingOnId: owner };
+  const transferred = c.transfers.reduce((s, t) => s + t.amount, 0);
+  if (transferred < c.approved) return { label: 'العهدة مفعّلة (بقيت دفعة)', tone: 'green', next: 'يرفع المستلم نماذج الصرف، وتحوّل المالية الباقي', waitingOn: name(c.recipientId), waitingOnId: c.recipientId };
+  return { label: 'العهدة مفعّلة: التنفيذ ورفع نماذج الصرف', tone: 'green', next: 'يرفع المستلم نماذج الصرف ثم يطلب الإغلاق', waitingOn: name(c.recipientId), waitingOnId: c.recipientId };
 }
 
+export function canFacilitatorDecide(db: DB, pid: ID, r: BudgetRequest) {
+  return r.status === 'pending_facilitator' && tripBudgetFacilitatorId(db, r.ownerId) === pid;
+}
 export function canFinanceDecide(db: DB, pid: ID, r: BudgetRequest) {
   return r.status === 'pending_finance' && hasFinancePerm(db, pid, 'approve_within') && r.requestedBy !== pid;
 }
 export function canLeaderDecide(db: DB, pid: ID, r: BudgetRequest) {
-  return r.status === 'pending_leader' && isLeader(db, pid);
+  return r.status === 'pending_leader' && isLeaderId(db, pid);
 }
 export function canEditRequest(db: DB, pid: ID, r: BudgetRequest) {
   return r.requestedBy === pid && ['draft', 'rejected', 'needs_detail'].includes(r.status);
 }
 export function canDisburse(db: DB, pid: ID, r: BudgetRequest) {
   return r.status === 'approved' && !custodyForRequest(db, r) && hasFinancePerm(db, pid, 'disburse');
-}
-
-// ───────────── الفواتير ─────────────
-/** يُمنع الإرسال إن اختلف مجموع الأسطر عن الإجمالي */
-export function invoiceError(total: number, lines: Pick<InvoiceLine, 'categoryId' | 'amount' | 'description'>[], image: string): string | null {
-  if (!image) return 'ارفع صورة الفاتورة (إلزامية).';
-  if (!(total > 0)) return 'اكتب إجمالي الفاتورة.';
-  if (!lines.length) return 'أضف سطراً واحداً على الأقل.';
-  if (lines.some((l) => !l.categoryId || !(l.amount > 0))) return 'اختر تصنيفاً واكتب مبلغاً لكل سطر.';
-  const sum = Math.round(lines.reduce((s, l) => s + l.amount, 0) * 100) / 100;
-  if (Math.abs(sum - total) > 0.009) return `مجموع الأسطر (${sum}) لا يساوي إجمالي الفاتورة (${total}). عدّل المبالغ حتى يتطابقا.`;
-  return null;
-}
-
-// ───────────── نظرة عامة على الميزانية ─────────────
-export function budgetOverview(db: DB) {
-  const b = db.programBudget;
-  const acceptedFor = (pred: (ownerKind: BudgetOwnerKind, ownerId: ID) => boolean) =>
-    db.invoices
-      .filter((i) => i.status === 'accepted')
-      .filter((i) => {
-        const c = db.custodies.find((x) => x.id === i.custodyId);
-        return !!c && pred(c.ownerKind, c.ownerId);
-      })
-      .reduce((s, i) => s + i.total, 0);
-  const approvedFor = (kind: SpendKind, umrah?: boolean) =>
-    db.budgetRequests
-      .filter((r) => r.spendKind === kind && r.status === 'approved')
-      .filter((r) => (umrah === undefined ? true : !!db.focusMeetings.find((f) => f.id === r.ownerId)?.isUmrah === umrah))
-      .reduce((s, r) => s + r.amount, 0);
-  const tripsOf = (kind: SpendKind) => db.trips.filter((t) => spendKindOfTrip(t) === kind);
-  const groups = db.groups.length;
-  const focusUnits = groups * b.focusLimits.min;
-  const rows = [
-    { key: 'opening', label: spendKindLabel.opening, perUnit: b.opening, units: 1, allocated: b.opening, approved: approvedFor('opening'), spent: acceptedFor((k, id) => k === 'trip' && tripsOf('opening').some((t) => t.id === id)) },
-    { key: 'focus', label: 'لقاءات التركيز', perUnit: perItem(b.focus), units: b.focus.mode === 'total' ? b.focus.divisor : focusUnits, allocated: b.focus.mode === 'total' ? b.focus.total : perItem(b.focus) * focusUnits, approved: approvedFor('focus', false), spent: acceptedFor((k, id) => k === 'focus' && !db.focusMeetings.find((f) => f.id === id)?.isUmrah) },
-    { key: 'umrah', label: 'لقاء العمرة', perUnit: b.umrahPerGroup, units: groups, allocated: b.umrahPerGroup * groups, approved: approvedFor('focus', true), spent: acceptedFor((k, id) => k === 'focus' && !!db.focusMeetings.find((f) => f.id === id)?.isUmrah) },
-    { key: 'internal_trip', label: spendKindLabel.internal_trip, perUnit: perItem(b.internalTrip), units: tripsOf('internal_trip').length, allocated: b.internalTrip.mode === 'total' ? b.internalTrip.total : perItem(b.internalTrip) * tripsOf('internal_trip').length, approved: approvedFor('internal_trip'), spent: acceptedFor((k, id) => k === 'trip' && tripsOf('internal_trip').some((t) => t.id === id)) },
-    { key: 'external_trip', label: spendKindLabel.external_trip, perUnit: perItem(b.externalTrip), units: tripsOf('external_trip').length, allocated: b.externalTrip.mode === 'total' ? b.externalTrip.total : perItem(b.externalTrip) * tripsOf('external_trip').length, approved: approvedFor('external_trip'), spent: acceptedFor((k, id) => k === 'trip' && tripsOf('external_trip').some((t) => t.id === id)) },
-    { key: 'closing', label: spendKindLabel.closing, perUnit: b.closing, units: 1, allocated: b.closing, approved: approvedFor('closing'), spent: acceptedFor((k, id) => k === 'trip' && tripsOf('closing').some((t) => t.id === id)) },
-    { key: 'meeting', label: 'الاجتماعات (للتخطيط)', perUnit: b.meetingDefault, units: db.meetings.length, allocated: db.meetings.reduce((s, m) => s + (m.allocated ?? b.meetingDefault), 0), approved: 0, spent: acceptedFor((k) => k === 'meeting') },
-  ];
-  return { rows, total: rows.reduce((s, r) => s + r.allocated, 0), spent: rows.reduce((s, r) => s + r.spent, 0) };
 }

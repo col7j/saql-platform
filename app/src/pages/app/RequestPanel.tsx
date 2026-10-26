@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import { addDays, fmtDateTime, todayISO } from '@/domain/dates';
 import {
-  allocatedFor, canDisburse, canEditRequest, canFinanceDecide, canLeaderDecide, canOpenFinance, custodyForRequest, focusIndex,
-  ownerTitle, requestFor, requestStage, spendBlockReason, spendKindOf,
+  allocatedFor, canDisburse, canEditRequest, canFacilitatorDecide, canFinanceDecide, canLeaderDecide, canOpenFinance, custodyForRequest, focusIndex,
+  requestFor, requestStage, submitterOf, tripBudgetFacilitatorId,
 } from '@/domain/finance';
 import { SAR } from '@/domain/labels';
 import { tripTeamLeaderId } from '@/domain/permissions';
@@ -11,10 +11,12 @@ import type { BudgetLine, BudgetOwnerKind, BudgetRequest, ID } from '@/domain/ty
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Button, Card, Field, Icons, Input, Modal, Notice, ReasonModal, Select, StatusPill, Textarea, Toggle, askConfirm } from '@/ui';
 import { BudgetEditor } from './BudgetEditor';
-import { CustodyCard } from './CustodyCard';
+import { CustodyCard, IssueCustodyModal } from './CustodyCard';
 
 const actionLabel: Record<BudgetRequest['history'][number]['action'], string> = {
   submit: 'أرسل الطلب',
+  facilitator_approve: 'اعتمد الميسّر',
+  facilitator_reject: 'أعاد الميسّر',
   finance_approve: 'وافقت المالية',
   finance_reject: 'رفضت المالية',
   leader_approve: 'اعتمد القائد العام',
@@ -34,35 +36,22 @@ export function canSeeOwnerBudget(db: ReturnType<typeof useDB>, pid: ID, ownerKi
   }
   if (ownerKind === 'trip') {
     const t = db.trips.find((x) => x.id === ownerId);
-    return !!t && tripTeamLeaderId(db, t) === pid;
+    return !!t && (tripTeamLeaderId(db, t) === pid || tripBudgetFacilitatorId(db, ownerId) === pid);
   }
   return db.meetings.find((m) => m.id === ownerId)?.ownerId === pid;
-}
-
-function submitterOf(db: ReturnType<typeof useDB>, ownerKind: BudgetOwnerKind, ownerId: ID): ID | undefined {
-  if (ownerKind === 'focus') {
-    const fm = db.focusMeetings.find((f) => f.id === ownerId);
-    return db.groups.find((g) => g.id === fm?.groupId)?.facilitatorId;
-  }
-  if (ownerKind === 'trip') {
-    const t = db.trips.find((x) => x.id === ownerId);
-    return t ? tripTeamLeaderId(db, t) : undefined;
-  }
-  return db.meetings.find((m) => m.id === ownerId)?.ownerId;
 }
 
 export function RequestPanel({ ownerKind, ownerId, title = 'الميزانية' }: { ownerKind: BudgetOwnerKind; ownerId: ID; title?: string }) {
   const db = useDB();
   const me = useMe();
   const pid = me.person.id;
-  const [reject, setReject] = useState<'finance' | 'leader' | 'detail' | null>(null);
+  const [reject, setReject] = useState<'facilitator' | 'finance' | 'leader' | 'detail' | null>(null);
   const [disburse, setDisburse] = useState(false);
   if (!canSeeOwnerBudget(db, pid, ownerKind, ownerId)) return null;
 
   const r = requestFor(db, ownerKind, ownerId);
   const allocated = allocatedFor(db, ownerKind, ownerId);
-  const kind = spendKindOf(db, ownerKind, ownerId);
-  const blocked = spendBlockReason(db, kind);
+  const blocked = null as string | null;
   const isSubmitter = submitterOf(db, ownerKind, ownerId) === pid;
   const fm = ownerKind === 'focus' ? db.focusMeetings.find((f) => f.id === ownerId) : undefined;
   const overflow = !!fm && allocated === 0;
@@ -94,6 +83,15 @@ export function RequestPanel({ ownerKind, ownerId, title = 'الميزانية' 
         )}
 
         {/* إجراءات من بيده القرار */}
+        {r && canFacilitatorDecide(db, pid, r) && (
+          <div className="space-y-2">
+            {r.amount > r.allocated && <p className="text-sm text-accent-700">الميزانية {SAR(r.amount)} تتجاوز المرصود {SAR(r.allocated)}، وسيُنبَّه القائد العام بذلك.</p>}
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => act(() => repos.finance.facilitatorDecide(r.id, true), 'اعتمدتها وذهبت للقائد العام')} icon={<Icons.Check className="h-4 w-4" />}>اعتمد الميزانية</Button>
+              <Button variant="danger" onClick={() => setReject('facilitator')}>أعدها بسبب</Button>
+            </div>
+          </div>
+        )}
         {r && canFinanceDecide(db, pid, r) && (
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => act(() => repos.finance.financeDecide(r.id, true), 'وافقت على الطلب')} icon={<Icons.Check className="h-4 w-4" />}>وافق على الطلب</Button>
@@ -102,9 +100,9 @@ export function RequestPanel({ ownerKind, ownerId, title = 'الميزانية' 
         )}
         {r && canLeaderDecide(db, pid, r) && (
           <div className="space-y-2">
-            <p className="text-sm text-accent-700">المطلوب {SAR(r.amount)} يتجاوز المرصود {SAR(r.allocated)} بـ {SAR(r.amount - r.allocated)}.</p>
+            {r.amount > r.allocated ? <Notice tone="orange" icon={<Icons.TriangleAlert className="h-4 w-4" />}>تنبيه: المطلوب {SAR(r.amount)} يتجاوز المرصود {SAR(r.allocated)} بـ {SAR(r.amount - r.allocated)}. قرّر على هذا الأساس.</Notice> : <p className="text-sm text-ink-600">ضمن المرصود ({SAR(r.allocated)}).</p>}
             <div className="flex flex-wrap gap-2">
-              <Button onClick={() => act(() => repos.finance.leaderDecide(r.id, 'approve'), 'اعتمدت التجاوز وعاد للمالية للصرف')} icon={<Icons.BadgeCheck className="h-4 w-4" />}>اعتمد الطلب</Button>
+              <Button onClick={() => act(() => repos.finance.leaderDecide(r.id, 'approve'), 'اعتُمد الطلب وذهب للمالية للصرف')} icon={<Icons.BadgeCheck className="h-4 w-4" />}>اعتمد الطلب</Button>
               {!r.detailed && <Button variant="secondary" onClick={() => setReject('detail')}>اطلب موازنة تفصيلية</Button>}
               <Button variant="danger" onClick={() => setReject('leader')}>ارفض بسبب</Button>
             </div>
@@ -128,8 +126,8 @@ export function RequestPanel({ ownerKind, ownerId, title = 'الميزانية' 
 
       <ReasonModal open={!!reject} onClose={() => setReject(null)} danger={reject !== 'detail'}
         title={reject === 'detail' ? 'اطلب موازنة تفصيلية' : 'ارفض الطلب'} label={reject === 'detail' ? 'ما المطلوب تفصيله؟' : 'السبب (يظهر لمقدّم الطلب)'} cta={reject === 'detail' ? 'أرسل الطلب لمقدّمه' : 'ارفض وأعده'}
-        onSubmit={(reason) => r && act(() => (reject === 'finance' ? repos.finance.financeDecide(r.id, false, reason) : repos.finance.leaderDecide(r.id, reject === 'detail' ? 'detail' : 'reject', reason)), reject === 'detail' ? 'أُرسل لمقدّم الطلب' : 'أُعيد الطلب لمقدّمه')} />
-      {disburse && r && <DisburseModal request={r} onClose={() => setDisburse(false)} />}
+        onSubmit={(reason) => r && act(() => (reject === 'facilitator' ? repos.finance.facilitatorDecide(r.id, false, reason) : reject === 'finance' ? repos.finance.financeDecide(r.id, false, reason) : repos.finance.leaderDecide(r.id, reject === 'detail' ? 'detail' : 'reject', reason)), reject === 'detail' ? 'أُرسل لمقدّم الطلب' : 'أُعيد الطلب لمقدّمه')} />
+      {disburse && r && <IssueCustodyModal ownerKind={r.ownerKind} ownerId={r.ownerId} requestId={r.id} approved={r.amount} defaultRecipient={r.requestedBy} onClose={() => setDisburse(false)} />}
     </Card>
   );
 }
@@ -156,42 +154,9 @@ function RequestForm({ ownerKind, ownerId, allocated, existing, forceDetailed }:
       {detailed && <BudgetEditor lines={lines} onChange={setLines} allocated={allocated} />}
       <Field label="ملاحظة للمالية (اختياري)"><Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
       <p className="text-xs text-ink-500">
-        {value <= allocated ? 'ضمن المرصود: يذهب الطلب لمسؤول اللجنة المالية مباشرة.' : 'يتجاوز المرصود: يذهب الطلب للقائد العام أولاً.'}
+        {ownerKind === 'trip' ? `يمر بالميسّر ثم القائد العام${value > allocated ? '، وسيُنبَّه أنها تتجاوز المرصود' : ''}، ثم يحوّل مسؤول المالية العهدة.` : value <= allocated ? 'ضمن المرصود: يذهب الطلب لمسؤول المالية مباشرة.' : 'يتجاوز المرصود: يذهب الطلب للقائد العام أولاً.'}
       </p>
       <Button onClick={send} disabled={!(value > 0)} icon={<Icons.Send className="h-4 w-4" />}>{existing && existing.status !== 'draft' ? 'أعد إرسال الطلب' : 'أرسل الطلب'}</Button>
     </div>
-  );
-}
-
-export function DisburseModal({ request: r, onClose }: { request: BudgetRequest; onClose: () => void }) {
-  const db = useDB();
-  const [recipient, setRecipient] = useState(r.requestedBy);
-  const [inst, setInst] = useState([{ amount: r.amount, dueDate: addDays(todayISO(), 2), condition: 'بعد اعتماد الطلب' }]);
-  const total = inst.reduce((s, i) => s + i.amount, 0);
-  const go = () => askConfirm({
-    title: 'تأكيد صرف العهدة',
-    body: `ستُصرف عهدة بقيمة ${SAR(total)} لـ ${personName(db, recipient)} على «${ownerTitle(db, r.ownerKind, r.ownerId)}»، وتُسجَّل في سجل التدقيق.`,
-    cta: 'اصرف العهدة',
-    run: () => act(() => { repos.finance.disburse(r.id, { recipientId: recipient, installments: inst }); onClose(); }, 'صُرفت العهدة ووصل المستلم تنبيه برفع الآيبان'),
-  });
-  return (
-    <Modal open onClose={onClose} title={`صرف عهدة: ${ownerTitle(db, r.ownerKind, r.ownerId)}`} footer={<><Button variant="ghost" onClick={onClose}>إلغاء</Button><Button onClick={go}>اصرف العهدة</Button></>}>
-      <div className="space-y-3">
-        <Field label="المستلم (المسؤول الكامل عن العهدة)">
-          <Select value={recipient} onChange={(e) => setRecipient(e.target.value)} options={db.persons.map((p) => ({ value: p.id, label: p.name }))} />
-        </Field>
-        <div className="text-sm font-medium">الدفعات</div>
-        {inst.map((i, idx) => (
-          <div key={idx} className="grid grid-cols-2 gap-2 sm:grid-cols-[110px_150px_1fr_auto]">
-            <Input className="num" type="number" value={i.amount} onChange={(e) => setInst(inst.map((x, j) => (j === idx ? { ...x, amount: +e.target.value } : x)))} aria-label="المبلغ" />
-            <Input type="date" value={i.dueDate} onChange={(e) => setInst(inst.map((x, j) => (j === idx ? { ...x, dueDate: e.target.value } : x)))} aria-label="التاريخ" />
-            <Input className="col-span-2 sm:col-span-1" placeholder="الشرط (مثال: بعد بداية الرحلة)" value={i.condition} onChange={(e) => setInst(inst.map((x, j) => (j === idx ? { ...x, condition: e.target.value } : x)))} />
-            {inst.length > 1 && <button className="min-h-[44px]" onClick={() => setInst(inst.filter((_, j) => j !== idx))} aria-label="احذف الدفعة"><Icons.X className="h-4 w-4 text-ink-400" /></button>}
-          </div>
-        ))}
-        <Button size="sm" variant="secondary" onClick={() => setInst([...inst, { amount: 0, dueDate: addDays(todayISO(), 10), condition: 'بعد بداية التنفيذ' }])}>أضف دفعة</Button>
-        <p className={total === r.amount ? 'text-xs text-ink-500' : 'text-xs text-accent-700'}>المجموع {SAR(total)} من المعتمد {SAR(r.amount)}</p>
-      </div>
-    </Modal>
   );
 }

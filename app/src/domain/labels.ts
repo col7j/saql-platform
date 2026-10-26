@@ -1,5 +1,5 @@
 import type {
-  CustodyStatus, DocKind, DocStatus, FocusStatus, InstallmentStatus, LifeAspectKey, NotificationType,
+  CustodyStatus, DocKind, DocStatus, FocusStatus, LifeAspectKey, NotificationType,
   ProofType, TaskStatus, TripType,
 } from './types';
 
@@ -75,20 +75,11 @@ export const aspectEvidenceHint: Record<LifeAspectKey, string> = {
 export const ASPECT_KEYS: LifeAspectKey[] = ['spiritual', 'health', 'family', 'financial', 'social', 'career'];
 
 export const custodyStatusLabel: Record<CustodyStatus, string> = {
-  setup: 'قيد الصرف',
   active: 'مفعّلة',
   closing: 'قيد الإغلاق',
   closed: 'مغلقة',
 };
-export const custodyStatusTone: Record<CustodyStatus, Tone> = { setup: 'orange', active: 'blue', closing: 'purple', closed: 'green' };
-
-export const installmentStatusLabel: Record<InstallmentStatus, string> = {
-  scheduled: 'مجدولة',
-  awaiting_iban: 'بانتظار الآيبان',
-  awaiting_transfer: 'بانتظار التحويل',
-  awaiting_confirm: 'بانتظار تأكيد الاستلام',
-  received: 'مستلمة',
-};
+export const custodyStatusTone: Record<CustodyStatus, Tone> = { active: 'blue', closing: 'purple', closed: 'green' };
 
 export const coordinationLabel = { housing: 'السكن', transport: 'المواصلات', food: 'التغذية', hosting: 'الاستضافات' } as const;
 
@@ -110,7 +101,7 @@ export const notificationTypeLabel: Record<NotificationType, string> = {
   committee_member_request: 'طلب إضافة عضو للجنة',
   trip_published: 'نشر رحلة',
   survey_available: 'استبيان متاح',
-  invoice_rejected: 'رفض فاتورة',
+  invoice_rejected: 'رفض بند صرف',
   budget_request: 'طلب ميزانية',
   meeting: 'اجتماع',
   general: 'عام',

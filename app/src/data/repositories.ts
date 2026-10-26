@@ -13,14 +13,18 @@ import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
 import type {
   AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
-  Installment, Invoice, LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ScheduleChange, SchedulePlan, Settings,
+  LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ScheduleChange, SchedulePlan, Settings,
   StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
 } from '@/domain/types';
 import { docKindLabel } from '@/domain/labels';
 import {
-  allocatedFor, assertSpendable, financeOwnerId, hasFinancePerm, invoiceError, isFinanceOwner, linesTotal, ownerLink, ownerTitle, routeFor, spendKindLabel, spendKindOf, FINANCE_PERMS,
+  allocatedFor, DIRECT_CUSTODY_KINDS, FINANCE_PERMS, financePermsOf, firstStatusFor, hasFinancePerm, isFinanceOwner, isLeaderId, linesTotal, ownerLink, ownerTitle,
+  spendKindLabel, spendKindOf, submitterOf, tripBudgetFacilitatorId,
 } from '@/domain/finance';
-import type { AuditEntry, BudgetRequest, Person, TempPermission, FinancePermission, InvoiceLine, Meeting, ProgramBudget, SpendKind } from '@/domain/types';
+import { attachmentError, custodyCloseChecks, custodyFigures, formDuplicateWarnings, insufficientFunds, openCustodyConflict, splitWarning } from '@/domain/ledger';
+import type {
+  Attachment, AuditEntry, BudgetRequest, DirectSpend, EditRequest, EditTarget, FeeStatus, FinancePermission, Meeting, Person, ProgramBudget, ProofKind, SpendForm, TempPermission, WalletEntry,
+} from '@/domain/types';
 
 /** إن أعادت الوصفة false فلا تغيير يُحفظ */
 export type Mutate = (recipe: (draft: DB) => unknown) => void;
@@ -61,9 +65,6 @@ function personName(d: DB, id: ID) {
 function audit(d: DB, byId: ID, action: string, detail: string, area: AuditEntry['area'] = 'finance') {
   d.audit.unshift({ id: uid('au'), at: nowISO(), byId, action, detail, area });
 }
-function isLeaderId(d: DB, pid: ID) {
-  return !!d.persons.find((p) => p.id === pid)?.isGeneralLeader;
-}
 function techOnly(d: DB, pid: ID) {
   if (!canManageAccounts(d, pid)) throw new Error('إدارة الحسابات وكلمات المرور لمسؤول اللجنة التقنية وحده');
 }
@@ -86,39 +87,73 @@ function findRequest(d: DB, id: ID) {
   if (!r) throw new Error('الطلب غير موجود');
   return r;
 }
+function findCustody(d: DB, id: ID) {
+  const c = d.custodies.find((x) => x.id === id);
+  if (!c) throw new Error('العهدة غير موجودة');
+  return c;
+}
+function findForm(d: DB, id: ID) {
+  const f = d.spendForms.find((x) => x.id === id);
+  if (!f) throw new Error('نموذج الصرف غير موجود');
+  return f;
+}
 function findMeeting(d: DB, id: ID) {
   const m = d.meetings.find((x) => x.id === id);
   if (!m) throw new Error('الاجتماع غير موجود');
   return m;
 }
-function createCustodyIn(d: DB, input: { ownerKind: Custody['ownerKind']; ownerId: ID; requestId?: ID; recipientId: ID; installments: { amount: number; dueDate: string; condition?: string }[] }) {
-  if (!input.installments.length || input.installments.some((i) => !(i.amount > 0))) throw new Error('حدد مبلغ كل دفعة');
-  const total = input.installments.reduce((s, i) => s + i.amount, 0);
+/** فتح عهدة بأول تحويل من المحفظة (يعبّئ رصيد المستلم). يمر بقاعدة العهد المتزامنة والرصيد الفعلي والإثبات */
+function openCustodyIn(d: DB, by: ID, input: { ownerKind: Custody['ownerKind']; ownerId: ID; requestId?: ID; recipientId: ID; approved: number; amount: number; attachment: Attachment }) {
+  if (!(input.approved > 0)) throw new Error('حدد مبلغ العهدة المعتمد');
+  if (!(input.amount > 0) || input.amount > input.approved + 0.009) throw new Error('مبلغ التحويل الأول بين صفر والمبلغ المعتمد');
+  const spendKind = spendKindOf(d, input.ownerKind, input.ownerId);
+  const conflict = openCustodyConflict(d, input.recipientId, spendKind);
+  if (conflict) throw new Error(conflict);
   const c: Custody = {
-    id: uid('cu'), requestId: input.requestId, ownerKind: input.ownerKind, ownerId: input.ownerId, recipientId: input.recipientId, total, status: 'setup', createdAt: nowISO(),
-    installments: input.installments.map((i, idx) => ({ id: uid('in'), ...i, status: idx === 0 ? 'awaiting_iban' : 'scheduled' })),
+    id: uid('cu'), requestId: input.requestId, ownerKind: input.ownerKind, ownerId: input.ownerId, spendKind, recipientId: input.recipientId,
+    approved: input.approved, transfers: [], status: 'active', createdAt: nowISO(), createdBy: by,
   };
   d.custodies.push(c);
-  pushNotification(d, [input.recipientId], 'custody_issued', `صُرفت لك عهدة ${ownerTitle(d, input.ownerKind, input.ownerId)}: ارفع رقم الآيبان`, '/app/requests');
+  transferIn(d, by, c, input.amount, input.attachment);
+  pushNotification(d, [input.recipientId], 'custody_issued', `حُوّلت لك عهدة ${ownerTitle(d, c.ownerKind, c.ownerId)} (${input.amount} ر.س)`, '/app/requests');
   return c;
+}
+/** تحويل للعهدة من رصيد مسؤول المالية الفعلي، بإيصال إلزامي */
+function transferIn(d: DB, by: ID, c: Custody, amount: number, attachment: Attachment) {
+  const err = attachmentError(attachment, 'إيصال التحويل') ?? insufficientFunds(d, amount);
+  if (err) throw new Error(err);
+  const e = walletOut(d, by, 'custody_transfer', amount, attachment, { custodyId: c.id });
+  c.transfers.push({ id: uid('ct'), amount, at: nowISO(), byId: by, walletEntryId: e.id });
+}
+function walletOut(d: DB, by: ID, kind: WalletEntry['kind'], amount: number, attachment: Attachment, ref?: WalletEntry['ref'], note?: string) {
+  const e: WalletEntry = { id: uid('we'), kind, amount: Math.round(amount * 100) / 100, at: nowISO(), byId: by, attachment, ref, note };
+  d.wallet.push(e);
+  return e;
+}
+/** سطر صرف صالح: تصنيف من القائمة أو «غير موجود» باسم، وبند مكتوب، ومبلغ */
+function lineError(l: { categoryId?: ID; customCategory?: string; item: string; amount: number }, d: DB): string | null {
+  if (!l.categoryId && !l.customCategory?.trim()) return 'اختر تصنيفاً لكل بند، أو «غير موجود» واكتب اسمه';
+  if (l.categoryId && !d.budgetCategories.some((c) => c.id === l.categoryId)) return 'التصنيف غير موجود';
+  if (!l.item.trim()) return 'اكتب شرح كل بند';
+  if (!(l.amount > 0)) return 'اكتب مبلغ كل بند';
+  return null;
+}
+function proofError(p: { vendor: string; invoiceDate: string; attachment: Attachment }, what: string): string | null {
+  return attachmentError(p.attachment, what) ?? (!p.vendor.trim() ? 'اكتب اسم المورد' : !p.invoiceDate ? 'حدد تاريخ الفاتورة' : null);
 }
 /** تقديم طلب ميزانية أو إعادة تقديمه. يُستخدم من الشاشات ومن إنشاء لقاء التركيز */
 function submitRequestIn(d: DB, pid: ID, input: { ownerKind: BudgetRequest['ownerKind']; ownerId: ID; amount: number; lines: BudgetLine[]; detailed: boolean; note?: string }) {
-  if (!d.programBudget.setupDone) throw new Error('لم يُعدّ المسؤول المالي الميزانية بعد. أرسل الطلب بعد إعدادها.');
+  if (!d.programBudget.setupDone) throw new Error('لم يُعدّ مسؤول المالية الموازنة العامة بعد. أرسل الطلب بعد إعدادها.');
+  if (input.ownerKind === 'need') throw new Error('احتياجات البرنامج تُصرف مباشرة أو بعهدة يفتحها مسؤول المالية');
   const spendKind = spendKindOf(d, input.ownerKind, input.ownerId);
-  assertSpendable(d, spendKind);
-  // من يقدّم: الميسّر للقاء التركيز، وقائد الفريق للرحلة، ومسؤول الاجتماع للاجتماع
-  if (input.ownerKind === 'focus') {
-    const fm = d.focusMeetings.find((f) => f.id === input.ownerId)!;
-    if (d.groups.find((g) => g.id === fm.groupId)?.facilitatorId !== pid) throw new Error('طلب ميزانية لقاء التركيز للميسّر فقط');
-    if (allocatedFor(d, 'focus', fm.id) === 0) throw new Error(`هذا اللقاء بعد الحد الأعلى (${d.programBudget.focusLimits.max}) للقاءات بميزانية، فلا يُطلب له ميزانية.`);
-  }
+  if (submitterOf(d, input.ownerKind, input.ownerId) !== pid)
+    throw new Error(input.ownerKind === 'focus' ? 'طلب ميزانية لقاء التركيز للميسّر فقط' : input.ownerKind === 'trip' ? 'ميزانية الرحلة يرفعها قائد الفريق فقط' : 'طلب ميزانية الاجتماع لمسؤوله');
+  if (input.ownerKind === 'focus' && allocatedFor(d, 'focus', input.ownerId) === 0) throw new Error(`هذا اللقاء بعد الحد الأعلى (${d.programBudget.focusLimits.max}) للقاءات بميزانية، فلا يُطلب له ميزانية.`);
   if (input.ownerKind === 'trip') {
-    const t = d.trips.find((x) => x.id === input.ownerId)!;
-    if (tripTeamLeaderId(d, t) !== pid) throw new Error('طلب ميزانية الرحلة لقائد الفريق فقط');
     if (!input.lines.length) throw new Error('الرحلات تُقدَّم دائماً بموازنة تفصيلية: أضف بنود الموازنة');
+    const block = tripBudgetBlock(d, input.ownerId);
+    if (block) throw new Error(block);
   }
-  if (input.ownerKind === 'meeting' && d.meetings.find((m) => m.id === input.ownerId)?.ownerId !== pid) throw new Error('طلب ميزانية الاجتماع لمسؤوله');
   const detailed = input.detailed || input.lines.length > 0;
   const amount = detailed ? linesTotal(input.lines) : input.amount;
   if (!(amount > 0)) throw new Error('اكتب المبلغ المطلوب');
@@ -126,14 +161,51 @@ function submitRequestIn(d: DB, pid: ID, input: { ownerKind: BudgetRequest['owne
   const existing = [...d.budgetRequests].reverse().find((r) => r.ownerKind === input.ownerKind && r.ownerId === input.ownerId);
   if (existing && !['draft', 'rejected', 'needs_detail'].includes(existing.status)) throw new Error('يوجد طلب قائم لهذا العنصر');
   // بعد طلب القائد العام موازنة تفصيلية يعود الطلب إليه مباشرة
-  const status = existing?.status === 'needs_detail' ? 'pending_leader' : routeFor(amount, allocated);
+  const status = existing?.status === 'needs_detail' ? 'pending_leader' : firstStatusFor(d, input.ownerKind, input.ownerId, amount, allocated);
   const r: BudgetRequest = existing ?? { id: uid('br'), ownerKind: input.ownerKind, ownerId: input.ownerId, spendKind, requestedBy: pid, amount, allocated, detailed, lines: [], status, history: [] };
   Object.assign(r, { amount, allocated, detailed, lines: input.lines, note: input.note, status, submittedAt: r.submittedAt ?? nowISO() });
   r.history.push({ at: nowISO(), byId: pid, action: existing?.status === 'needs_detail' ? 'detail_submitted' : 'submit', note: input.note });
   if (!existing) d.budgetRequests.push(r);
   const t = ownerTitle(d, r.ownerKind, r.ownerId);
-  if (status === 'pending_finance') pushNotification(d, financeIdsWith(d, 'approve_within').filter((x) => x !== pid), 'budget_request', `طلب ميزانية ضمن المرصود: ${t} (${amount} ر.س)`, '/app/finance');
-  else pushNotification(d, [leaderId(d)], 'budget_request', `طلب ميزانية يتجاوز المرصود: ${t} (${amount} من ${allocated} ر.س)`, '/app/finance');
+  const over = amount > allocated ? ` — يتجاوز المرصود (${allocated} ر.س)` : '';
+  if (status === 'pending_facilitator') pushNotification(d, [tripBudgetFacilitatorId(d, r.ownerId)!], 'budget_request', `ميزانية رحلة بانتظار اعتمادك: ${t} (${amount} ر.س)`, ownerLink(r.ownerKind, r.ownerId));
+  else if (status === 'pending_finance') pushNotification(d, financeIdsWith(d, 'approve_within').filter((x) => x !== pid), 'budget_request', `طلب ميزانية ضمن المرصود: ${t} (${amount} ر.س)`, '/app/finance');
+  else pushNotification(d, [leaderId(d)], 'budget_request', `طلب ميزانية بانتظار قرارك: ${t} (${amount} ر.س)${over}`, '/app/finance');
+}
+/** شرط ترتيب نماذج الرحلة: الوثيقة أولاً (يُضبط مع نماذج الرحلة) */
+function tripBudgetBlock(_d: DB, _tripId: ID): string | null {
+  return null;
+}
+/** تطبيق طلب تعديل سجل معتمد بعد موافقة القائد العام */
+function applyEditIn(d: DB, er: EditRequest) {
+  const t = er.target;
+  const p = er.patch as { amount?: number; categoryId?: ID; note?: string; budget?: ProgramBudget };
+  if (t.kind === 'spend_line') {
+    const line = d.spendForms.find((f) => f.id === t.formId)?.lines.find((l) => l.id === t.lineId);
+    if (!line) throw new Error('البند غير موجود');
+    if (p.amount != null) line.amount = p.amount;
+    if (p.categoryId) Object.assign(line, { categoryId: p.categoryId, customCategory: undefined });
+  } else if (t.kind === 'direct_spend') {
+    const ds = d.directSpends.find((x) => x.id === t.id);
+    if (!ds) throw new Error('الصرف المباشر غير موجود');
+    if (p.categoryId) ds.lines.forEach((l) => Object.assign(l, { categoryId: p.categoryId, customCategory: undefined }));
+    if (p.amount != null) {
+      if (ds.lines.length !== 1 || ds.allocations.length !== 1) throw new Error('تعديل مبلغ صرف موزّع أو متعدد البنود غير متاح: اعكسه بصرف جديد');
+      const delta = p.amount - ds.total;
+      if (delta > 0) { const err = insufficientFunds(d, delta); if (err) throw new Error(err); }
+      ds.lines[0].amount = ds.allocations[0].amount = ds.total = p.amount;
+      const we = d.wallet.find((e) => e.id === ds.walletEntryId);
+      if (we) we.amount = p.amount;
+    }
+  } else if (t.kind === 'deposit') {
+    const e = d.wallet.find((x) => x.id === t.id && x.kind === 'deposit');
+    if (!e) throw new Error('الإيداع غير موجود');
+    if (p.amount != null) e.amount = p.amount;
+    if (p.note != null) e.note = p.note;
+  } else if (t.kind === 'program_budget') {
+    if (!p.budget) throw new Error('لا موازنة جديدة في الطلب');
+    d.programBudget = { ...p.budget, setupDone: true, setupAt: d.programBudget.setupAt };
+  }
 }
 
 export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () => DB) {
@@ -774,19 +846,21 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
 
     // ───────────── المالية ─────────────
     finance: {
-      /** معالج الميزانية: أول إعداد من المسؤول المالي */
+      /** الموازنة العامة: يسجّلها مسؤول المالية أول مرة، ثم تُقفل ولا تتغيّر إلا بطلب تعديل يوافق عليه القائد العام */
       setupBudget(pb: ProgramBudget) {
         mutate((d) => {
           ownerOnly(d, me());
-          d.programBudget = { ...pb, setupDone: true, setupAt: d.programBudget.setupAt ?? nowISO() };
-          audit(d, me(), pb.setupDone ? 'تعديل الميزانية' : 'إعداد الميزانية', 'حُفظت مبالغ المرصود لكل نوع');
+          if (d.programBudget.setupDone) throw new Error('الموازنة معتمدة ومقفلة: ارفع طلب تعديل للقائد العام');
+          d.programBudget = { ...pb, setupDone: true, setupAt: nowISO() };
+          audit(d, me(), 'إعداد الموازنة العامة', 'حُفظت مبالغ المرصود لكل نوع وقُفلت');
         });
       },
-      setSpendable(kinds: SpendKind[]) {
+      setFinanceSettings(patch: Partial<DB['settings']['finance']>) {
         mutate((d) => {
           ownerOnly(d, me());
-          d.settings.spendableTypes = kinds;
-          audit(d, me(), 'تعديل أنواع الصرف المسموح', kinds.map((k) => spendKindLabel[k]).join('، '));
+          d.settings.finance = { ...d.settings.finance, ...patch, splitAlert: { ...d.settings.finance.splitAlert, ...(patch.splitAlert ?? {}) } };
+          if (!(d.settings.finance.maxOpenCustodies >= 1)) throw new Error('الحد الأدنى للعهد المتزامنة 1');
+          audit(d, me(), 'تعديل الإعدادات المالية', `العهد المتزامنة ${d.settings.finance.maxOpenCustodies} · تنبيه التجزئة ≤ ${d.settings.finance.splitAlert.maxAmount} ر.س خلال ${d.settings.finance.splitAlert.windowDays} أيام (${d.settings.finance.splitAlert.minCount} فواتير)`);
         });
       },
       /** تفويض صلاحية لعضو في اللجنة المالية أو سحبها */
@@ -816,15 +890,42 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
       removeCategory(id: ID) {
         mutate((d) => {
           guard(d, me(), 'manage_categories');
-          const used = d.invoices.some((i) => i.lines.some((l) => l.categoryId === id)) || d.budgetRequests.some((r) => r.lines.some((l) => l.categoryId === id));
-          if (used) throw new Error('لا يُحذف تصنيف عليه فواتير أو موازنات. أخفِه بدلاً من حذفه.');
+          const used = d.spendForms.some((f) => f.lines.some((l) => l.categoryId === id)) || d.directSpends.some((x) => x.lines.some((l) => l.categoryId === id)) || d.budgetRequests.some((r) => r.lines.some((l) => l.categoryId === id));
+          if (used) throw new Error('لا يُحذف تصنيف عليه صرف أو موازنات. أخفِه بدلاً من حذفه.');
           d.budgetCategories = d.budgetCategories.filter((x) => x.id !== id);
+        });
+      },
+
+      // ── المحفظة ──
+      /** إيداع: الجمعية تحوّل لمسؤول المالية فيسجّله بإيصال الحوالة والمبلغ والتفاصيل */
+      deposit(input: { amount: number; attachment: Attachment; source: string; note?: string }) {
+        mutate((d) => {
+          guard(d, me(), 'disburse');
+          if (!(input.amount > 0)) throw new Error('اكتب مبلغ الإيداع');
+          const err = attachmentError(input.attachment, 'إيصال الحوالة');
+          if (err) throw new Error(err);
+          if (!input.source.trim()) throw new Error('اكتب الجهة المحوِّلة');
+          d.wallet.push({ id: uid('we'), kind: 'deposit', amount: input.amount, at: nowISO(), byId: me(), attachment: input.attachment, source: input.source.trim(), note: input.note });
+          audit(d, me(), 'إيداع في المحفظة', `${input.amount} ر.س من ${input.source}`);
         });
       },
 
       // ── طلبات الميزانية ──
       submitRequest(input: { ownerKind: BudgetRequest['ownerKind']; ownerId: ID; amount: number; lines: BudgetLine[]; detailed: boolean; note?: string }) {
         mutate((d) => submitRequestIn(d, me(), input));
+      },
+      /** ميزانية رحلة المجموعة: الميسّر يعتمد ثم القائد العام */
+      facilitatorDecide(requestId: ID, approve: boolean, reason?: string) {
+        mutate((d) => {
+          const r = findRequest(d, requestId);
+          if (r.status !== 'pending_facilitator' || tripBudgetFacilitatorId(d, r.ownerId) !== me()) throw new Error('الطلب ليس بانتظارك');
+          if (!approve && !reason?.trim()) throw new Error('اكتب سبب الإعادة');
+          r.status = approve ? 'pending_leader' : 'rejected';
+          r.history.push({ at: nowISO(), byId: me(), action: approve ? 'facilitator_approve' : 'facilitator_reject', note: reason });
+          const t = ownerTitle(d, r.ownerKind, r.ownerId);
+          if (approve) pushNotification(d, [leaderId(d)], 'budget_request', `ميزانية ${t} بانتظار اعتمادك (${r.amount} ر.س)${r.amount > r.allocated ? ` — تتجاوز المرصود ${r.allocated} ر.س` : ''}`, '/app/finance');
+          else pushNotification(d, [r.requestedBy], 'approval_rejected', `أعاد الميسّر ميزانية ${t}: ${reason}`, ownerLink(r.ownerKind, r.ownerId));
+        });
       },
       financeDecide(requestId: ID, approve: boolean, reason?: string) {
         mutate((d) => {
@@ -839,159 +940,291 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           pushNotification(d, [r.requestedBy], approve ? 'approval_approved' : 'approval_rejected', approve ? `وافقت المالية على ميزانية ${ownerTitle(d, r.ownerKind, r.ownerId)}` : `رُفض طلب ميزانية ${ownerTitle(d, r.ownerKind, r.ownerId)}: ${reason}`, ownerLink(r.ownerKind, r.ownerId));
         });
       },
-      /** القائد العام (لما يتجاوز المرصود): يعتمد، أو يرفض، أو يطلب موازنة تفصيلية. ولا يصرف */
+      /** القائد العام: يعتمد التجاوز وميزانيات الرحلات (منبَّهاً إن تجاوزت المرصود)، أو يرفض، أو يطلب تفصيلاً. ولا يصرف */
       leaderDecide(requestId: ID, decision: 'approve' | 'reject' | 'detail', reason?: string) {
         mutate((d) => {
-          if (!d.persons.find((p) => p.id === me())?.isGeneralLeader) throw new Error('هذا القرار للقائد العام فقط');
+          if (!isLeaderId(d, me())) throw new Error('هذا القرار للقائد العام فقط');
           const r = findRequest(d, requestId);
           if (r.status !== 'pending_leader') throw new Error('الطلب ليس بانتظار القائد العام');
           if (decision !== 'approve' && !reason?.trim()) throw new Error('اكتب السبب أو المطلوب');
           r.status = decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'needs_detail';
           r.history.push({ at: nowISO(), byId: me(), action: decision === 'approve' ? 'leader_approve' : decision === 'reject' ? 'leader_reject' : 'leader_request_detail', note: reason });
-          audit(d, me(), { approve: 'اعتماد تجاوز المرصود', reject: 'رفض تجاوز المرصود', detail: 'طلب موازنة تفصيلية' }[decision], `${ownerTitle(d, r.ownerKind, r.ownerId)} — ${r.amount} ر.س (المرصود ${r.allocated})`);
+          const over = r.amount > r.allocated;
+          audit(d, me(), { approve: over ? 'اعتماد ميزانية تتجاوز المرصود' : 'اعتماد ميزانية', reject: 'رفض ميزانية', detail: 'طلب موازنة تفصيلية' }[decision], `${ownerTitle(d, r.ownerKind, r.ownerId)} — ${r.amount} ر.س (المرصود ${r.allocated})`);
           const t = ownerTitle(d, r.ownerKind, r.ownerId);
           if (decision === 'approve') {
             pushNotification(d, [r.requestedBy], 'approval_approved', `اعتمد القائد العام ميزانية ${t}`, ownerLink(r.ownerKind, r.ownerId));
-            pushNotification(d, [financeOwnerId(d)!], 'custody_issued', `اعتمد القائد العام ميزانية ${t}: اصرف العهدة`, '/app/finance');
+            pushNotification(d, financeIdsWith(d, 'disburse'), 'custody_issued', `اعتُمدت ميزانية ${t}: حوّل العهدة`, '/app/finance');
           } else pushNotification(d, [r.requestedBy], 'approval_rejected', decision === 'reject' ? `رفض القائد العام ميزانية ${t}: ${reason}` : `طلب القائد العام موازنة تفصيلية لـ ${t}: ${reason}`, ownerLink(r.ownerKind, r.ownerId));
         });
       },
-      /** صرف العهدة بعد اعتماد الطلب. ممنوع خارج أنواع الصرف المسموح */
-      disburse(requestId: ID, input: { recipientId: ID; installments: { amount: number; dueDate: string; condition?: string }[] }) {
+
+      // ── العهد ──
+      /** صرف عهدة الطلب المعتمد: تحويل أول بإيصال (كامل أو جزء إن لم يكفِ الرصيد، والباقي دفعة ثانية) */
+      disburse(requestId: ID, input: { recipientId: ID; amount: number; attachment: Attachment }) {
         mutate((d) => {
           guard(d, me(), 'disburse');
           const r = findRequest(d, requestId);
-          assertSpendable(d, r.spendKind);
           if (r.status !== 'approved') throw new Error('لا تُصرف العهدة إلا بعد اعتماد الطلب');
           if (d.custodies.some((c) => c.requestId === r.id)) throw new Error('صُرفت عهدة هذا الطلب مسبقاً');
-          createCustodyIn(d, { ownerKind: r.ownerKind, ownerId: r.ownerId, requestId: r.id, ...input });
-          r.history.push({ at: nowISO(), byId: me(), action: 'disbursed' });
-          audit(d, me(), 'صرف عهدة', `${ownerTitle(d, r.ownerKind, r.ownerId)} — ${input.installments.reduce((s, i) => s + i.amount, 0)} ر.س لـ ${personName(d, input.recipientId)} (${input.installments.length} دفعات)`);
+          const c = openCustodyIn(d, me(), { ownerKind: r.ownerKind, ownerId: r.ownerId, requestId: r.id, recipientId: input.recipientId, approved: r.amount, amount: input.amount, attachment: input.attachment });
+          r.history.push({ at: nowISO(), byId: me(), action: 'disbursed', note: input.amount < r.amount ? `دفعة أولى ${input.amount} من ${r.amount}` : undefined });
+          audit(d, me(), 'صرف عهدة', `${ownerTitle(d, r.ownerKind, r.ownerId)} — ${input.amount} من ${r.amount} ر.س لـ ${personName(d, input.recipientId)}`);
+          d.tasks.filter((t) => t.tripId === c.ownerId && t.tag === 'custody_issue' && t.status !== 'done').forEach((t) => Object.assign(t, { status: 'done', doneAt: nowISO(), proof: `حُوّلت ${input.amount} ر.س` }));
         });
       },
-      /** صرف مباشر بلا طلب (للاجتماعات مثلاً): يمر بنفس قاعدة الصرف المسموح */
-      disburseDirect(ownerKind: BudgetRequest['ownerKind'], ownerId: ID, input: { recipientId: ID; installments: { amount: number; dueDate: string; condition?: string }[] }) {
+      /** عهدة بلا طلب للافتتاحي والختامي واحتياجات البرنامج (لشخص يقفلها، مثل القائد العام) */
+      issueCustody(input: { ownerKind: Custody['ownerKind']; ownerId: ID; recipientId: ID; approved: number; amount: number; attachment: Attachment }) {
         mutate((d) => {
           guard(d, me(), 'disburse');
-          assertSpendable(d, spendKindOf(d, ownerKind, ownerId));
-          createCustodyIn(d, { ownerKind, ownerId, ...input });
-          audit(d, me(), 'صرف عهدة مباشرة', `${ownerTitle(d, ownerKind, ownerId)} — ${input.installments.reduce((s, i) => s + i.amount, 0)} ر.س`);
+          const kind = spendKindOf(d, input.ownerKind, input.ownerId);
+          if (!DIRECT_CUSTODY_KINDS.includes(kind)) throw new Error(`عهدة «${spendKindLabel[kind]}» تُصرف بعد اعتماد طلبها`);
+          openCustodyIn(d, me(), input);
+          audit(d, me(), 'صرف عهدة مباشرة', `${ownerTitle(d, input.ownerKind, input.ownerId)} — ${input.amount} من ${input.approved} ر.س لـ ${personName(d, input.recipientId)}`);
+        });
+      },
+      /** الدفعة التالية (المؤجّلة لعدم كفاية الرصيد) */
+      transferMore(custodyId: ID, amount: number, attachment: Attachment) {
+        mutate((d) => {
+          guard(d, me(), 'disburse');
+          const c = findCustody(d, custodyId);
+          if (c.status !== 'active') throw new Error('العهدة ليست مفعّلة');
+          const left = c.approved - c.transfers.reduce((s, t) => s + t.amount, 0);
+          if (!(amount > 0) || amount > left + 0.009) throw new Error(`المتبقي من المعتمد ${Math.round(left * 100) / 100} ر.س`);
+          transferIn(d, me(), c, amount, attachment);
+          audit(d, me(), 'تحويل دفعة عهدة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${amount} ر.س`);
+          pushNotification(d, [c.recipientId], 'custody_issued', `حُوّلت دفعة ${amount} ر.س على عهدة ${ownerTitle(d, c.ownerKind, c.ownerId)}`, '/app/requests');
         });
       },
       setMeetingAllocation(meetingId: ID, amount: number) {
         mutate((d) => {
           ownerOnly(d, me());
           d.meetings.find((m) => m.id === meetingId)!.allocated = amount;
-          audit(d, me(), 'مرصود اجتماع', `${d.meetings.find((m) => m.id === meetingId)!.title} — ${amount} ر.س (للتخطيط)`);
+          audit(d, me(), 'مرصود اجتماع', `${d.meetings.find((m) => m.id === meetingId)!.title} — ${amount} ر.س`);
         });
       },
-      submitIban(custodyId: ID, iban: string) {
+
+      // ── نموذج الصرف ──
+      /** المستلم يرفع نموذج صرف: فاتورة (أو إيصال تحويل) بسطر أو أكثر. يُقبل ولو تجاوز رصيد العهدة (يُسجَّل عجزاً) */
+      submitSpendForm(custodyId: ID, input: { vendor: string; serial?: string; invoiceDate: string; proofKind: ProofKind; attachment: Attachment; lines: { categoryId?: ID; customCategory?: string; item: string; amount: number }[] }) {
+        let id = '';
         mutate((d) => {
-          const c = d.custodies.find((x) => x.id === custodyId)!;
-          c.iban = iban;
-          c.installments.forEach((i) => i.status === 'awaiting_iban' && (i.status = 'awaiting_transfer'));
-          pushNotification(d, financeIdsWith(d, 'disburse'), 'custody_issued', 'رُفع الآيبان: العهدة جاهزة للتحويل', '/app/finance?tab=custody');
-        });
-      },
-      transfer(custodyId: ID, installmentId: ID, receipt: string) {
-        mutate((d) => {
-          guard(d, me(), 'disburse');
-          const c = d.custodies.find((x) => x.id === custodyId)!;
-          const i = c.installments.find((x) => x.id === installmentId)!;
-          Object.assign(i, { status: 'awaiting_confirm', transferReceipt: receipt, transferredAt: nowISO() } satisfies Partial<Installment>);
-          audit(d, me(), 'تحويل دفعة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${i.amount} ر.س إلى ${personName(d, c.recipientId)}`);
-          pushNotification(d, [c.recipientId], 'custody_issued', `حُوّلت دفعة ${i.amount} ر.س: أكّد الاستلام`, '/app/requests');
-        });
-      },
-      releaseInstallment(custodyId: ID, installmentId: ID) {
-        mutate((d) => {
-          guard(d, me(), 'disburse');
-          const c = d.custodies.find((x) => x.id === custodyId)!;
-          const i = c.installments.find((x) => x.id === installmentId)!;
-          i.status = c.iban ? 'awaiting_transfer' : 'awaiting_iban';
-        });
-      },
-      confirmReceipt(custodyId: ID, installmentId: ID) {
-        mutate((d) => {
-          const c = d.custodies.find((x) => x.id === custodyId)!;
-          if (c.recipientId !== me()) throw new Error('تأكيد الاستلام لمستلم العهدة فقط');
-          const i = c.installments.find((x) => x.id === installmentId)!;
-          i.status = 'received';
-          i.confirmedAt = nowISO();
-          if (c.status === 'setup') c.status = 'active'; // المستلم يؤكد الاستلام فتتفعل العهدة
-        });
-      },
-      addInvoice(custodyId: ID, inv: { total: number; lines: InvoiceLine[]; image: string }) {
-        mutate((d) => {
-          const err = invoiceError(inv.total, inv.lines, inv.image);
+          const c = findCustody(d, custodyId);
+          if (c.recipientId !== me()) throw new Error('نموذج الصرف يرفعه صاحب العهدة');
+          if (c.status !== 'active') throw new Error(c.status === 'closing' ? 'أُرسل طلب الإغلاق فتوقف الصرف' : 'العهدة مغلقة');
+          const err = proofError(input, input.proofKind === 'invoice' ? 'صورة الفاتورة' : 'إيصال التحويل') ?? (!input.lines.length ? 'أضف بنداً واحداً على الأقل' : null) ?? input.lines.map((l) => lineError(l, d)).find(Boolean) ?? null;
           if (err) throw new Error(err);
-          d.invoices.push({ id: uid('iv'), custodyId, ...inv, uploadedBy: me(), status: 'pending', at: nowISO() });
-          pushNotification(d, financeIdsWith(d, 'review_invoices'), 'general', 'فاتورة جديدة بانتظار المراجعة', '/app/finance?tab=invoices');
+          id = uid('sf');
+          const form: SpendForm = {
+            id, custodyId, uploadedBy: me(), at: nowISO(), vendor: input.vendor.trim(), serial: input.serial?.trim() || undefined, invoiceDate: input.invoiceDate, proofKind: input.proofKind, attachment: input.attachment,
+            lines: input.lines.map((l) => ({ id: uid('sl'), categoryId: l.categoryId || undefined, customCategory: l.categoryId ? undefined : l.customCategory?.trim(), item: l.item.trim(), amount: Math.round(l.amount * 100) / 100, status: 'pending' as const })),
+          };
+          d.spendForms.push(form);
+          const warn = [...formDuplicateWarnings(d, form), splitWarning(d, form)].filter(Boolean);
+          pushNotification(d, financeIdsWith(d, 'review_invoices'), 'general', `نموذج صرف بانتظار المراجعة — ${ownerTitle(d, c.ownerKind, c.ownerId)}${warn.length ? ` (تنبيه: ${warn[0]})` : ''}`, '/app/finance?tab=invoices');
         });
+        return id;
       },
-      updateInvoice(invoiceId: ID, inv: { total: number; lines: InvoiceLine[]; image: string }) {
-        mutate((d) => {
-          const err = invoiceError(inv.total, inv.lines, inv.image);
-          if (err) throw new Error(err);
-          const i = d.invoices.find((x) => x.id === invoiceId)!;
-          Object.assign(i, inv, { status: 'pending', rejectReason: undefined, at: nowISO() });
-        });
-      },
-      reviewInvoice(invoiceId: ID, accept: boolean, reason?: string) {
+      /** الرقم التسلسلي: يُدخل يدوياً إن لم يكتبه الرافع (مكان جاهز لقراءته بـ OCR لاحقاً) */
+      setSerial(formId: ID, serial: string) {
         mutate((d) => {
           guard(d, me(), 'review_invoices');
-          if (!accept && !reason?.trim()) throw new Error('اكتب سبب الرفض ليعرف المستلم ما يعدّله');
-          const i = d.invoices.find((x) => x.id === invoiceId)!;
-          i.status = accept ? 'accepted' : 'rejected';
-          i.rejectReason = accept ? undefined : reason;
-          const c = d.custodies.find((x) => x.id === i.custodyId)!;
-          audit(d, me(), accept ? 'قبول فاتورة' : 'رفض فاتورة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${i.total} ر.س${reason ? ` — ${reason}` : ''}`);
-          if (!accept) pushNotification(d, [c.recipientId], 'invoice_rejected', `رُفضت فاتورة بقيمة ${i.total} ر.س: ${reason}`, '/app/requests');
+          const f = findForm(d, formId);
+          if (f.lines.every((l) => l.status !== 'pending')) throw new Error('رُوجع النموذج وقُفل');
+          f.serial = serial.trim() || undefined;
         });
       },
+      /** مراجعة كل بند وحده: يُعدَّل التصنيف والمبلغ (لا الصورة ولا الشرح) ثم يُقبل أو يُرفض. المقبول يُقفل */
+      reviewLine(formId: ID, lineId: ID, input: { accept: boolean; categoryId?: ID; amount?: number; note?: string }) {
+        mutate((d) => {
+          guard(d, me(), 'review_invoices');
+          const f = findForm(d, formId);
+          const c = findCustody(d, f.custodyId);
+          if (c.recipientId === me()) throw new Error('لا يراجع صاحب العهدة صرفه بنفسه');
+          const l = f.lines.find((x) => x.id === lineId);
+          if (!l) throw new Error('البند غير موجود');
+          if (l.status !== 'pending') throw new Error('البند مراجَع ومقفل: التعديل بطلب يوافق عليه القائد العام');
+          if (input.accept) {
+            if (!f.serial) throw new Error('أدخل الرقم التسلسلي للفاتورة قبل القبول');
+            const categoryId = input.categoryId ?? l.categoryId;
+            if (!categoryId) throw new Error('اختر تصنيفاً من القائمة لبند «غير موجود» قبل قبوله');
+            const amount = input.amount ?? l.amount;
+            if (!(amount > 0)) throw new Error('المبلغ أكبر من صفر');
+            if (categoryId !== l.categoryId || amount !== l.amount) l.original = { categoryId: l.categoryId, customCategory: l.customCategory, amount: l.amount };
+            Object.assign(l, { categoryId, customCategory: undefined, amount, status: 'accepted' });
+          } else {
+            if (!input.note?.trim()) throw new Error('اكتب سبب الرفض');
+            l.status = 'rejected';
+          }
+          Object.assign(l, { reviewNote: input.note, reviewedBy: me(), reviewedAt: nowISO() });
+          audit(d, me(), input.accept ? 'قبول بند صرف' : 'رفض بند صرف', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${l.item} ${l.amount} ر.س${l.original ? ` (كان ${l.original.amount})` : ''}${input.note ? ` — ${input.note}` : ''}`);
+          if (!input.accept) pushNotification(d, [c.recipientId], 'invoice_rejected', `رُفض بند «${l.item}» (${l.amount} ر.س): ${input.note}`, '/app/requests');
+        });
+      },
+
+      // ── الصرف المباشر ──
+      /** يصرفه مسؤول المالية بنفسه من رصيده على نشاط أو أكثر، بفاتورة وتصنيف ومبلغ، بلا اعتماد حتى لو تجاوز */
+      directSpend(input: { allocations: DirectSpend['allocations']; vendor: string; serial?: string; invoiceDate: string; proofKind: ProofKind; attachment: Attachment; lines: { categoryId?: ID; customCategory?: string; item: string; amount: number }[] }) {
+        mutate((d) => {
+          guard(d, me(), 'disburse');
+          const err = proofError(input, 'الفاتورة أو إيصال التحويل') ?? (!input.lines.length ? 'أضف بنداً واحداً على الأقل' : null) ?? input.lines.map((l) => lineError(l, d)).find(Boolean) ?? null;
+          if (err) throw new Error(err);
+          const total = Math.round(input.lines.reduce((s, l) => s + l.amount, 0) * 100) / 100;
+          const allocated = Math.round(input.allocations.reduce((s, a) => s + a.amount, 0) * 100) / 100;
+          if (!input.allocations.length || input.allocations.some((a) => !(a.amount > 0))) throw new Error('حدد النشاط ومبلغ كل حصة');
+          if (Math.abs(allocated - total) > 0.009) throw new Error(`مجموع التوزيع (${allocated}) يجب أن يساوي مبلغ الفاتورة (${total}) بالضبط`);
+          const funds = insufficientFunds(d, total);
+          if (funds) throw new Error(funds);
+          const id = uid('ds');
+          const e = walletOut(d, me(), 'direct_spend', total, input.attachment, { directSpendId: id });
+          d.directSpends.push({
+            id, allocations: input.allocations, vendor: input.vendor.trim(), serial: input.serial?.trim() || undefined, invoiceDate: input.invoiceDate, proofKind: input.proofKind, attachment: input.attachment,
+            lines: input.lines.map((l) => ({ id: uid('dl'), categoryId: l.categoryId || undefined, customCategory: l.categoryId ? undefined : l.customCategory?.trim(), item: l.item.trim(), amount: l.amount })), total, byId: me(), at: nowISO(), walletEntryId: e.id,
+          });
+          audit(d, me(), 'صرف مباشر', `${input.allocations.map((a) => `${ownerTitle(d, a.ownerKind, a.ownerId)} ${a.amount}`).join(' + ')} ر.س — ${input.vendor}`);
+        });
+      },
+
+      // ── احتياجات البرنامج والعقود ──
+      createNeed(title: string, description?: string): ID {
+        const id = uid('nd');
+        mutate((d) => {
+          guard(d, me(), 'disburse');
+          if (!title.trim()) throw new Error('اكتب اسم الاحتياج');
+          d.programNeeds.push({ id, title: title.trim(), description, createdBy: me(), at: nowISO() });
+        });
+        return id;
+      },
+      createContract(input: { needId: ID; vendor: string; title: string; total: number; payments: { amount: number; dueDate: string }[] }) {
+        mutate((d) => {
+          guard(d, me(), 'disburse');
+          if (!d.programNeeds.some((n) => n.id === input.needId)) throw new Error('العقود في احتياجات البرنامج فقط');
+          if (!input.vendor.trim() || !input.title.trim()) throw new Error('اكتب المورد وموضوع العقد');
+          if (!(input.total > 0) || !input.payments.length || input.payments.some((p) => !(p.amount > 0) || !p.dueDate)) throw new Error('حدد قيمة العقد ومبلغ وموعد كل دفعة');
+          const sum = Math.round(input.payments.reduce((s, p) => s + p.amount, 0) * 100) / 100;
+          if (Math.abs(sum - input.total) > 0.009) throw new Error(`مجموع الدفعات (${sum}) يجب أن يساوي قيمة العقد (${input.total})`);
+          d.contracts.push({ id: uid('ctr'), needId: input.needId, vendor: input.vendor.trim(), title: input.title.trim(), total: input.total, payments: input.payments.map((p) => ({ id: uid('cp'), ...p })), createdBy: me(), at: nowISO() });
+          audit(d, me(), 'عقد جديد', `${input.title} — ${input.vendor} — ${input.total} ر.س (${input.payments.length} دفعات)`);
+        });
+      },
+      payContract(contractId: ID, paymentId: ID, attachment: Attachment) {
+        mutate((d) => {
+          guard(d, me(), 'disburse');
+          const c = d.contracts.find((x) => x.id === contractId);
+          const p = c?.payments.find((x) => x.id === paymentId);
+          if (!c || !p) throw new Error('الدفعة غير موجودة');
+          if (p.paidAt) throw new Error('الدفعة مدفوعة');
+          const err = attachmentError(attachment, 'فاتورة الدفعة أو إيصال تحويلها') ?? insufficientFunds(d, p.amount);
+          if (err) throw new Error(err);
+          const e = walletOut(d, me(), 'contract_payment', p.amount, attachment, { contractId, paymentId });
+          Object.assign(p, { paidAt: nowISO(), byId: me(), attachment, walletEntryId: e.id });
+          audit(d, me(), 'دفعة عقد', `${c.title} — ${p.amount} ر.س`);
+        });
+      },
+
+      // ── الإغلاق ──
+      /** صاحب العهدة يرسل طلب الإغلاق فيتوقف الصرف فوراً */
       requestClose(custodyId: ID) {
         mutate((d) => {
-          d.custodies.find((x) => x.id === custodyId)!.status = 'closing';
-          pushNotification(d, financeIdsWith(d, 'close_custody'), 'general', 'طلب إغلاق عهدة', '/app/finance?tab=custody');
+          const c = findCustody(d, custodyId);
+          if (c.recipientId !== me()) throw new Error('طلب الإغلاق لصاحب العهدة');
+          if (c.status !== 'active') throw new Error('العهدة ليست مفعّلة');
+          Object.assign(c, { status: 'closing', closeRequestedAt: nowISO() });
+          pushNotification(d, financeIdsWith(d, 'close_custody'), 'general', `طلب إغلاق عهدة: ${ownerTitle(d, c.ownerKind, c.ownerId)}`, '/app/finance?tab=custody');
         });
       },
-      refund(custodyId: ID, amount: number, receipt: string) {
-        mutate((d) => (d.custodies.find((x) => x.id === custodyId)!.refund = { amount, receipt, at: nowISO() }));
-      },
-      requestOverspend(custodyId: ID, amount: number, reason: string) {
+      /** الفائض: يحوّله صاحب العهدة لحساب مسؤول المالية ويرفع الإيصال */
+      submitSurplusReturn(custodyId: ID, attachment: Attachment) {
         mutate((d) => {
-          d.custodies.find((x) => x.id === custodyId)!.overspend = { amount, reason };
-          pushNotification(d, [financeOwnerId(d)!, leaderId(d)], 'general', 'طلب موافقة على مصروف زائد عن الموازنة', '/app/finance?tab=custody');
+          const c = findCustody(d, custodyId);
+          if (c.recipientId !== me()) throw new Error('إيصال الفائض يرفعه صاحب العهدة');
+          const err = attachmentError(attachment, 'إيصال تحويل الفائض');
+          if (err) throw new Error(err);
+          c.surplusReturn = { attachment, at: nowISO() };
+          pushNotification(d, financeIdsWith(d, 'close_custody'), 'general', `رُفع إيصال فائض عهدة ${ownerTitle(d, c.ownerKind, c.ownerId)}`, '/app/finance?tab=custody');
         });
       },
-      approveOverspend(custodyId: ID, as: 'finance' | 'admin') {
+      /** تسوية الإغلاق: تأكيد استلام الفائض، أو العجز بتحويله للشخص من الرصيد أو بتسوية خارجية يتحمّلها المسؤول أو صاحب العهدة */
+      settle(custodyId: ID, input: { method: 'transfer' | 'external'; bearer?: 'finance_officer' | 'holder'; attachment?: Attachment; note?: string }) {
         mutate((d) => {
-          const c = d.custodies.find((x) => x.id === custodyId)!;
-          if (!c.overspend) return false;
-          if (as === 'finance') { guard(d, me(), 'close_custody'); c.overspend.financeApproved = true; }
-          else {
-            if (!d.persons.find((p) => p.id === me())?.isGeneralLeader) throw new Error('موافقة الإدارة للقائد العام');
-            c.overspend.adminApproved = true;
-          }
-          audit(d, me(), 'موافقة على مصروف زائد', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${c.overspend.amount} ر.س`);
+          guard(d, me(), 'close_custody');
+          const c = findCustody(d, custodyId);
+          if (c.status !== 'closing') throw new Error('التسوية بعد طلب الإغلاق');
+          if (c.settlement) throw new Error('سُوّيت العهدة مسبقاً');
+          const f = custodyFigures(d, c);
+          if (f.pendingLines) throw new Error('راجع كل بنود الصرف قبل التسوية');
+          if (f.surplus > 0.009) {
+            if (!c.surplusReturn) throw new Error('بانتظار إيصال تحويل الفائض من صاحب العهدة');
+            const e: WalletEntry = { id: uid('we'), kind: 'surplus_return', amount: f.surplus, at: nowISO(), byId: me(), attachment: c.surplusReturn.attachment, ref: { custodyId: c.id } };
+            d.wallet.push(e);
+            c.settlement = { kind: 'surplus', amount: f.surplus, method: 'transfer', attachment: c.surplusReturn.attachment, at: nowISO(), byId: me(), walletEntryId: e.id };
+            audit(d, me(), 'استلام فائض عهدة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${f.surplus} ر.س`);
+          } else if (f.deficit > 0.009) {
+            const err = attachmentError(input.attachment, input.method === 'transfer' ? 'إيصال تحويل العجز' : 'مستند التسوية');
+            if (err) throw new Error(err);
+            if (input.method === 'external' && !input.bearer) throw new Error('حدد من يتحمّل التسوية');
+            let walletEntryId: ID | undefined;
+            if (input.method === 'transfer') {
+              const funds = insufficientFunds(d, f.deficit);
+              if (funds) throw new Error(funds);
+              walletEntryId = walletOut(d, me(), 'deficit_payout', f.deficit, input.attachment!, { custodyId: c.id }).id;
+            }
+            c.settlement = { kind: 'deficit', amount: f.deficit, method: input.method, bearer: input.method === 'external' ? input.bearer : undefined, attachment: input.attachment!, note: input.note, at: nowISO(), byId: me(), walletEntryId };
+            audit(d, me(), input.method === 'transfer' ? 'تحويل عجز عهدة' : 'تسوية عجز من خارج العهدة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${f.deficit} ر.س${input.bearer ? ` يتحمّلها ${input.bearer === 'holder' ? personName(d, c.recipientId) : 'مسؤول المالية'}` : ''}`);
+          } else throw new Error('لا فائض ولا عجز: أغلق العهدة مباشرة');
         });
       },
       closeCustody(custodyId: ID) {
         mutate((d) => {
           guard(d, me(), 'close_custody');
-          const c = d.custodies.find((x) => x.id === custodyId)!;
-          c.status = 'closed';
-          c.closedAt = nowISO();
-          audit(d, me(), 'إغلاق عهدة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — ${c.total} ر.س`);
+          const c = findCustody(d, custodyId);
+          const failed = custodyCloseChecks(d, c).find((x) => !x.ok);
+          if (failed) throw new Error(`لا يُغلق قبل: ${failed.label}`);
+          Object.assign(c, { status: 'closed', closedAt: nowISO(), closedBy: me() });
+          audit(d, me(), 'إغلاق عهدة', `${ownerTitle(d, c.ownerKind, c.ownerId)} — معتمد ${c.approved} ر.س، مقبول ${custodyFigures(d, c).accepted} ر.س`);
           d.tasks.filter((t) => t.tripId === c.ownerId && t.tag === 'custody_close').forEach((t) => Object.assign(t, { status: 'done', doneAt: nowISO() }));
+          pushNotification(d, [c.recipientId], 'general', `أُغلقت عهدة ${ownerTitle(d, c.ownerKind, c.ownerId)}`, '/app/requests');
         });
       },
-      setFee(personId: ID, paid: boolean, note?: string) {
+
+      // ── الرسوم ──
+      setFee(personId: ID, input: { status: FeeStatus; paidAmount?: number; exemption?: string; note?: string }) {
         mutate((d) => {
           ownerOnly(d, me());
-          const f = d.fees.find((x) => x.personId === personId);
-          if (f) Object.assign(f, { paid, paidAt: paid ? todayISO() : undefined, note });
-          else d.fees.push({ personId, amount: d.settings.feeAmount, paid, paidAt: paid ? todayISO() : undefined, note });
+          let f = d.fees.find((x) => x.personId === personId);
+          if (!f) d.fees.push((f = { personId, amount: d.settings.feeAmount, status: 'unpaid', paidAmount: 0 }));
+          const paidAmount = input.status === 'paid' ? f.amount : input.status === 'unpaid' ? 0 : input.paidAmount ?? f.paidAmount;
+          if (input.status === 'partial' && !(paidAmount > 0 && paidAmount < f.amount)) throw new Error(`السداد الجزئي بين صفر و${f.amount}`);
+          Object.assign(f, { status: input.status, paidAmount, exemption: input.exemption?.trim() || undefined, note: input.note, updatedAt: nowISO() });
+          audit(d, me(), 'تحديث رسوم', `${personName(d, personId)} — ${{ paid: 'مسدد', partial: `جزئي ${paidAmount}`, unpaid: 'غير مسدد' }[input.status]}${f.exemption ? ` (استثناء: ${f.exemption})` : ''}`);
+        });
+      },
+
+      // ── تعديل السجلات المعتمدة ──
+      /** السجل المعتمد لا يُعدَّل مباشرة: يُرفع طلب للقائد العام */
+      requestEdit(input: { target: EditTarget; patch: Record<string, unknown>; summary: string; reason: string }) {
+        mutate((d) => {
+          if (!financePermsOf(d, me()).some((p) => p !== 'view_budget')) throw new Error('طلب تعديل السجلات المالية لمسؤول المالية ومن فُوِّض');
+          if (!input.reason.trim()) throw new Error('اكتب سبب التعديل');
+          const t = input.target;
+          if (t.kind === 'spend_line' && d.spendForms.find((f) => f.id === t.formId)?.lines.find((l) => l.id === t.lineId)?.status !== 'accepted') throw new Error('التعديل بطلب للبنود المعتمدة فقط');
+          if (t.kind === 'program_budget' && !d.programBudget.setupDone) throw new Error('الموازنة لم تُعتمد بعد: عدّلها مباشرة');
+          if (d.editRequests.some((e) => e.status === 'pending' && JSON.stringify(e.target) === JSON.stringify(t))) throw new Error('يوجد طلب تعديل قائم لهذا السجل');
+          d.editRequests.push({ id: uid('er'), ...input, requestedBy: me(), at: nowISO(), status: 'pending' });
+          audit(d, me(), 'طلب تعديل سجل معتمد', `${input.summary} — ${input.reason}`);
+          pushNotification(d, [leaderId(d)], 'general', `طلب تعديل سجل مالي معتمد: ${input.summary}`, '/app/finance?tab=edits');
+        });
+      },
+      decideEdit(id: ID, approve: boolean, note?: string) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('الموافقة على تعديل السجلات المعتمدة للقائد العام');
+          const er = d.editRequests.find((x) => x.id === id);
+          if (!er || er.status !== 'pending') throw new Error('الطلب غير قائم');
+          if (!approve && !note?.trim()) throw new Error('اكتب سبب الرفض');
+          if (approve) applyEditIn(d, er);
+          Object.assign(er, { status: approve ? 'approved' : 'rejected', decidedBy: me(), decidedAt: nowISO(), decisionNote: note });
+          audit(d, me(), approve ? 'موافقة على تعديل سجل معتمد' : 'رفض تعديل سجل معتمد', `${er.summary}${note ? ` — ${note}` : ''}`);
+          pushNotification(d, [er.requestedBy], approve ? 'approval_approved' : 'approval_rejected', `${approve ? 'وافق' : 'رفض'} القائد العام طلب التعديل: ${er.summary}`, '/app/finance?tab=edits');
         });
       },
     },

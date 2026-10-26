@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { addDays, fmtDate, fmtTime, todayISO } from '@/domain/dates';
-import { isFinanceOwner, spendBlockReason } from '@/domain/finance';
+import { isFinanceOwner } from '@/domain/finance';
+import { RequestPanel } from './RequestPanel';
 import { SAR } from '@/domain/labels';
 import type { Meeting, MeetingStatus } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
@@ -141,7 +142,6 @@ export function MeetingDetail() {
   const st = stage[m.status];
   const tasks = db.tasks.filter((t) => t.meetingId === m.id);
   const ownerFin = isFinanceOwner(db, me.person.id);
-  const blocked = spendBlockReason(db, 'meeting');
 
   return (
     <div>
@@ -189,12 +189,12 @@ export function MeetingDetail() {
             <p className="text-sm">{m.kind === 'periodic' ? `دوري: ${recurrenceLabel[m.recurrence]}` : 'طارئ'}{m.withGroupLeaders && ' · مع قادة المجموعات'}</p>
             {(ownerFin || me.isLeader || isOwner) && (
               <div className="mt-3 space-y-2 border-t border-ink-100 pt-3">
-                <div className="text-sm">المرصود (للتخطيط): <b className="num">{SAR(m.allocated ?? db.programBudget.meetingDefault)}</b></div>
+                <div className="text-sm">المرصود: <b className="num">{SAR(m.allocated ?? db.programBudget.meetingDefault)}</b></div>
                 {ownerFin && <AllocationEditor meeting={m} />}
-                {blocked && <Notice tone="orange">{blocked}</Notice>}
               </div>
             )}
           </Card>
+          <RequestPanel ownerKind="meeting" ownerId={m.id} title="ميزانية الاجتماع (عهدة لمسؤوله)" />
         </div>
       </div>
       {minutes && <MinutesModal meeting={m} onClose={() => setMinutes(false)} />}

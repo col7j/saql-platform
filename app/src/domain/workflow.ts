@@ -3,7 +3,7 @@ import { addDays, dateTime, diffDays, minutesOf, now, nowISO, todayISO } from '.
 import { groupOf, isMaterialRevealed, tripTeamIds } from './permissions';
 import { isBudgetApproved, ownerTitle, requestFor } from './finance';
 import type {
-  Approval, Custody, DB, DocKind, DocStatus, FocusMeeting, ID, PersonalPlan, ScheduleItem, Settings, Task, Trip, TripDoc,
+  Approval, DB, DocKind, DocStatus, FocusMeeting, ID, PersonalPlan, ScheduleItem, Settings, Task, Trip, TripDoc,
 } from './types';
 
 // ───────────── دورة الاعتماد (قسم 6.4) ─────────────
@@ -241,38 +241,10 @@ export function tripDeadlines(db: DB, trip: Trip) {
   return list;
 }
 
-// ───────────── العهدة ─────────────
-export function custodyFigures(db: DB, c: Custody) {
-  const inv = db.invoices.filter((i) => i.custodyId === c.id);
-  const received = c.installments.filter((i) => i.status === 'received').reduce((s, i) => s + i.amount, 0);
-  const accepted = inv.filter((i) => i.status === 'accepted').reduce((s, i) => s + i.total, 0);
-  const pending = inv.filter((i) => i.status === 'pending').reduce((s, i) => s + i.total, 0);
-  const rejected = inv.filter((i) => i.status === 'rejected');
-  const remaining = received - accepted - (c.refund?.amount ?? 0);
-  return { received, accepted, pending, rejected, remaining, invoices: inv, overspend: Math.max(0, accepted - c.total) };
-}
-
-/** هل يمكن إغلاق العهدة؟ (قسم 11.6) */
-export function custodyCloseChecks(db: DB, c: Custody, settings: Settings) {
-  const f = custodyFigures(db, c);
-  const checks = [
-    { label: 'استلام كل الدفعات', ok: c.installments.every((i) => i.status === 'received') },
-    { label: 'رفع الفواتير مع صورها', ok: f.invoices.length > 0 },
-    { label: 'مراجعة كل الفواتير وقبولها', ok: f.invoices.every((i) => i.status === 'accepted') },
-    { label: 'إرجاع الفائض بإيصال', ok: f.remaining <= 0.5 || !!c.refund },
-  ];
-  if (f.overspend > 0 && settings.overspendNeedsApproval)
-    checks.push({ label: 'موافقة المالية والإدارة على المصروف الزائد', ok: !!c.overspend?.financeApproved && !!c.overspend?.adminApproved });
-  return checks;
-}
-
 export function budgetTotal(lines: { qty: number; price: number }[]) {
   return lines.reduce((s, l) => s + l.qty * l.price, 0);
 }
 
-export function custodyOwnerTitle(db: DB, c: Custody): string {
-  return ownerTitle(db, c.ownerKind, c.ownerId);
-}
 
 // ───────────── المهام ─────────────
 export function isTaskLate(t: Task): boolean {

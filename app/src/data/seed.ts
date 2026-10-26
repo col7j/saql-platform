@@ -1,15 +1,16 @@
 // البيانات التجريبية الكاملة. التواريخ نسبية لتاريخ اليوم حتى تبقى الحالات منطقية.
 import { addDays, dateTime, todayISO } from '@/domain/dates';
+import { sha256Hex } from '@/domain/crypto';
 import { tasksFromTemplates } from '@/domain/workflow';
 import type {
-  Attendance, AuditEntry, BudgetRequest, Custody, Meeting, DB, FocusMeeting, IndividualMeeting, AvailabilitySlot, Invoice, LifeAspect, Material, Notification,
+  Attachment, Attendance, AuditEntry, BudgetRequest, Contract, Custody, DirectSpend, EditRequest, FeeRecord, Meeting, DB, FocusMeeting, IndividualMeeting, AvailabilitySlot, LifeAspect, Material, Notification, ProgramNeed, SpendForm, SpendLine, WalletEntry,
   PersonalPlan, Survey, Task,
 } from '@/domain/types';
 import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, defaultSettings, defaultTaskTemplates } from './defaults';
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
-export const DB_VERSION = 7;
+export const DB_VERSION = 8;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -240,7 +241,18 @@ export function buildSeed(): DB {
   );
 
   // ── المالية ──
-  const programBudget = defaultProgramBudget(); // لم يُعدّها المسؤول المالي بعد: يظهر له المعالج أول دخول
+  // الموازنة العامة معتمدة ومقفلة منذ بداية البرنامج (تعديلها بطلب للقائد العام)
+  const programBudget = { ...defaultProgramBudget(), setupDone: true, setupAt: iso(addDays(T, -59)) };
+  const att = (name: string, type = 'image/jpeg'): Attachment => ({ name, type, size: 80000 + name.length * 997, hash: sha256Hex(`seed:${name}`) });
+  const wallet: WalletEntry[] = [];
+  const wout = (kind: WalletEntry['kind'], amount: number, file: string, daysAgo: number, ref?: WalletEntry['ref'], by = 's5') => {
+    const e: WalletEntry = { id: id('we'), kind, amount, at: iso(addDays(T, -daysAgo)), byId: by, attachment: att(file), ref };
+    wallet.push(e);
+    return e;
+  };
+  wallet.push({ id: 'we_dep1', kind: 'deposit', amount: 30000, at: iso(addDays(T, -58)), byId: 's5', attachment: att('حوالة-الجمعية-1.jpg'), source: 'جمعية البرنامج (الدفعة الأولى)' });
+  wallet.push({ id: 'we_dep2', kind: 'deposit', amount: 15000, at: iso(addDays(T, -20)), byId: 's5', attachment: att('حوالة-الجمعية-2.jpg'), source: 'جمعية البرنامج (الدفعة الثانية)', note: 'لتغطية الرحلات الخارجية' });
+
   const budgetRequests: BudgetRequest[] = [];
   const reqEv = (byId: string, action: BudgetRequest['history'][number]['action'], daysAgo: number, note?: string) => ({ at: iso(addDays(T, -daysAgo)), byId, action, note });
   const req = (r: Partial<BudgetRequest> & Pick<BudgetRequest, 'ownerKind' | 'ownerId' | 'spendKind' | 'requestedBy' | 'amount' | 'allocated' | 'status'>, history: BudgetRequest['history']) => {
@@ -253,13 +265,14 @@ export function buildSeed(): DB {
     const lines = budgets[tripId];
     return req({ ownerKind: 'trip', ownerId: tripId, spendKind: kind, requestedBy: by, lines, amount: lines.reduce((s, l) => s + l.qty * l.price, 0), allocated, status }, history);
   };
-  const rT1 = tripReq('t1', 's2', 'opening', programBudget.opening, 'approved', [reqEv('s2', 'submit', 66), reqEv('s5', 'finance_approve', 65)]);
-  const rT2 = tripReq('t2', 's3', 'internal_trip', 3500, 'approved', [reqEv('s3', 'submit', 42), reqEv('s5', 'finance_approve', 41)]);
-  const rT3 = tripReq('t3', 'u1', 'internal_trip', 3500, 'approved', [reqEv('u1', 'submit', 27), reqEv('s5', 'finance_approve', 26)]);
-  const rT4 = tripReq('t4', 'u7', 'internal_trip', 3500, 'approved', [reqEv('u7', 'submit', 12), reqEv('s1', 'finance_approve', 11)]);
-  const rT5 = tripReq('t5', 'u13', 'internal_trip', 3500, 'approved', [reqEv('u13', 'submit', 4), reqEv('s5', 'finance_approve', 2)]);
-  tripReq('t6', 'u19', 'internal_trip', 3500, 'pending_finance', [reqEv('u19', 'submit', 1)]);
-  tripReq('t7', 'u1', 'external_trip', programBudget.externalTrip.perItem, 'pending_leader', [reqEv('u1', 'submit', 1, 'السكن في العُلا أغلى من المتوقع')]);
+  // رحلات فريق العمل للقائد العام مباشرة، ورحلات المجموعات: الميسّر ثم القائد العام
+  const rT1 = tripReq('t1', 's2', 'opening', programBudget.opening, 'approved', [reqEv('s2', 'submit', 66), reqEv(LEADER_ID, 'leader_approve', 65)]);
+  const rT2 = tripReq('t2', 's3', 'internal_trip', 3500, 'approved', [reqEv('s3', 'submit', 42), reqEv(LEADER_ID, 'leader_approve', 41)]);
+  const rT3 = tripReq('t3', 'u1', 'internal_trip', 3500, 'approved', [reqEv('u1', 'submit', 28), reqEv('s1', 'facilitator_approve', 27), reqEv(LEADER_ID, 'leader_approve', 26)]);
+  const rT4 = tripReq('t4', 'u7', 'internal_trip', 3500, 'approved', [reqEv('u7', 'submit', 13), reqEv('s2', 'facilitator_approve', 12), reqEv(LEADER_ID, 'leader_approve', 11)]);
+  tripReq('t5', 'u13', 'internal_trip', 3500, 'approved', [reqEv('u13', 'submit', 5), reqEv('s3', 'facilitator_approve', 4), reqEv(LEADER_ID, 'leader_approve', 2)]);
+  tripReq('t6', 'u19', 'internal_trip', 3500, 'pending_facilitator', [reqEv('u19', 'submit', 1)]);
+  tripReq('t7', 'u1', 'external_trip', programBudget.externalTrip.perItem, 'pending_leader', [reqEv('u1', 'submit', 2, 'السكن في العُلا أغلى من المتوقع'), reqEv('s1', 'facilitator_approve', 1)]);
   const rUmrah = req({ ownerKind: 'focus', ownerId: 'f_g1_5', spendKind: 'focus', requestedBy: 's1', amount: 1440, allocated: programBudget.umrahPerGroup, status: 'approved' }, [reqEv('s1', 'submit', 24), reqEv('s5', 'finance_approve', 23)]);
   const rF23 = req({ ownerKind: 'focus', ownerId: 'f_g2_3', spendKind: 'focus', requestedBy: 's2', amount: 150, allocated: per, status: 'approved' }, [reqEv('s2', 'submit', 9), reqEv('s1', 'finance_approve', 8)]);
   req({ ownerKind: 'focus', ownerId: 'f_g1_4', spendKind: 'focus', requestedBy: 's1', amount: 150, allocated: per, status: 'approved' }, [reqEv('s1', 'submit', 3), reqEv('s5', 'finance_approve', 2)]);
@@ -268,47 +281,91 @@ export function buildSeed(): DB {
   req({ ownerKind: 'focus', ownerId: 'f_g2_4', spendKind: 'focus', requestedBy: 's2', amount: 400, allocated: per, status: 'rejected' }, [reqEv('s2', 'submit', 5), reqEv('p_lead', 'leader_reject', 4, 'مكافأة الضيف الخارجي لا تُصرف من لقاءات التركيز. أعد الطلب بالضيافة فقط.')]);
 
   const custodies: Custody[] = [];
-  const invoices: Invoice[] = [];
-  const inv = (custodyId: string, lines: [string, string, number][], status: Invoice['status'], uploadedBy: string, rejectReason?: string) =>
-    invoices.push({ id: id('iv'), custodyId, total: lines.reduce((s, l) => s + l[2], 0), lines: lines.map(([categoryId, description, amount]) => ({ id: id('il'), categoryId, description, amount })), image: 'invoice.jpg', uploadedBy, status, rejectReason, at: iso(addDays(T, -1)) });
-  const closedCustody = (cid: string, requestId: string, tripId: string, recipient: string, total: number, d: string) => {
-    custodies.push({ id: cid, requestId, ownerKind: 'trip', ownerId: tripId, recipientId: recipient, total, iban: 'SA0380000000608010167519', status: 'closed', createdAt: iso(addDays(d, -8)), closedAt: iso(addDays(d, 9)),
-      installments: [{ id: id('in'), amount: total, dueDate: addDays(d, -5), status: 'received', transferReceipt: 'receipt.pdf', transferredAt: iso(addDays(d, -5)), confirmedAt: iso(addDays(d, -5), 15) }],
-      refund: { amount: 80, receipt: 'refund.pdf', at: iso(addDays(d, 6)) } });
-    inv(cid, [['bc_transport', 'باص كوستر', 1000]], 'accepted', recipient);
-    inv(cid, [['bc_food', 'غداء الرحلة', 1080]], 'accepted', recipient);
-    inv(cid, [['bc_hosting', 'قهوة وتمر', 200], ['bc_food', 'ماء ووجبات خفيفة', 80]], 'accepted', recipient);
-    inv(cid, [['bc_guests', 'مكافأة المحاضر', 500]], 'accepted', recipient);
-    inv(cid, [['bc_tickets', 'رسوم دخول', 300]], 'accepted', recipient);
+  const spendForms: SpendForm[] = [];
+  const custody = (cid: string, requestId: string | undefined, ownerKind: Custody['ownerKind'], ownerId: string, spendKind: Custody['spendKind'], recipient: string, approved: number, transfers: [number, number][], status: Custody['status'], createdAgo: number, extra: Partial<Custody> = {}) => {
+    const c: Custody = {
+      id: cid, requestId, ownerKind, ownerId, spendKind, recipientId: recipient, approved, status, createdAt: iso(addDays(T, -createdAgo)), createdBy: 's5',
+      transfers: transfers.map(([amount, ago], i) => ({ id: id('ct'), amount, at: iso(addDays(T, -ago)), byId: 's5', walletEntryId: wout('custody_transfer', amount, `إيصال-${cid}-${i + 1}.jpg`, ago, { custodyId: cid }).id })),
+      ...extra,
+    };
+    custodies.push(c);
+    return c;
   };
-  closedCustody('cu_t1', rT1, 't1', 's2', 3240, addDays(T, -52));
-  closedCustody('cu_t3', rT3, 't3', 'u1', 3240, addDays(T, -16));
-  // لقاء الخطة الشخصية: قيد الإغلاق
-  custodies.push({ id: 'cu_t2', requestId: rT2, ownerKind: 'trip', ownerId: 't2', recipientId: 's3', total: 3240, iban: 'SA4420000001234567891234', status: 'closing', createdAt: iso(addDays(T, -38)),
-    installments: [{ id: id('in'), amount: 3240, dueDate: addDays(T, -35), status: 'received', transferReceipt: 'receipt.pdf', transferredAt: iso(addDays(T, -35)), confirmedAt: iso(addDays(T, -35), 16) }] });
-  inv('cu_t2', [['bc_transport', 'نقل المشاركين', 1000]], 'accepted', 's3');
-  inv('cu_t2', [['bc_food', 'غداء', 1150]], 'pending', 's3');
-  inv('cu_t2', [['bc_guests', 'مكافأة المدرب', 500]], 'pending', 's3');
-  // الرحلة الجارية: عهدة بدفعتين وفاتورة بسطرين مرفوضة
-  custodies.push({ id: 'cu_t4', requestId: rT4, ownerKind: 'trip', ownerId: 't4', recipientId: 'u7', total: 3240, iban: 'SA1180000123456789012345', status: 'active', createdAt: iso(addDays(T, -8)),
-    installments: [
-      { id: id('in'), amount: 2000, dueDate: addDays(T, -5), condition: 'بعد اعتماد الموازنة', status: 'received', transferReceipt: 'receipt-1.pdf', transferredAt: iso(addDays(T, -5)), confirmedAt: iso(addDays(T, -5), 14) },
-      { id: id('in'), amount: 1240, dueDate: T, condition: 'بعد بداية الرحلة', status: 'awaiting_transfer' },
-    ] });
-  inv('cu_t4', [['bc_transport', 'عربون الباص', 500]], 'accepted', 'u7');
-  inv('cu_t4', [['bc_hosting', 'قهوة وتمر', 180], ['bc_food', 'وجبات خفيفة', 110]], 'rejected', 'u7', 'الفاتورة غير واضحة ولا يظهر فيها الرقم الضريبي');
-  inv('cu_t4', [['bc_tickets', 'رسوم دخول', 320]], 'pending', 'u8');
-  // رحلة سَلع: صُرفت وتنتظر الآيبان
-  custodies.push({ id: 'cu_t5', requestId: rT5, ownerKind: 'trip', ownerId: 't5', recipientId: 'u13', total: 3240, status: 'setup', createdAt: iso(addDays(T, -1)),
-    installments: [{ id: id('in'), amount: 2500, dueDate: addDays(T, 2), condition: 'بعد اعتماد الموازنة', status: 'awaiting_iban' }, { id: id('in'), amount: 740, dueDate: addDays(T, 9), condition: 'بعد بداية الرحلة', status: 'scheduled' }] });
-  // عهدة لقاء العمرة (ميسّر أُحُد): مغلقة
-  custodies.push({ id: 'cu_umrah', requestId: rUmrah, ownerKind: 'focus', ownerId: 'f_g1_5', recipientId: 's1', total: 1440, iban: 'SA0380000000608010167519', status: 'closed', createdAt: iso(addDays(T, -22)), closedAt: iso(addDays(T, -12)),
-    installments: [{ id: id('in'), amount: 1440, dueDate: addDays(T, -20), status: 'received', transferReceipt: 'r.pdf', transferredAt: iso(addDays(T, -20)), confirmedAt: iso(addDays(T, -20)) }] });
-  inv('cu_umrah', [['bc_transport', 'باص كوستر', 1200], ['bc_food', 'إفطار', 240]], 'accepted', 's1');
-  // عهدة لقاء تركيز عادي
-  custodies.push({ id: 'cu_f22', requestId: rF23, ownerKind: 'focus', ownerId: 'f_g2_3', recipientId: 's2', total: 150, iban: 'SA5500000000000000000001', status: 'active', createdAt: iso(addDays(T, -6)),
-    installments: [{ id: id('in'), amount: 150, dueDate: addDays(T, -5), status: 'received', transferReceipt: 'r.pdf', transferredAt: iso(addDays(T, -5)), confirmedAt: iso(addDays(T, -5)) }] });
-  inv('cu_f22', [['bc_hosting', 'ضيافة اللقاء', 165]], 'pending', 's2');
+  type L = [categoryId: string | undefined, item: string, amount: number, status: SpendLine['status'], custom?: string, note?: string];
+  const form = (custodyId: string, by: string, vendor: string, serial: string | undefined, ago: number, lines: L[], file?: string) => {
+    const f: SpendForm = {
+      id: id('sf'), custodyId, uploadedBy: by, at: iso(addDays(T, -ago)), vendor, serial, invoiceDate: addDays(T, -ago), proofKind: 'invoice', attachment: att(file ?? `فاتورة-${custodyId}-${spendForms.length}.jpg`),
+      lines: lines.map(([categoryId, item, amount, status, custom, note]) => ({ id: id('sl'), categoryId, customCategory: custom, item, amount, status, reviewNote: note, reviewedBy: status === 'pending' ? undefined : 's5', reviewedAt: status === 'pending' ? undefined : iso(addDays(T, -ago + 1)) })),
+    };
+    spendForms.push(f);
+    return f;
+  };
+  const closedTrip = (cid: string, requestId: string, tripId: string, recipient: string, d: string, ago: number) => {
+    custody(cid, requestId, 'trip', tripId, tripId === 't1' ? 'opening' : 'internal_trip', recipient, 3240, [[3240, ago]], 'closed', ago + 1, { closedAt: iso(addDays(d, 9)), closedBy: 's5', closeRequestedAt: iso(addDays(d, 5)) });
+    form(cid, recipient, 'مؤسسة النقل الذهبي', `${cid}-101`, ago - 6, [['bc_transport', 'باص كوستر', 1000, 'accepted']]);
+    form(cid, recipient, 'مطعم الطيبين', `${cid}-102`, ago - 6, [['bc_food', 'غداء الرحلة', 1080, 'accepted']]);
+    form(cid, recipient, 'محمصة المدينة', `${cid}-103`, ago - 6, [['bc_hosting', 'قهوة وتمر', 200, 'accepted'], ['bc_food', 'ماء ووجبات خفيفة', 80, 'accepted']]);
+    form(cid, recipient, 'المحاضر', `${cid}-104`, ago - 6, [['bc_guests', 'مكافأة المحاضر', 500, 'accepted']], `إيصال-مكافأة-${cid}.jpg`);
+  };
+  // الافتتاحي: فائض 80 أُرجع بإيصال
+  closedTrip('cu_t1', rT1, 't1', 's2', addDays(T, -52), 58);
+  form('cu_t1', 's2', 'متنزه الملك فهد', 'cu_t1-105', 52, [['bc_tickets', 'رسوم دخول', 300, 'accepted']]);
+  const c1 = custodies.find((c) => c.id === 'cu_t1')!;
+  const ret = att('إيصال-فائض-cu_t1.jpg');
+  const r1 = wout('surplus_return', 80, 'إيصال-فائض-cu_t1.jpg', 46, { custodyId: 'cu_t1' });
+  Object.assign(c1, { surplusReturn: { attachment: ret, at: iso(addDays(T, -47)) }, settlement: { kind: 'surplus', amount: 80, method: 'transfer', attachment: ret, at: iso(addDays(T, -46)), byId: 's5', walletEntryId: r1.id } });
+  // رحلة أُحُد الداخلية: عجز 60 سُوّي من خارج العهدة ويتحمّله صاحبها
+  closedTrip('cu_t3', rT3, 't3', 'u1', addDays(T, -16), 24);
+  form('cu_t3', 'u1', 'حديقة الملك فهد', 'cu_t3-105', 17, [['bc_tickets', 'رسوم دخول', 440, 'accepted']]);
+  Object.assign(custodies.find((c) => c.id === 'cu_t3')!, { settlement: { kind: 'deficit', amount: 60, method: 'external', bearer: 'holder', attachment: att('إقرار-تسوية-cu_t3.jpg'), note: 'تجاوز اتفق عليه قائد المجموعة', at: iso(addDays(T, -8)), byId: 's5' } });
+  // لقاء الخطة الشخصية: قيد الإغلاق، وبندان بانتظار المراجعة
+  custody('cu_t2', rT2, 'trip', 't2', 'internal_trip', 's3', 3240, [[3240, 36]], 'closing', 37, { closeRequestedAt: iso(addDays(T, -2)) });
+  form('cu_t2', 's3', 'مؤسسة النقل الذهبي', 'T2-55', 34, [['bc_transport', 'نقل المشاركين', 1000, 'accepted']]);
+  form('cu_t2', 's3', 'مطعم الطيبين', undefined, 33, [['bc_food', 'غداء', 1150, 'pending'], ['bc_guests', 'مكافأة المدرب', 500, 'pending']]);
+  // الرحلة الجارية: دفعة أولى 2000 والباقي مؤجّل، وبند مرفوض، وبند «غير موجود»، وتكرار صورة، واحتمال تجزئة
+  custody('cu_t4', rT4, 'trip', 't4', 'internal_trip', 'u7', 3240, [[2000, 6]], 'active', 7);
+  form('cu_t4', 'u7', 'مؤسسة النقل الذهبي', 'A-7731', 5, [['bc_transport', 'عربون الباص', 500, 'accepted']], 'عربون-الباص.jpg');
+  form('cu_t4', 'u7', 'تموينات الرحاب', 'R-118', 2, [['bc_hosting', 'قهوة وتمر', 180, 'accepted'], ['bc_food', 'وجبات خفيفة', 110, 'rejected', undefined, 'الفاتورة لا تظهر فيها الكمية: أعد رفعها في نموذج جديد']]);
+  form('cu_t4', 'u7', 'تموينات الرحاب', 'R-121', 1, [['bc_food', 'ماء', 95, 'pending']]);
+  form('cu_t4', 'u7', 'تموينات الرحاب', undefined, 1, [['bc_hosting', 'أكواب وصحون', 120, 'pending']]);
+  form('cu_t4', 'u7', 'مؤسسة النقل الذهبي', 'A-7731', 0, [[undefined, 'إيجار مكبر صوت', 150, 'pending', 'معدات صوتية'], ['bc_tickets', 'رسوم دخول', 170, 'pending']], 'عربون-الباص.jpg');
+  // عهدة لقاء العمرة: مغلقة بلا فائض ولا عجز
+  custody('cu_umrah', rUmrah, 'focus', 'f_g1_5', 'focus', 's1', 1440, [[1440, 21]], 'closed', 22, { closedAt: iso(addDays(T, -12)), closedBy: 's5', closeRequestedAt: iso(addDays(T, -14)) });
+  form('cu_umrah', 's1', 'مؤسسة النقل الذهبي', 'U-901', 18, [['bc_transport', 'باص كوستر', 1200, 'accepted'], ['bc_food', 'إفطار', 240, 'accepted']]);
+  // لقاء تركيز: صرف أكثر من رصيد العهدة (يُقبل ويُسجَّل عجزاً)
+  custody('cu_f22', rF23, 'focus', 'f_g2_3', 'focus', 's2', 150, [[150, 5]], 'active', 6);
+  form('cu_f22', 's2', 'محمصة المدينة', 'M-44', 3, [['bc_hosting', 'ضيافة اللقاء', 165, 'pending']]);
+
+  // ── احتياجات البرنامج والصرف المباشر والعقود ──
+  const programNeeds: ProgramNeed[] = [
+    { id: 'nd1', title: 'المطبوعات والهوية', description: 'دروع وشعارات ولوحات', createdBy: 's5', at: iso(addDays(T, -50)) },
+    { id: 'nd2', title: 'مستلزمات المقر', description: 'قرطاسية وضيافة دائمة', createdBy: 's5', at: iso(addDays(T, -40)) },
+  ];
+  custody('cu_nd2', undefined, 'need', 'nd2', 'program_needs', LEADER_ID, 1200, [[1200, 30]], 'active', 30);
+  form('cu_nd2', LEADER_ID, 'مكتبة جرير', 'J-5510', 25, [['bc_print', 'قرطاسية', 320, 'accepted']]);
+  const directSpends: DirectSpend[] = [];
+  const direct = (allocations: DirectSpend['allocations'], vendor: string, serial: string, ago: number, lines: [string, string, number][]) => {
+    const total = lines.reduce((s, l) => s + l[2], 0);
+    const dsId = id('ds');
+    const e = wout('direct_spend', total, `فاتورة-مباشر-${dsId}.jpg`, ago, { directSpendId: dsId });
+    directSpends.push({ id: dsId, allocations, vendor, serial, invoiceDate: addDays(T, -ago), proofKind: 'invoice', attachment: e.attachment, lines: lines.map(([categoryId, item, amount]) => ({ id: id('dl'), categoryId, item, amount })), total, byId: 's5', at: iso(addDays(T, -ago)), walletEntryId: e.id });
+  };
+  direct([{ ownerKind: 'trip', ownerId: 't4', amount: 800 }], 'شركة الرحلات المتحدة', 'U-3301', 4, [['bc_transport', 'حافلة إضافية', 800]]);
+  // مصروف مشترك (سكن) موزّع على رحلتين خارجيتين، والفاتورة مرة واحدة
+  direct([{ ownerKind: 'trip', ownerId: 't7', amount: 3500 }, { ownerKind: 'trip', ownerId: 't8', amount: 2500 }], 'فندق الريف', 'H-2207', 3, [['bc_housing', 'حجز سكن مشترك', 6000]]);
+  const contracts: Contract[] = [{
+    id: 'ctr1', needId: 'nd1', vendor: 'مطبعة المدينة', title: 'دروع ولوحات البرنامج', total: 5000, createdBy: 's5', at: iso(addDays(T, -45)),
+    payments: [
+      { id: 'cp1', amount: 2500, dueDate: addDays(T, -30), paidAt: iso(addDays(T, -30)), byId: 's5', attachment: att('فاتورة-مطبعة-1.jpg'), walletEntryId: wout('contract_payment', 2500, 'فاتورة-مطبعة-1.jpg', 30, { contractId: 'ctr1', paymentId: 'cp1' }).id },
+      { id: 'cp2', amount: 2500, dueDate: addDays(T, 10) },
+    ],
+  }];
+  // طلب تعديل سجل معتمد بانتظار القائد العام
+  const lineT1 = spendForms.find((f) => f.custodyId === 'cu_t1')!.lines[0];
+  const editRequests: EditRequest[] = [{
+    id: 'er1', target: { kind: 'spend_line', formId: spendForms.find((f) => f.custodyId === 'cu_t1')!.id, lineId: lineT1.id }, patch: { amount: 950 },
+    summary: `باص كوستر (الافتتاحي): المبلغ 1000 ← 950 ر.س`, reason: 'خصم لاحق من المورد بعد الاعتماد', requestedBy: 's5', at: iso(addDays(T, -1)), status: 'pending',
+  }];
 
   const audit: AuditEntry[] = [
     { id: 'au1', at: iso(addDays(T, -60)), byId: 's5', action: 'منح صلاحية', detail: 'عرض الميزانية — خالد العمري' },
@@ -328,7 +385,14 @@ export function buildSeed(): DB {
     { id: 'mt4', title: 'اجتماع اللجنة المالية', kind: 'urgent', recurrence: 'none', withGroupLeaders: false, createdBy: 's5', ownerId: 's5', date: addDays(T, -1), start: '19:00', end: '20:00', location: 'عن بعد', inviteeIds: ['s5', 's1', 's3', LEADER_ID], agenda: ['اعتماد مبالغ المرصود', 'العهد المفتوحة'], status: 'held', attendeeIds: ['s5', 's1', 's3'], decisions: [], outputs: [], createdAt: iso(addDays(T, -3)) },
   ];
 
-  const fees = participants.map((p, i) => ({ personId: p.id, amount: settings.feeAmount, paid: i % 7 !== 3 && i % 5 !== 4, paidAt: i % 7 !== 3 && i % 5 !== 4 ? addDays(T, -58 + i) : undefined }));
+  // الرسوم: مسدد، جزئي، غير مسدد، واستثناء يُعتبر سداداً
+  const fees: FeeRecord[] = participants.map((p, i) => {
+    const amount = settings.feeAmount;
+    if (i % 11 === 5) return { personId: p.id, amount, status: 'paid', paidAmount: amount, exemption: 'جمعية البر: تكفّلت بالرسوم', updatedAt: iso(addDays(T, -50)) };
+    if (i % 7 === 3) return { personId: p.id, amount, status: 'partial', paidAmount: 250, note: 'يكمل الباقي الشهر القادم', updatedAt: iso(addDays(T, -40)) };
+    if (i % 5 === 4) return { personId: p.id, amount, status: 'unpaid', paidAmount: 0 };
+    return { personId: p.id, amount, status: 'paid', paidAmount: amount, updatedAt: iso(addDays(T, -58 + i)) };
+  });
 
   // ── المهام ──
   const tasks: Task[] = [];
@@ -442,8 +506,13 @@ export function buildSeed(): DB {
     budgetRequests,
     audit,
     meetings,
+    wallet,
     custodies,
-    invoices,
+    spendForms,
+    directSpends,
+    programNeeds,
+    contracts,
+    editRequests,
     fees,
     attendance,
     manualPoints: [],

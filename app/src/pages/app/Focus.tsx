@@ -5,7 +5,7 @@ import { addDays, fmtDate, fmtTime, todayISO } from '@/domain/dates';
 import { focusStatusLabel, focusStatusTone } from '@/domain/labels';
 import { facilitatorTargetProgress, focusDone } from '@/domain/workflow';
 import type { FocusMeeting } from '@/domain/types';
-import { focusCounter, isSpendable, perItem } from '@/domain/finance';
+import { focusCounter, perItem } from '@/domain/finance';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Progress, Select, StepWizard, Tabs, Toggle, cx } from '@/ui';
 import { GroupBadge } from '@/ui/domain';
@@ -95,7 +95,7 @@ function CreateFocusModal({ onClose }: { onClose: () => void }) {
   const [requestBudget, setRequestBudget] = useState(true);
   const [amount, setAmount] = useState<number | null>(null);
   const finalAmount = amount ?? defaultAmount;
-  const budgetReady = db.programBudget.setupDone && isSpendable(db, 'focus');
+  const budgetReady = db.programBudget.setupDone;
 
   const submit = () => act(() => {
     const id = repos.focus.create({

@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { pendingActions } from '@/domain/actions';
 import { calKindColor, calKindLabel, eventsFor } from '@/domain/calendar';
 import { fmtShort, fmtTime, relativeDays, todayISO } from '@/domain/dates';
+import { budgetOverview } from '@/domain/ledger';
 import { SAR, tripTypeLabel } from '@/domain/labels';
 import { groupsPublished, tripTeamLeaderId } from '@/domain/permissions';
 import {
-  custodyFigures, facilitatorTargetProgress, isPlanUnlocked, isTaskLate, kpiValue, planProgress, tripDeadlines, tripProgress, tripStage, tripStageLabel,
+  facilitatorTargetProgress, isPlanUnlocked, isTaskLate, kpiValue, planProgress, tripDeadlines, tripProgress, tripStage, tripStageLabel,
 } from '@/domain/workflow';
 import { useDB, useMe, useScores } from '@/state/store';
 import { Badge, Card, Empty, Icons, PageHeader, Progress, Stat } from '@/ui';
@@ -146,14 +147,14 @@ function FacilitatorPanel() {
 function FinancePanel() {
   const db = useDB();
   const open = db.custodies.filter((c) => c.status !== 'closed');
-  const pending = db.invoices.filter((i) => i.status === 'pending');
-  const unpaid = db.fees.filter((f) => !f.paid);
-  const spent = db.custodies.reduce((s, c) => s + custodyFigures(db, c).accepted, 0);
+  const pending = db.spendForms.flatMap((f) => f.lines).filter((l) => l.status === 'pending');
+  const unpaid = db.fees.filter((f) => f.status !== 'paid');
+  const spent = budgetOverview(db).spent;
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       <Stat label="عهد مفتوحة" value={open.length} icon={<Icons.Wallet className="h-5 w-5" />} to="/app/finance?tab=custody" />
-      <Stat label="فواتير معلقة" value={pending.length} hint={SAR(pending.reduce((s, i) => s + i.total, 0))} icon={<Icons.Receipt className="h-5 w-5" />} tone="accent" to="/app/finance?tab=invoices" />
-      <Stat label="رسوم غير مسددة" value={unpaid.length} icon={<Icons.BadgeAlert className="h-5 w-5" />} tone="red" to="/app/finance?tab=fees" />
+      <Stat label="بنود صرف معلقة" value={pending.length} hint={SAR(pending.reduce((s, l) => s + l.amount, 0))} icon={<Icons.Receipt className="h-5 w-5" />} tone="accent" to="/app/finance?tab=invoices" />
+      <Stat label="رسوم غير مسددة أو جزئية" value={unpaid.length} icon={<Icons.BadgeAlert className="h-5 w-5" />} tone="red" to="/app/finance?tab=fees" />
       <Stat label="إجمالي المصروف المعتمد" value={SAR(spent)} icon={<Icons.ChartPie className="h-5 w-5" />} tone="green" to="/app/finance?tab=analysis" />
     </div>
   );

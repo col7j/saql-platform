@@ -478,9 +478,19 @@ export interface MaterialView {
 }
 
 // ───────────── المالية ─────────────
-/** أنواع الصرف. الصرف والعهد مسموحة فقط لما في settings.spendableTypes */
-export type SpendKind = 'opening' | 'focus' | 'internal_trip' | 'external_trip' | 'closing' | 'meeting';
-export type BudgetOwnerKind = 'trip' | 'focus' | 'meeting';
+/** أنواع الصرف السبعة (وثيقة القرارات): تنفيذ البرنامج وإداري. لكل نوع طريقان: عهدة أو صرف مباشر */
+export type SpendKind = 'internal_trip' | 'external_trip' | 'focus' | 'opening' | 'closing' | 'meeting' | 'program_needs';
+/** ما يُربط به الصرف: رحلة (ومنها الافتتاحي والختامي)، لقاء تركيز، اجتماع، بند من احتياجات البرنامج */
+export type BudgetOwnerKind = 'trip' | 'focus' | 'meeting' | 'need';
+
+/** مرفق حقيقي: يُحفظ اسمه وبصمته (SHA-256 لمحتوى الملف) ومعاينة مصغّرة للصور */
+export interface Attachment {
+  name: string;
+  type: string;
+  size: number;
+  hash: string;
+  preview?: string; // data URL مصغّر (صور فقط)
+}
 
 export interface BudgetCategoryItem {
   id: ID;
@@ -501,6 +511,7 @@ export interface AllocationRule {
   total: number;
   divisor: number;
 }
+/** الموازنة العامة: يسجّلها مسؤول المالية أول دخوله، ثم تُقفل ويُعدَّل بطلب يوافق عليه القائد العام */
 export interface ProgramBudget {
   setupDone: boolean;
   setupAt?: ISODateTime;
@@ -510,21 +521,32 @@ export interface ProgramBudget {
   externalTrip: AllocationRule;
   opening: number;
   closing: number;
-  meetingDefault: number; // مرصود اختياري للاجتماعات (للتخطيط)
+  meetingDefault: number; // مرصود كل اجتماع (صرف فعلي بعهدة)
+  programNeeds: number; // مرصود احتياجات البرنامج
   focusLimits: { min: number; max: number }; // لقاءات التركيز بميزانية لكل مجموعة
+}
+
+/** بند من احتياجات البرنامج يُصرف عليه مباشرة أو بعهدة أو بعقد */
+export interface ProgramNeed {
+  id: ID;
+  title: string;
+  description?: string;
+  createdBy: ID;
+  at: ISODateTime;
 }
 
 export type BudgetRequestStatus =
   | 'draft'
+  | 'pending_facilitator' // ميزانية رحلة مجموعة: بانتظار الميسّر
   | 'pending_finance' // ضمن المرصود: بانتظار مسؤول المالية
-  | 'pending_leader' // تجاوز المرصود: بانتظار القائد العام
+  | 'pending_leader' // تجاوز المرصود، أو ميزانية رحلة بعد الميسّر: بانتظار القائد العام
   | 'needs_detail' // القائد العام طلب موازنة تفصيلية من مقدّم الطلب
   | 'approved' // معتمد: بانتظار صرف العهدة
   | 'rejected'; // مرفوض بسبب: يعود لمقدّم الطلب
 export interface BudgetRequestEvent {
   at: ISODateTime;
   byId: ID;
-  action: 'submit' | 'finance_approve' | 'finance_reject' | 'leader_approve' | 'leader_reject' | 'leader_request_detail' | 'detail_submitted' | 'disbursed';
+  action: 'submit' | 'facilitator_approve' | 'facilitator_reject' | 'finance_approve' | 'finance_reject' | 'leader_approve' | 'leader_reject' | 'leader_request_detail' | 'detail_submitted' | 'disbursed';
   note?: string;
 }
 export interface BudgetRequest {
@@ -543,58 +565,142 @@ export interface BudgetRequest {
   history: BudgetRequestEvent[];
 }
 
-export type InstallmentStatus = 'scheduled' | 'awaiting_iban' | 'awaiting_transfer' | 'awaiting_confirm' | 'received';
-export interface Installment {
+/** حركة في محفظة مسؤول المالية. لا حركة بلا مرفق (إيصال حوالة أو فاتورة أو إيصال تحويل) */
+export type WalletEntryKind = 'deposit' | 'surplus_return' | 'custody_transfer' | 'direct_spend' | 'contract_payment' | 'deficit_payout';
+export interface WalletEntry {
+  id: ID;
+  kind: WalletEntryKind;
+  amount: number; // موجب دائماً، والاتجاه من النوع
+  at: ISODateTime;
+  byId: ID;
+  attachment: Attachment;
+  source?: string; // للإيداع: الجهة المحوِّلة
+  note?: string;
+  ref?: { custodyId?: ID; directSpendId?: ID; contractId?: ID; paymentId?: ID };
+}
+
+export interface CustodyTransfer {
   id: ID;
   amount: number;
-  dueDate: ISODate;
-  condition?: string;
-  status: InstallmentStatus;
-  transferReceipt?: string;
-  transferredAt?: ISODateTime;
-  confirmedAt?: ISODateTime;
+  at: ISODateTime;
+  byId: ID;
+  walletEntryId: ID;
 }
-export type CustodyStatus = 'setup' | 'active' | 'closing' | 'closed';
+export type CustodyStatus = 'active' | 'closing' | 'closed';
+/** تسوية الإغلاق: فائض يحوّله صاحب العهدة لمسؤول المالية، أو عجز يحوّله المسؤول أو يُسجَّل تسوية من خارج العهدة */
+export interface CustodySettlement {
+  kind: 'surplus' | 'deficit';
+  amount: number;
+  method: 'transfer' | 'external'; // external للعجز فقط
+  bearer?: 'finance_officer' | 'holder'; // من يتحمّل التسوية الخارجية
+  attachment: Attachment;
+  note?: string;
+  at: ISODateTime;
+  byId: ID;
+  walletEntryId?: ID;
+}
 export interface Custody {
   id: ID;
   requestId?: ID;
   ownerKind: BudgetOwnerKind;
   ownerId: ID;
+  spendKind: SpendKind;
   recipientId: ID;
-  total: number;
-  iban?: string;
-  installments: Installment[];
+  approved: number; // المبلغ المعتمد للعهدة
+  transfers: CustodyTransfer[]; // التحويل يعبّئ رصيد المستلم، وقد يُؤجَّل جزء كدفعة ثانية
   status: CustodyStatus;
-  refund?: { amount: number; receipt: string; at: ISODateTime };
-  overspend?: { amount: number; reason: string; financeApproved?: boolean; adminApproved?: boolean };
+  closeRequestedAt?: ISODateTime;
+  surplusReturn?: { attachment: Attachment; at: ISODateTime }; // إيصال تحويل الفائض يرفعه صاحب العهدة
+  settlement?: CustodySettlement;
   closedAt?: ISODateTime;
+  closedBy?: ID;
   createdAt: ISODateTime;
+  createdBy: ID;
 }
-/** سطر فاتورة: تصنيف + وصف + مبلغ */
-export interface InvoiceLine {
+
+/** سطر في نموذج الصرف: تصنيف (أو «غير موجود» باسم مقترح) + بند كشرح حر + مبلغ. يراجَع وحده */
+export interface SpendLine {
   id: ID;
-  categoryId: ID;
-  itemId?: ID;
-  description: string;
+  categoryId?: ID;
+  customCategory?: string; // «غير موجود»: يسمّيه رافع النموذج
+  item: string;
   amount: number;
+  status: 'pending' | 'accepted' | 'rejected';
+  /** ما كتبه الرافع قبل تعديل المالية للتصنيف أو المبلغ */
+  original?: { categoryId?: ID; customCategory?: string; amount: number };
+  reviewNote?: string;
+  reviewedBy?: ID;
+  reviewedAt?: ISODateTime;
 }
-export interface Invoice {
+export type ProofKind = 'invoice' | 'transfer_receipt';
+/** نموذج الصرف من العهدة: فاتورة واحدة (أو إيصال تحويل) بسطر أو أكثر */
+export interface SpendForm {
   id: ID;
   custodyId: ID;
-  total: number;
-  lines: InvoiceLine[];
-  image: string;
   uploadedBy: ID;
-  status: 'pending' | 'accepted' | 'rejected';
-  rejectReason?: string;
+  at: ISODateTime;
+  vendor: string;
+  serial?: string; // الرقم التسلسلي: يُدخل يدوياً (مكان جاهز لـ OCR لاحقاً)
+  invoiceDate: ISODate;
+  proofKind: ProofKind;
+  attachment: Attachment;
+  lines: SpendLine[];
+}
+
+/** الصرف المباشر: يصرفه مسؤول المالية بنفسه على نشاط أو أكثر (المصروف المشترك يُوزَّع) بلا اعتماد */
+export interface DirectSpendLine {
+  id: ID;
+  categoryId?: ID;
+  customCategory?: string;
+  item: string;
+  amount: number;
+}
+export interface DirectSpend {
+  id: ID;
+  allocations: { ownerKind: BudgetOwnerKind; ownerId: ID; amount: number }[];
+  vendor: string;
+  serial?: string;
+  invoiceDate: ISODate;
+  proofKind: ProofKind;
+  attachment: Attachment;
+  lines: DirectSpendLine[];
+  total: number;
+  byId: ID;
+  at: ISODateTime;
+  walletEntryId: ID;
+}
+
+/** العقد (احتياجات البرنامج فقط): قيمة إجمالية تُصرف دفعة أو دفعات، لكل دفعة موعد وفاتورة */
+export interface ContractPayment {
+  id: ID;
+  amount: number;
+  dueDate: ISODate;
+  paidAt?: ISODateTime;
+  byId?: ID;
+  attachment?: Attachment;
+  walletEntryId?: ID;
+}
+export interface Contract {
+  id: ID;
+  needId: ID;
+  vendor: string;
+  title: string;
+  total: number;
+  payments: ContractPayment[];
+  createdBy: ID;
   at: ISODateTime;
 }
+
+export type FeeStatus = 'paid' | 'partial' | 'unpaid';
 export interface FeeRecord {
   personId: ID;
   amount: number;
-  paid: boolean;
-  paidAt?: ISODateTime;
+  status: FeeStatus;
+  paidAmount: number;
+  /** استثناء يُعتبر سداداً (مثل جمعية البر) مع تفصيله */
+  exemption?: string;
   note?: string;
+  updatedAt?: ISODateTime;
 }
 export interface AuditEntry {
   id: ID;
@@ -604,6 +710,27 @@ export interface AuditEntry {
   detail: string;
   /** المجال: المالية، الأدوار والصفات، الحسابات، الإعدادات (السجلات القديمة بلا مجال = المالية) */
   area?: 'finance' | 'roles' | 'accounts' | 'settings';
+}
+
+/** السجلات المعتمدة لا تُعدَّل مباشرة: يُرفع طلب تعديل يوافق عليه القائد العام أو يرفضه */
+export type EditTarget =
+  | { kind: 'spend_line'; formId: ID; lineId: ID }
+  | { kind: 'direct_spend'; id: ID }
+  | { kind: 'deposit'; id: ID }
+  | { kind: 'program_budget' };
+export interface EditRequest {
+  id: ID;
+  target: EditTarget;
+  /** القيم الجديدة: spend_line {amount, categoryId}، direct_spend {amount (سطر واحد)، categoryId}، deposit {amount, note}، program_budget {budget} */
+  patch: Record<string, unknown>;
+  summary: string; // ماذا يتغيّر (قبل ← بعد)
+  reason: string;
+  requestedBy: ID;
+  at: ISODateTime;
+  status: 'pending' | 'approved' | 'rejected';
+  decidedBy?: ID;
+  decidedAt?: ISODateTime;
+  decisionNote?: string;
 }
 
 // ───────────── الاجتماعات ─────────────
@@ -791,16 +918,17 @@ export interface Settings {
   scheduleCategories: ScheduleCategory[];
   scheduleRevealHours: number;
   scheduleEditAfterStartNeedsApproval: boolean; // 20.6
-  overspendNeedsApproval: boolean; // 20.7
   trackingCommentsNeedReview: boolean; // 20.8
   /** ما يصل بالإيميل عند ربطه لاحقاً (يحدده مسؤول اللجنة التقنية). حالياً كل الإشعارات داخل المنصة فقط */
   importantNotifications: NotificationType[];
   showHijri: boolean; // 20.11
   feesInPlatform: boolean; // 20.12
   feeAmount: number;
-  budgetVisibleToStaff: boolean;
-  /** أنواع الصرف المسموح بها: أي طلب صرف أو عهدة خارجها يُمنع */
-  spendableTypes: SpendKind[];
+  /** قوالب مالية يملكها مسؤول المالية */
+  finance: {
+    maxOpenCustodies: number; // عدد العهد المفتوحة المتزامنة للشخص (بشرط ألا يتكرر نوعها)
+    splitAlert: { maxAmount: number; windowDays: number; minCount: number }; // تنبيه تجزئة المصروف
+  };
   trackerId?: ID;
   trackingLink: { token?: string; active: boolean; createdAt?: ISODateTime };
   site: SiteContent;
@@ -842,8 +970,13 @@ export interface DB {
   budgetRequests: BudgetRequest[];
   audit: AuditEntry[];
   meetings: Meeting[];
+  wallet: WalletEntry[];
   custodies: Custody[];
-  invoices: Invoice[];
+  spendForms: SpendForm[];
+  directSpends: DirectSpend[];
+  programNeeds: ProgramNeed[];
+  contracts: Contract[];
+  editRequests: EditRequest[];
   fees: FeeRecord[];
   attendance: Attendance[];
   manualPoints: PointsEntry[];

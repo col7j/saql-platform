@@ -301,7 +301,6 @@ function OpenPoints() {
     <Card title="النقاط المفتوحة (القسم 20)" subtitle="مبنية قابلة للتعديل حتى تُحسم">
       <div className="grid gap-2 md:grid-cols-2">
         {row('تعديل الجدول بعد الانطلاق يحتاج موافقة الإدارة', '20.6', s.scheduleEditAfterStartNeedsApproval, 'scheduleEditAfterStartNeedsApproval')}
-        {row('المصروف الزائد عن الموازنة يحتاج موافقة المالية والقائد العام', '20.7', s.overspendNeedsApproval, 'overspendNeedsApproval')}
         {row('تعليقات رابط المتابعة تحتاج مراجعة قبل الظهور', '20.8', s.trackingCommentsNeedReview, 'trackingCommentsNeedReview')}
         {row('عرض التاريخ الهجري مع الميلادي', '20.11', s.showHijri, 'showHijri')}
         {row('دفع الرسوم داخل المنصة (وإلا تُسجَّل فقط)', '20.12', s.feesInPlatform, 'feesInPlatform')}

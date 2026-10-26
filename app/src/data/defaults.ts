@@ -1,6 +1,5 @@
 // القيم الافتراضية للإعدادات. كلها تُنسخ إلى قاعدة البيانات وتُعدّل من شاشة الإعدادات.
 import type { BudgetCategory, CapacityRule, ProgramBudget, Settings, TaskTemplate, UiConfig } from '@/domain/types';
-import { DEFAULT_SPENDABLE } from '@/domain/finance';
 
 export function defaultSettings(startDate: string, endDate: string): Settings {
   return {
@@ -98,14 +97,12 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     ],
     scheduleRevealHours: 24,
     scheduleEditAfterStartNeedsApproval: false,
-    overspendNeedsApproval: true,
     trackingCommentsNeedReview: true,
     importantNotifications: ['budget_request', 'approval_rejected', 'deadline_passed', 'custody_issued', 'groups_published', 'leader_absent_focus', 'committee_member_request'],
     showHijri: true,
     feesInPlatform: false,
     feeAmount: 500,
-    budgetVisibleToStaff: false,
-    spendableTypes: [...DEFAULT_SPENDABLE],
+    finance: { maxOpenCustodies: 2, splitAlert: { maxAmount: 300, windowDays: 3, minCount: 3 } },
     trackingLink: { active: false },
     ui: defaultUiConfig(),
     site: {
@@ -158,7 +155,8 @@ export function defaultProgramBudget(): ProgramBudget {
     externalTrip: { mode: 'per_item', perItem: 15000, total: 60000, divisor: 4 },
     opening: 4000,
     closing: 20000,
-    meetingDefault: 0,
+    meetingDefault: 300,
+    programNeeds: 15000,
     focusLimits: { min: 4, max: 8 },
   };
 }
@@ -221,7 +219,12 @@ export function defaultUiConfig(): UiConfig {
       { key: 'finance', to: '/app/finance', label: 'المالية', icon: 'wallet', section: A },
       { key: 'finance_budget', to: '/app/finance?tab=budget', label: 'الموازنة', icon: 'wallet', section: F },
       { key: 'finance_custody', to: '/app/finance?tab=custody', label: 'العهد والإغلاق', icon: 'receipt', section: F },
-      { key: 'finance_requests', to: '/app/finance?tab=requests', label: 'طلبات الصرف', icon: 'check', section: F },
+      { key: 'finance_wallet', to: '/app/finance?tab=wallet', label: 'المحفظة', icon: 'wallet', section: F },
+      { key: 'finance_direct', to: '/app/finance?tab=direct', label: 'الصرف المباشر', icon: 'receipt', section: F },
+      { key: 'finance_requests', to: '/app/finance?tab=requests', label: 'طلبات الميزانية', icon: 'check', section: F },
+      { key: 'finance_needs', to: '/app/finance?tab=needs', label: 'احتياجات البرنامج والعقود', icon: 'layers', section: F },
+      { key: 'finance_edits', to: '/app/finance?tab=edits', label: 'طلبات التعديل', icon: 'check', section: F },
+      { key: 'finance_settings', to: '/app/finance?tab=settings', label: 'الإعدادات المالية', icon: 'settings', section: F },
       { key: 'finance_invoices', to: '/app/finance?tab=invoices', label: 'الفواتير', icon: 'clipboard', section: F },
       { key: 'finance_analysis', to: '/app/finance?tab=analysis', label: 'التحليلات', icon: 'chart', section: F },
       { key: 'finance_fees', to: '/app/finance?tab=fees', label: 'الرسوم', icon: 'contact', section: F },
@@ -233,7 +236,7 @@ export function defaultUiConfig(): UiConfig {
       {
         role: 'finance_head', priority: 1, tail: ['leaderboard'], home: ['actions', 'upcoming'],
         sections: [
-          { title: F, items: [k('finance_budget'), k('finance_custody'), k('finance_requests'), k('finance_invoices'), k('finance_analysis'), k('finance_fees'), k('finance_categories'), k('finance_team'), k('finance_audit')] },
+          { title: F, items: [k('finance_budget'), k('finance_wallet'), k('finance_custody'), k('finance_direct'), k('finance_invoices'), k('finance_requests'), k('finance_analysis'), k('finance_needs'), k('finance_edits'), k('finance_fees'), k('finance_categories'), k('finance_team'), k('finance_settings'), k('finance_audit')] },
           basics,
         ],
       },
