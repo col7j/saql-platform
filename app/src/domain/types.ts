@@ -736,6 +736,9 @@ export interface ScheduleCategory {
   id: ID;
   name: string;
   color: string;
+  description?: string;
+  /** يلزمه تحضير: لقاءاته يُسجَّل فيها الحضور (حاضر/غائب) */
+  requiresPrep: boolean;
 }
 
 export interface SiteContent {
@@ -764,6 +767,12 @@ export interface Settings {
   targets: { focusMeetingsPerGroup: number; individualMeetingsPerParticipant: number };
   programCounts: { staffInternal: number; groupInternal: number; groupExternal: number; staffExternal: number };
   deadlineDefaults: { initialDaysBefore: number; detailedDaysBefore: number; finalReportDaysAfter: number; reminderDaysBefore: number };
+  /** وزن كل نوع حضور في التقييم الفردي (لقاءات التركيز، الرحلة، لقاءات الرحلة) */
+  attendanceWeights: { focus: number; trip: number; tripSession: number };
+  /** ما يُكسب من نقطة حضور الرحلة لكل حالة (0..1). الغياب صفر دائماً: لا خصم */
+  tripAttendanceStates: { early: number; on_time: number; late: number };
+  /** قفل إعدادات التقييم: يُقفل عند الحفظ، ولا يفتحه إلا مسؤول اللجنة التقنية */
+  evaluationLock: { locked: boolean; at?: ISODateTime; by?: ID };
   scheduleCategories: ScheduleCategory[];
   scheduleRevealHours: number;
   scheduleEditAfterStartNeedsApproval: boolean; // 20.6

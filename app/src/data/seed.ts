@@ -30,6 +30,8 @@ export function buildSeed(): DB {
   const { committees, memberships } = buildCommittees();
   const settings = defaultSettings(addDays(T, -60), addDays(T, 150));
   settings.trackerId = 's7';
+  // البرنامج جارٍ: حفظ القائد العام إعدادات التقييم فأُقفلت
+  settings.evaluationLock = { locked: true, at: iso(addDays(T, -58)), by: LEADER_ID };
   const participants = persons.filter((p) => p.kind === 'participant');
   const { trips, docs, budgets, actual } = buildTrips(T, nowDate);
 

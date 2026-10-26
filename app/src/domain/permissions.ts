@@ -353,6 +353,7 @@ export function navFor(db: DB, personId: ID): { sections: { title: string; items
     add('/app/settings', 'الإعدادات', 'settings', 60);
   } else if (c.isStaff) add('/app/insights', 'المؤشرات', 'chart', 70);
   if (c.isTechLead) add('/app/users', 'المستخدمون', 'key', 7);
+  if (c.isTechLead || c.canManageScheduleCategories) add('/app/settings', 'الإعدادات', 'settings', 60);
   if (c.isSiteEditor) add('/app/site-editor', 'تحرير الموقع', 'globe', 92);
 
   const all = [...map.values()].sort((a, b) => a.priority - b.priority);

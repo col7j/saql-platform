@@ -7,6 +7,7 @@ import { groupOf, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTra
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
 import { hasTempGrant, tempPermissionLabel } from '@/domain/grants';
+import { canEditEvaluation, canUnlockEvaluation, isEvaluationKey, settingsKeyBlockReason, type EvaluationSettings } from '@/domain/settings';
 import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
 import type {
@@ -1100,8 +1101,36 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
 
     // ───────────── الإعدادات ورابط المتابعة والموقع ─────────────
     settings: {
+      /** الإعدادات غير التقييمية: كل مفتاح يعدّله صاحبه فقط */
       update(patch: Partial<Settings>) {
-        mutate((d) => Object.assign(d.settings, patch));
+        mutate((d) => {
+          for (const k of Object.keys(patch) as (keyof Settings)[]) {
+            const reason = settingsKeyBlockReason(d, me(), k);
+            if (reason) throw new Error(reason);
+          }
+          Object.assign(d.settings, patch);
+        });
+      },
+      /** حفظ إعدادات التقييم يقفلها، ولا يفتحها إلا مسؤول اللجنة التقنية */
+      saveEvaluation(patch: Partial<EvaluationSettings>) {
+        mutate((d) => {
+          if (d.settings.evaluationLock.locked) throw new Error('إعدادات التقييم مقفلة. يفتحها مسؤول اللجنة التقنية');
+          if (!canEditEvaluation(d, me())) throw new Error('إعدادات التقييم يضبطها القائد العام');
+          for (const k of Object.keys(patch)) if (!isEvaluationKey(k)) throw new Error(`«${k}» ليس من إعدادات التقييم`);
+          Object.assign(d.settings, patch);
+          d.settings.evaluationLock = { locked: true, at: nowISO(), by: me() };
+          audit(d, me(), 'حفظ إعدادات التقييم وقفلها', Object.keys(patch).join('، '), 'settings');
+        });
+      },
+      unlockEvaluation(reason: string) {
+        mutate((d) => {
+          if (!canUnlockEvaluation(d, me())) throw new Error('فتح قفل التقييم لمسؤول اللجنة التقنية وحده');
+          if (!d.settings.evaluationLock.locked) return false;
+          if (!reason.trim()) throw new Error('اكتب سبب فتح القفل');
+          d.settings.evaluationLock = { locked: false, at: nowISO(), by: me() };
+          audit(d, me(), 'فتح قفل إعدادات التقييم', reason, 'settings');
+          pushNotification(d, [leaderId(d)], 'general', `فُتح قفل إعدادات التقييم: ${reason}`, '/app/settings');
+        });
       },
       setTracker(personId: ID) {
         mutate((d) => {

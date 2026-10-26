@@ -1,30 +1,48 @@
 // الإعدادات: كل القيم القابلة للتعديل مخزّنة في البيانات (قسم 0.10 والقسم 20)
 import { useState } from 'react';
 import { uid } from '@/domain/id';
+import { capacityKeyLabel } from '@/domain/capacities';
+import { fmtDateTime } from '@/domain/dates';
 import { notificationTypeLabel, proofTypeLabel } from '@/domain/labels';
+import { canEditEvaluation, canUnlockEvaluation, EVALUATION_KEYS } from '@/domain/settings';
 import type { EvaluationItem, NotificationType, ProofType, Settings, TaskTemplate } from '@/domain/types';
-import { act, repos, useDB, useMe } from '@/state/store';
-import { Badge, Button, Card, Empty, Field, Icons, Input, Notice, PageHeader, Select, Table, Tabs, Toggle } from '@/ui';
+import { act, personName, repos, useDB, useMe } from '@/state/store';
+import { Badge, Button, Card, Empty, Field, Icons, Input, Notice, PageHeader, ReasonModal, Select, Table, Tabs, Toggle } from '@/ui';
+import { PersonChip } from '@/ui/domain';
 
-type Tab = 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'tracker' | 'open';
+type Tab = 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'roles' | 'tracker' | 'audit' | 'open';
 
 export default function SettingsPage() {
   const me = useMe();
-  const [tab, setTab] = useState<Tab>('evaluation');
-  if (!me.isLeader) return <Empty title="الإعدادات للقائد العام" />;
+  const leader = me.isLeader;
+  const tech = me.isTechLead;
+  // كل تبويب لصاحبه: القائد العام، مسؤول اللجنة التقنية، أو من فُوّض بتصنيفات الجدول
+  const tabs: { key: Tab; label: string }[] = [
+    ...(leader || tech ? [{ key: 'evaluation' as const, label: 'التقييم والأوزان' }] : []),
+    ...(leader ? [{ key: 'targets' as const, label: 'المستهدفات والأعداد' }] : []),
+    ...(me.canManageScheduleCategories ? [{ key: 'categories' as const, label: 'تصنيفات الجدول' }] : []),
+    ...(leader ? [{ key: 'templates' as const, label: 'قالب المهام التلقائية' }] : []),
+    ...(tech ? [{ key: 'notifications' as const, label: 'الإشعارات' }] : []),
+    ...(leader || tech ? [{ key: 'roles' as const, label: 'قواعد التعارض' }] : []),
+    ...(leader ? [{ key: 'tracker' as const, label: 'متابع الرحلات' }] : []),
+    ...(leader || tech ? [{ key: 'audit' as const, label: 'سجل التدقيق' }] : []),
+    ...(leader ? [{ key: 'open' as const, label: 'النقاط المفتوحة' }] : []),
+  ];
+  const [picked, setTab] = useState<Tab>(tabs[0]?.key ?? 'evaluation');
+  const tab = tabs.some((t) => t.key === picked) ? picked : tabs[0]?.key;
+  if (!tabs.length) return <Empty title="الإعدادات للقائد العام ومسؤول اللجنة التقنية" />;
   return (
     <div>
-      <PageHeader title="الإعدادات" subtitle="تعديل أي قيمة هنا لا يكسر أي شاشة أو حساب: كل الحسابات تقرأ من هذه الإعدادات" />
-      <Tabs value={tab} onChange={setTab} tabs={[
-        { key: 'evaluation', label: 'التقييم والأوزان' }, { key: 'targets', label: 'المستهدفات والأعداد' }, { key: 'categories', label: 'تصنيفات الجدول' },
-        { key: 'templates', label: 'قالب المهام التلقائية' }, { key: 'notifications', label: 'الإشعارات المهمة' }, { key: 'tracker', label: 'متابع الرحلات' }, { key: 'open', label: 'النقاط المفتوحة' },
-      ]} />
+      <PageHeader title="الإعدادات" subtitle="كل القيم القابلة للضبط مخزّنة في البيانات، ويعدّل كل إعداد صاحبه" />
+      <Tabs value={tab!} onChange={setTab} tabs={tabs} />
       {tab === 'evaluation' && <Evaluation />}
       {tab === 'targets' && <Targets />}
       {tab === 'categories' && <Categories />}
       {tab === 'templates' && <Templates />}
       {tab === 'notifications' && <Notifications />}
+      {tab === 'roles' && <Roles />}
       {tab === 'tracker' && <Tracker />}
+      {tab === 'audit' && <Audit />}
       {tab === 'open' && <OpenPoints />}
     </div>
   );
@@ -35,7 +53,12 @@ const num = (v: string) => (isNaN(+v) ? 0 : Math.max(0, +v));
 function Evaluation() {
   const db = useDB();
   const [s, setS] = useState<Settings>(structuredClone(db.settings));
-  const save = () => act(() => repos.settings.update({ split: s.split, groupTripSplit: s.groupTripSplit, evaluationItems: s.evaluationItems, presentationCriteria: s.presentationCriteria, repeatPresentationFactor: s.repeatPresentationFactor, presentingMaxMultiplier: s.presentingMaxMultiplier, lateFactor: s.lateFactor, enrichmentPointsPerMaterial: s.enrichmentPointsPerMaterial }), 'حُفظت إعدادات التقييم وأُعيد حساب النقاط');
+  const me = useMe();
+  const editable = canEditEvaluation(db, me.person.id);
+  const [unlocking, setUnlocking] = useState(false);
+  const save = () => act(() => repos.settings.saveEvaluation(Object.fromEntries(EVALUATION_KEYS.map((k) => [k, s[k]]))), 'حُفظت إعدادات التقييم وقُفلت، وأُعيد حساب النقاط');
+  const lock = db.settings.evaluationLock;
+  const dd = (k: keyof Settings['deadlineDefaults'], label: string) => <Field label={label}><Input type="number" value={s.deadlineDefaults[k]} onChange={(e) => setS({ ...s, deadlineDefaults: { ...s.deadlineDefaults, [k]: num(e.target.value) } })} /></Field>;
   const updItem = (key: string, p: Partial<EvaluationItem>) => setS({ ...s, evaluationItems: s.evaluationItems.map((i) => (i.key === key ? { ...i, ...p } : i)) });
   const section = (scope: 'individual' | 'group') => {
     const items = s.evaluationItems.filter((i) => i.scope === scope);
@@ -72,7 +95,19 @@ function Evaluation() {
   };
   return (
     <div className="space-y-6">
+      {lock.locked ? (
+        <Notice tone="orange" icon={<Icons.Lock className="h-4 w-4" />}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span>إعدادات التقييم مقفلة منذ {fmtDateTime(lock.at)} ({personName(db, lock.by)}). لا يفتحها إلا مسؤول اللجنة التقنية.</span>
+            {canUnlockEvaluation(db, me.person.id) && <Button size="sm" variant="secondary" onClick={() => setUnlocking(true)} icon={<Icons.LockOpen className="h-4 w-4" />}>افتح القفل</Button>}
+          </div>
+        </Notice>
+      ) : (
+        <Notice tone="green" icon={<Icons.LockOpen className="h-4 w-4" />}>الإعدادات مفتوحة للتعديل{lock.at ? ` منذ ${fmtDateTime(lock.at)} (${personName(db, lock.by)})` : ''}. تُقفل تلقائياً عند الحفظ.</Notice>
+      )}
+      <ReasonModal open={unlocking} onClose={() => setUnlocking(false)} title="فتح قفل إعدادات التقييم" label="سبب الفتح (يُسجَّل ويصل للقائد العام)" cta="افتح القفل" danger={false} onSubmit={(r) => act(() => { repos.settings.unlockEvaluation(r); setUnlocking(false); }, 'فُتح القفل')} />
       <Notice>المبدأ 50% فردي و50% جماعي (ثابتان في الوثيقة، ومخزّنان هنا كقيمة). النقاط كسب فقط: لا خصم أبداً.</Notice>
+      <fieldset disabled={!editable} className="space-y-6 disabled:opacity-80">
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="التوزيع">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -98,9 +133,33 @@ function Evaluation() {
           </div>
         </Card>
       </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card title="شروط المواعيد (بالأيام)" subtitle="التأخر عنها يعني ألا تُكسب النقطة كاملة">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {dd('initialDaysBefore', 'الخطة المبسطة قبل الرحلة بـ')}
+            {dd('detailedDaysBefore', 'التفصيلية والموازنة قبل الرحلة بـ')}
+            {dd('finalReportDaysAfter', 'التقرير الختامي بعد الرحلة بـ')}
+            {dd('reminderDaysBefore', 'التنبيه قبل الموعد بـ')}
+          </div>
+        </Card>
+        <Card title="أوزان الحضور" subtitle="الحضور يؤثر على التقييم الفردي فقط. يُطبَّق في محرك النقاط مع مرحلة الرحلات">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(['focus', 'trip', 'tripSession'] as const).map((k) => (
+              <Field key={k} label={{ focus: 'لقاءات التركيز', trip: 'الرحلة (التحضير العام)', tripSession: 'لقاءات الرحلة' }[k]}><Input type="number" value={s.attendanceWeights[k]} onChange={(e) => setS({ ...s, attendanceWeights: { ...s.attendanceWeights, [k]: num(e.target.value) } })} /></Field>
+            ))}
+          </div>
+          <span className="label mt-3">ما يُكسب من نقطة حضور الرحلة لكل حالة (0 إلى 1، والغياب صفر)</span>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {(['early', 'on_time', 'late'] as const).map((k) => (
+              <Field key={k} label={{ early: 'مبكر', on_time: 'في الوقت', late: 'متأخر' }[k]}><Input type="number" step={0.1} value={s.tripAttendanceStates[k]} onChange={(e) => setS({ ...s, tripAttendanceStates: { ...s.tripAttendanceStates, [k]: Math.min(1, num(e.target.value)) } })} /></Field>
+            ))}
+          </div>
+        </Card>
+      </div>
       {section('individual')}
       {section('group')}
-      <div className="sticky bottom-3 flex justify-end"><Button onClick={save}>احفظ إعدادات التقييم</Button></div>
+      </fieldset>
+      {editable && <div className="sticky bottom-3 flex justify-end"><Button onClick={save} icon={<Icons.Lock className="h-4 w-4" />}>احفظ واقفل الإعدادات</Button></div>}
     </div>
   );
 }
@@ -127,12 +186,8 @@ function Targets() {
           {n((x) => x.programCounts as any, 'staffExternal', 'خارجية بفريق العمل')}
         </div>
       </Card>
-      <Card title="المواعيد النهائية الافتراضية (بالأيام)">
+      <Card title="عرض الجدول للمشاركين">
         <div className="grid gap-3 sm:grid-cols-2">
-          {n((x) => x.deadlineDefaults as any, 'initialDaysBefore', 'الخطة المبسطة قبل الرحلة بـ')}
-          {n((x) => x.deadlineDefaults as any, 'detailedDaysBefore', 'التفصيلية والموازنة قبل الرحلة بـ')}
-          {n((x) => x.deadlineDefaults as any, 'finalReportDaysAfter', 'التقرير الختامي بعد الرحلة بـ')}
-          {n((x) => x.deadlineDefaults as any, 'reminderDaysBefore', 'التنبيه قبل الموعد بـ')}
           {n((x) => x as any, 'scheduleRevealHours', 'عرض الجدول قبل الرحلة بـ (ساعات)')}
         </div>
       </Card>
@@ -144,7 +199,7 @@ function Targets() {
           <Field label="نهاية البرنامج"><Input type="date" value={s.program.endDate} onChange={(e) => setS({ ...s, program: { ...s.program, endDate: e.target.value } })} /></Field>
         </div>
       </Card>
-      <div className="lg:col-span-2"><Button onClick={() => act(() => repos.settings.update({ targets: s.targets, programCounts: s.programCounts, deadlineDefaults: s.deadlineDefaults, scheduleRevealHours: s.scheduleRevealHours, program: s.program }), 'حُفظت الإعدادات')}>احفظ</Button></div>
+      <div className="lg:col-span-2"><Button onClick={() => act(() => repos.settings.update({ targets: s.targets, programCounts: s.programCounts, scheduleRevealHours: s.scheduleRevealHours, program: s.program }), 'حُفظت الإعدادات')}>احفظ</Button></div>
     </div>
   );
 }
@@ -153,18 +208,20 @@ function Categories() {
   const db = useDB();
   const [cats, setCats] = useState(db.settings.scheduleCategories);
   return (
-    <Card title="التصنيفات العامة لبنود الجدول" subtitle="تخدم التحليل: نسبة كل تصنيف من وقت الرحلة، ومقارنة المخطط بالفعلي">
+    <Card title="التصنيفات العامة لبنود الجدول" subtitle="لكل تصنيف وصف، وهل يلزمه تحضير (لقاءاته يُسجَّل فيها الحضور). تخدم التحليل ومقارنة المخطط بالفعلي">
       <div className="space-y-2">
         {cats.map((c, i) => (
-          <div key={c.id} className="flex items-center gap-2">
+          <div key={c.id} className="grid items-center gap-2 sm:grid-cols-[40px_1fr_2fr_auto_auto]">
             <input type="color" value={c.color} onChange={(e) => setCats(cats.map((x, j) => (j === i ? { ...x, color: e.target.value } : x)))} className="h-9 w-10 rounded border border-ink-200" />
             <Input value={c.name} onChange={(e) => setCats(cats.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))} />
+            <Input placeholder="الوصف" value={c.description ?? ''} onChange={(e) => setCats(cats.map((x, j) => (j === i ? { ...x, description: e.target.value } : x)))} />
+            <Toggle checked={c.requiresPrep} onChange={(v) => setCats(cats.map((x, j) => (j === i ? { ...x, requiresPrep: v } : x)))} label={<span className="text-xs">يلزمه تحضير</span>} />
             <button onClick={() => setCats(cats.filter((_, j) => j !== i))} className="text-ink-300 hover:text-red-600"><Icons.Trash2 className="h-4 w-4" /></button>
           </div>
         ))}
       </div>
       <div className="mt-3 flex gap-2">
-        <Button variant="secondary" onClick={() => setCats([...cats, { id: uid('cat'), name: 'تصنيف جديد', color: '#00b9d1' }])}>أضف تصنيفاً</Button>
+        <Button variant="secondary" onClick={() => setCats([...cats, { id: uid('cat'), name: 'تصنيف جديد', color: '#00b9d1', requiresPrep: false }])}>أضف تصنيفاً</Button>
         <Button onClick={() => act(() => repos.settings.update({ scheduleCategories: cats }), 'حُفظت التصنيفات')}>احفظ</Button>
       </div>
     </Card>
@@ -206,12 +263,13 @@ function Notifications() {
   const imp = db.settings.importantNotifications;
   const toggle = (t: NotificationType, on: boolean) => repos.settings.update({ importantNotifications: on ? [...imp, t] : imp.filter((x) => x !== t) });
   return (
-    <Card title="الإشعارات المهمة" subtitle="كل الإشعارات داخل المنصة، والمهم فقط يصل على البريد أيضاً (20.9)">
+    <Card title="الإشعارات" subtitle="النسخة الأولى: كل الإشعارات داخل المنصة فقط. الإيميل مؤجّل، وهذه القائمة جاهزة لتحديد ما يصل بالإيميل عند ربطه">
+      <div className="mb-3"><Notice tone="orange">لا يُرسل أي إيميل حالياً. ما تختاره هنا يُحفظ ويُفعَّل عند ربط خدمة الإيميل.</Notice></div>
       <div className="grid gap-2 sm:grid-cols-2">
         {(Object.keys(notificationTypeLabel) as NotificationType[]).map((t) => (
           <div key={t} className="flex items-center justify-between rounded-xl border border-ink-100 px-3 py-2 text-sm">
             <span>{notificationTypeLabel[t]}</span>
-            <Toggle checked={imp.includes(t)} onChange={(v) => toggle(t, v)} label={<span className="text-xs text-ink-500">بريد</span>} />
+            <Toggle checked={imp.includes(t)} onChange={(v) => toggle(t, v)} label={<span className="text-xs text-ink-500">بالإيميل لاحقاً</span>} />
           </div>
         ))}
       </div>
@@ -222,11 +280,10 @@ function Notifications() {
 function Tracker() {
   const db = useDB();
   const staff = db.persons.filter((p) => p.kind === 'staff' && !p.isGeneralLeader);
-  const facIds = db.groups.map((g) => g.facilitatorId);
   return (
-    <Card title="متابع الرحلات" subtitle="شخص واحد ثابت من أعضاء الإدارة لكل الرحلات. لا يجوز أن يكون ميسّر الرحلة، ولا القائد العام في رحلات فريق العمل">
-      <Field label="المتابع" className="max-w-sm"><Select value={db.settings.trackerId ?? ''} onChange={(e) => act(() => repos.settings.setTracker(e.target.value), 'عُيّن المتابع')} options={[{ value: '', label: '—' }, ...staff.map((p) => ({ value: p.id, label: `${p.name}${facIds.includes(p.id) ? ' (ميسّر: يلزم بديل لرحلات مجموعته)' : ''}` }))]} /></Field>
-      <p className="mt-2 text-xs text-ink-400">إذا كان المتابع ميسّراً لمجموعة، تحتاج رحلات مجموعته متابعاً بديلاً يعتمده القائد العام.</p>
+    <Card title="متابع الرحلات الدائم" subtitle="شخص ثابت لا يكون ميسّراً ولا مسؤول لجنة (يجوز عضواً). عند غيابه عن رحلة يُكلَّف بديل لها فقط">
+      <Field label="المتابع" className="max-w-sm"><Select value={db.settings.trackerId ?? ''} onChange={(e) => act(() => repos.settings.setTracker(e.target.value), 'عُيّن المتابع')} options={[{ value: '', label: '—' }, ...staff.map((p) => ({ value: p.id, label: p.name }))]} /></Field>
+      <p className="mt-2 text-xs text-ink-400">قواعد التعارض تُطبَّق عند الاختيار: يظهر سبب المنع إن كان للشخص صفة لا تجتمع مع المتابعة.</p>
     </Card>
   );
 }
@@ -256,11 +313,40 @@ function OpenPoints() {
           <div className="font-medium">الإبداع والابتكار (20.3)</div>
           <div className="text-[11px] text-ink-400">فعّله من تبويب "التقييم والأوزان" كبند جماعي.</div>
         </div>
-        <div className="rounded-xl border border-ink-100 px-3 py-3 text-sm">
-          <div className="font-medium">جلسات الكوتشينج وملف المشارك الختامي (20.4 و20.5)</div>
-          <div className="text-[11px] text-ink-400">مؤجلة. نموذج الخطة الشخصية مبني قابلاً للتوسع لإضافتها لاحقاً.</div>
-        </div>
       </div>
+    </Card>
+  );
+}
+
+function Roles() {
+  const db = useDB();
+  return (
+    <Card title="قواعد تعارض الصفات" subtitle="مخزّنة كبيانات، وتُطبَّق عند إضافة أي صفة: الميسّر، اللجان، المتابع الدائم، فرق رحلات فريق العمل، المتابع البديل. القائد العام مستثنى">
+      <Table>
+        <thead><tr><th>الصفة</th><th>لا تجتمع مع</th><th>الرسالة عند المنع</th></tr></thead>
+        <tbody>
+          {db.capacityRules.map((r) => (
+            <tr key={r.id}><td>{capacityKeyLabel[r.a] ?? r.a}</td><td>{capacityKeyLabel[r.b] ?? r.b}</td><td className="text-xs text-ink-600">{r.message}</td></tr>
+          ))}
+        </tbody>
+      </Table>
+      <p className="mt-3 text-xs text-ink-400">عضو أي لجنة يجوز أن يكون ميسّراً. مسؤول اللجنة التقنية يجوز أن يكون مسؤول الإعلامية، وبديلاً مؤقتاً لمتابع الرحلات.</p>
+    </Card>
+  );
+}
+
+function Audit() {
+  const db = useDB();
+  const list = db.audit.filter((a) => a.area && a.area !== 'finance');
+  const areaLabel = { roles: 'الأدوار والصفات', accounts: 'الحسابات', settings: 'الإعدادات', finance: 'المالية' } as const;
+  return (
+    <Card pad={false} title="سجل التدقيق" subtitle="الأدوار والحسابات والإعدادات. لا يُحذف. (سجل المالية في قسم المالية)">
+      {list.length === 0 ? <div className="p-5"><Empty title="لا سجلات بعد" /></div> : (
+        <Table>
+          <thead><tr><th>الوقت</th><th>من</th><th>المجال</th><th>الإجراء</th><th>التفاصيل</th></tr></thead>
+          <tbody>{list.map((a) => <tr key={a.id}><td className="whitespace-nowrap text-xs">{fmtDateTime(a.at)}</td><td><PersonChip id={a.byId} size={22} /></td><td><Badge>{areaLabel[a.area!]}</Badge></td><td className="font-medium">{a.action}</td><td className="text-xs text-ink-600">{a.detail}</td></tr>)}</tbody>
+        </Table>
+      )}
     </Card>
   );
 }
