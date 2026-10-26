@@ -1,7 +1,11 @@
 // الأشخاص والمجموعات واللجان في البيانات التجريبية
-import type { Committee, CommitteeMembership, Group, Person } from '@/domain/types';
+import { hashPassword } from '@/domain/crypto';
+import type { Account, Committee, CommitteeMembership, Group, Person } from '@/domain/types';
 
 export const LEADER_ID = 'p_lead';
+export const TECH_LEAD_ID = 's6';
+/** كلمة مرور كل الحسابات التجريبية (تظهر في صفحة الدخول) */
+export const DEMO_PASSWORD = 'saql2026';
 
 const staffRaw: [string, string, string][] = [
   ['s1', 'خالد العمري', 'ميسّر مجموعة أُحُد · عضو اللجنة المالية'],
@@ -87,4 +91,18 @@ export function buildCommittees(): { committees: Committee[]; memberships: Commi
     ...['s1', 's2', 's3', 's4', 's5', 's6', 's7'].map((id) => m('c_gen', id, 'member', false)),
   ];
   return { committees, memberships };
+}
+
+/** حساب لكل شخص: اسم الدخول من البريد، وكلمة المرور التجريبية الموحّدة */
+export function buildAccounts(persons: Person[], at: string): Account[] {
+  return persons.map((p) => ({
+    personId: p.id,
+    username: p.email.split('@')[0].toLowerCase(),
+    salt: p.id,
+    passwordHash: hashPassword(DEMO_PASSWORD, p.id),
+    mustChangePassword: false,
+    disabled: false,
+    updatedAt: at,
+    updatedBy: TECH_LEAD_ID,
+  }));
 }

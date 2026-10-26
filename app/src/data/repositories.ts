@@ -4,7 +4,9 @@
 import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { groupOf, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
+import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
+import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
 import type {
   AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
@@ -15,7 +17,7 @@ import { docKindLabel } from '@/domain/labels';
 import {
   allocatedFor, assertSpendable, financeOwnerId, hasFinancePerm, invoiceError, isFinanceOwner, linesTotal, ownerLink, ownerTitle, routeFor, spendKindLabel, spendKindOf, FINANCE_PERMS,
 } from '@/domain/finance';
-import type { AuditEntry, BudgetRequest, FinancePermission, InvoiceLine, Meeting, ProgramBudget, SpendKind } from '@/domain/types';
+import type { AuditEntry, BudgetRequest, Person, FinancePermission, InvoiceLine, Meeting, ProgramBudget, SpendKind } from '@/domain/types';
 
 /** إن أعادت الوصفة false فلا تغيير يُحفظ */
 export type Mutate = (recipe: (draft: DB) => unknown) => void;
@@ -56,6 +58,17 @@ function personName(d: DB, id: ID) {
 /** سجل تدقيق لا يُحذف. المجال الافتراضي المالية */
 function audit(d: DB, byId: ID, action: string, detail: string, area: AuditEntry['area'] = 'finance') {
   d.audit.unshift({ id: uid('au'), at: nowISO(), byId, action, detail, area });
+}
+function isLeaderId(d: DB, pid: ID) {
+  return !!d.persons.find((p) => p.id === pid)?.isGeneralLeader;
+}
+function techOnly(d: DB, pid: ID) {
+  if (!canManageAccounts(d, pid)) throw new Error('إدارة الحسابات وكلمات المرور لمسؤول اللجنة التقنية وحده');
+}
+function accountFor(d: DB, personId: ID) {
+  const acc = d.accounts.find((a) => a.personId === personId);
+  if (!acc) throw new Error('لا حساب لهذا الشخص');
+  return acc;
 }
 function guard(d: DB, pid: ID, perm: FinancePermission) {
   if (!hasFinancePerm(d, pid, perm)) throw new Error(`لا تملك صلاحية «${FINANCE_PERMS.find((p) => p.key === perm)!.label}». يمنحها مسؤول اللجنة المالية.`);
@@ -125,10 +138,72 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
   return {
     // ───────────── الأشخاص والمجموعات ─────────────
     people: {
+      /** القائد العام ينشئ الشخص ويحدد نوعه، ثم يدير مسؤول اللجنة التقنية حساب دخوله */
+      create(input: Omit<Person, 'id' | 'isGeneralLeader'>): ID {
+        const id = uid(input.kind === 'staff' ? 's' : 'u');
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('إضافة الأشخاص للقائد العام');
+          if (!input.name.trim()) throw new Error('الاسم مطلوب');
+          if (!/^\S+@\S+\.\S+$/.test(input.email.trim())) throw new Error('البريد غير صحيح');
+          if (d.persons.some((p) => p.email.toLowerCase() === input.email.trim().toLowerCase())) throw new Error('البريد مسجّل لشخص آخر');
+          d.persons.push({ ...input, id, name: input.name.trim(), email: input.email.trim() });
+          d.accounts.push({ personId: id, username: suggestUsername(d, input.email), mustChangePassword: true, disabled: false, updatedAt: nowISO(), updatedBy: me() });
+          audit(d, me(), input.kind === 'staff' ? 'إضافة عضو فريق عمل' : 'تسجيل مشارك', input.name, 'roles');
+          const tech = d.memberships.find((m) => m.role === 'leader' && d.committees.find((c) => c.id === m.committeeId)?.kind === 'tech')?.personId;
+          if (tech) pushNotification(d, [tech], 'general', `حساب جديد بلا كلمة مرور: ${input.name}`, '/app/users');
+        });
+        return id;
+      },
       setSiteEditor(personId: ID, on: boolean) {
         mutate((d) => {
           d.capacities = d.capacities.filter((c) => !(c.personId === personId && c.kind === 'site_editor'));
           if (on) d.capacities.push({ id: uid('cap'), personId, kind: 'site_editor', grantedBy: me(), at: nowISO() });
+        });
+      },
+    },
+    // ───────────── حسابات الدخول (مسؤول اللجنة التقنية وحده) ─────────────
+    accounts: {
+      setUsername(personId: ID, username: string) {
+        mutate((d) => {
+          techOnly(d, me());
+          const err = usernameError(d, personId, username);
+          if (err) throw new Error(err);
+          const acc = accountFor(d, personId);
+          acc.username = username.trim().toLowerCase();
+          Object.assign(acc, { updatedAt: nowISO(), updatedBy: me() });
+          audit(d, me(), 'تعديل اسم الدخول', `${personName(d, personId)} — ${acc.username}`, 'accounts');
+        });
+      },
+      /** يولّد كلمة مرور مؤقتة تُسلَّم للشخص، ويُطلب منه تغييرها أول دخول */
+      resetPassword(personId: ID): string {
+        const pw = tempPassword();
+        mutate((d) => {
+          techOnly(d, me());
+          const acc = accountFor(d, personId);
+          const salt = uid('salt');
+          Object.assign(acc, { salt, passwordHash: hashPassword(pw, salt), mustChangePassword: true, updatedAt: nowISO(), updatedBy: me() });
+          audit(d, me(), 'إعادة تعيين كلمة المرور', personName(d, personId), 'accounts');
+        });
+        return pw;
+      },
+      setDisabled(personId: ID, disabled: boolean) {
+        mutate((d) => {
+          techOnly(d, me());
+          if (personId === me() && disabled) throw new Error('لا تعطّل حسابك بنفسك');
+          Object.assign(accountFor(d, personId), { disabled, updatedAt: nowISO(), updatedBy: me() });
+          audit(d, me(), disabled ? 'تعطيل حساب' : 'تفعيل حساب', personName(d, personId), 'accounts');
+        });
+      },
+      /** صاحب الحساب يغيّر كلمته (مطلوب بعد إعادة التعيين) */
+      changeOwnPassword(personId: ID, current: string, next: string) {
+        mutate((d) => {
+          const acc = accountFor(d, personId);
+          if (!acc.salt || hashPassword(current, acc.salt) !== acc.passwordHash) throw new Error('كلمة المرور الحالية غير صحيحة');
+          const err = passwordError(next);
+          if (err) throw new Error(err);
+          if (next === current) throw new Error('اختر كلمة مرور مختلفة عن الحالية');
+          const salt = uid('salt');
+          Object.assign(acc, { salt, passwordHash: hashPassword(next, salt), mustChangePassword: false, updatedAt: nowISO(), updatedBy: personId });
         });
       },
     },

@@ -30,6 +30,7 @@ import { ContactPage, InboxPage } from './pages/app/Messages';
 import TrackingLinkAdmin from './pages/app/TrackingLinkAdmin';
 import SiteEditor from './pages/app/SiteEditor';
 import SettingsPage from './pages/app/Settings';
+import UsersPage from './pages/app/Users';
 
 export default function App() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
           <Route path="tracking-link" element={<TrackingLinkAdmin />} />
           <Route path="site-editor" element={<SiteEditor />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="users" element={<UsersPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

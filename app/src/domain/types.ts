@@ -795,6 +795,7 @@ export interface DB {
   seededAt: ISODateTime;
   persons: Person[];
   capacities: Capacity[];
+  accounts: Account[];
   /** قواعد تعارض الصفات: تُطبَّق عند إضافة أي صفة */
   capacityRules: CapacityRule[];
   groups: Group[];

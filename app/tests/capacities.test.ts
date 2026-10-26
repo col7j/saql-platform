@@ -1,19 +1,8 @@
 // قواعد تعارض الصفات (وثيقة القرارات + إجابات المالك): تُخزَّن كبيانات وتُطبَّق عند الإضافة
 import { describe, expect, it } from 'vitest';
 import { buildSeed } from '@/data/seed';
-import { createLocalRepositories } from '@/data/repositories';
 import { capacityConflict, substituteConflict } from '@/domain/capacities';
-import type { DB } from '@/domain/types';
-
-function harness(as: string) {
-  let db: DB = buildSeed();
-  const mutate = (recipe: (d: DB) => unknown) => {
-    const draft = structuredClone(db);
-    if (recipe(draft) === false) return;
-    db = draft;
-  };
-  return { repos: createLocalRepositories(mutate, () => as), get db() { return db; } };
-}
+import { harness } from './helpers/harness';
 
 describe('قواعد التعارض', () => {
   it('البيانات التجريبية خالية من التعارض', () => {

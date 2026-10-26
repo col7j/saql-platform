@@ -6,7 +6,7 @@ import type {
   PersonalPlan, Survey, Task,
 } from '@/domain/types';
 import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, defaultSettings, defaultTaskTemplates } from './defaults';
-import { buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
+import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
 export const DB_VERSION = 6;
@@ -404,6 +404,7 @@ export function buildSeed(): DB {
     seededAt: new Date().toISOString(),
     persons,
     capacityRules: structuredClone(defaultCapacityRules),
+    accounts: buildAccounts(persons, iso(addDays(T, -60))),
     capacities: [{ id: 'cap1', personId: 's4', kind: 'site_editor', grantedBy: LEADER_ID, at: iso(addDays(T, -50)) }],
     groups,
     formation: { status: 'published', publishAt: iso(addDays(T, -45), 20), publishedAt: iso(addDays(T, -45), 20) },

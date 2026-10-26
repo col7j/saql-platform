@@ -282,7 +282,7 @@ export interface NavItem {
 const SECTION_OF: Record<string, string> = {
   '/app': 'الأساسية', '/app/calendar': 'الأساسية', '/app/notifications': 'الأساسية',
   '/app/finance': 'الإدارة', '/app/tasks': 'الإدارة', '/app/committees': 'الإدارة', '/app/people': 'الإدارة', '/app/insights': 'الإدارة',
-  '/app/inbox': 'الإدارة', '/app/tracking-link': 'الإدارة', '/app/site-editor': 'الإدارة', '/app/settings': 'الإدارة',
+  '/app/inbox': 'الإدارة', '/app/users': 'الإدارة', '/app/tracking-link': 'الإدارة', '/app/site-editor': 'الإدارة', '/app/settings': 'الإدارة',
 };
 export const NAV_SECTIONS = ['الأساسية', 'البرنامج', 'الإدارة'];
 export function navFor(db: DB, personId: ID): { sections: { title: string; items: NavItem[] }[]; all: NavItem[] } {
@@ -346,6 +346,7 @@ export function navFor(db: DB, personId: ID): { sections: { title: string; items
     add('/app/inbox', 'رسائل المشاركين', 'message', 88);
     add('/app/settings', 'الإعدادات', 'settings', 60);
   } else if (c.isStaff) add('/app/insights', 'المؤشرات', 'chart', 70);
+  if (c.isTechLead) add('/app/users', 'المستخدمون', 'key', 7);
   if (c.isSiteEditor) add('/app/site-editor', 'تحرير الموقع', 'globe', 92);
 
   const all = [...map.values()].sort((a, b) => a.priority - b.priority);
