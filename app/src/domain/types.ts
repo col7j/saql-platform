@@ -744,6 +744,29 @@ export interface SiteContent {
   contactEmail: string;
 }
 
+/** واجهة كل دور: ترتيب القائمة الجانبية ومحتوى الرئيسية (بيانات لا كود). الصلاحية نفسها تُحسب من الأدوار */
+export type LayoutRole = 'finance_head' | 'tech_head' | 'media_head' | 'leader' | 'facilitator' | 'tracker' | 'group_leader' | 'staff' | 'participant';
+export type HomeWidget = 'contact_notice' | 'competition' | 'actions' | 'upcoming';
+export interface NavCatalogItem {
+  key: string;
+  to: string; // المسار، وقد يحمل ?tab= لتبويب داخل الشاشة
+  label: string;
+  icon: string;
+  section: string; // المجموعة الافتراضية لما لا يذكره ترتيب الدور
+}
+export interface RoleLayout {
+  role: LayoutRole;
+  priority: number; // الأصغر أولاً عند اجتماع أكثر من دور
+  sections: { title: string; items: { key: string; label?: string }[] }[];
+  /** عناصر تنزل لآخر القائمة لهذا الدور (مثل الترتيب لمسؤولي المالية والإعلامية والتقنية) */
+  tail?: string[];
+  home: HomeWidget[];
+}
+export interface UiConfig {
+  navCatalog: NavCatalogItem[];
+  layouts: RoleLayout[];
+}
+
 export interface Settings {
   program: { name: string; cohort: string; startDate: ISODate; endDate: ISODate; participantsCount: number };
   /** النصيب الثابت 50/50 حسب الوثيقة لكنه مخزّن هنا لا في الكود */
@@ -781,6 +804,8 @@ export interface Settings {
   trackerId?: ID;
   trackingLink: { token?: string; active: boolean; createdAt?: ISODateTime };
   site: SiteContent;
+  /** القوائم والرئيسية لكل دور. يعدّلها مسؤول اللجنة التقنية (إعداد متغيّر) */
+  ui: UiConfig;
 }
 
 // ───────────── قاعدة البيانات الكاملة ─────────────
