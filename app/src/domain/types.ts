@@ -18,6 +18,11 @@ export interface Person {
   university?: string;
   major?: string;
   title?: string; // وصف قصير لعضو الإدارة
+  photo?: Attachment;
+  /** البيانات المالية يضيفها المشارك أول دخول، وتظهر لمسؤول المالية عند التحويل */
+  bank?: { iban: string; bankName?: string; barcode?: Attachment };
+  /** أكمل ملفه الشخصي أول دخول (وبه يوافق ضمنياً على الشروط والأحكام العامة) */
+  profileCompletedAt?: ISODateTime;
 }
 
 /**
@@ -303,7 +308,9 @@ export interface Trip {
   coordinations: Coordination[];
   attendanceTakerId?: ID;
   trackerSubstitute?: { candidateId: ID; reason?: string; status: 'pending' | 'approved' | 'rejected' };
-  closure: { teamEvalForm?: string; experienceForm?: string; publicReport?: string; photos: string[] };
+  closure: { teamEvalForm?: string; experienceForm?: string; publicReport?: string; photos: string[]; driveLink?: string; tweets?: string[] };
+  /** رحلة الخطة الشخصية: من يخطط الرحلة يحدد بند الجدول أو توقيت فتح الخطة */
+  planUnlock?: { mode: 'item'; itemId: ID } | { mode: 'time'; at: ISODateTime };
   evaluation: TripEvaluation;
 }
 
@@ -860,8 +867,47 @@ export interface Comment {
   at: ISODateTime;
 }
 
+/** جهة داعمة أو شريكة: كلمة مرور خاصة لنفس رابط الداعم، وشعار بترتيب وتصنيف لا يراه الزائر */
+export interface SupporterEntity {
+  id: ID;
+  name: string;
+  kind: 'supporter' | 'partner';
+  salt: string;
+  passwordHash: string;
+  active: boolean;
+  logo?: Attachment;
+  placement: 'above' | 'below';
+  orientation: 'horizontal' | 'vertical';
+  primary: boolean;
+  order: number;
+  createdAt: ISODateTime;
+}
+
+/** الملف الختامي: يرفعه الميسّر لكل مشارك في نهاية البرنامج، ويُحسب جزءاً من الخطة الشخصية */
+export interface FinalFile {
+  participantId: ID;
+  advice: string;
+  attachment: Attachment;
+  uploadedBy: ID;
+  at: ISODateTime;
+}
+
+/** قسم في الموقع العام بقالب جاهز (لا محرر مواقع حر) */
+export interface SiteSection {
+  id: ID;
+  type: 'text' | 'image' | 'people' | 'table';
+  title: string;
+  hidden: boolean;
+  body?: string; // نص
+  image?: Attachment; // صورة
+  caption?: string;
+  people?: 'staff' | 'top5'; // قائمة أشخاص من بيانات المنصة
+  table?: { source: 'manual' | 'participants' | 'groups'; columns: string[]; rows: string[][] };
+}
+
 export interface TrackingComment {
   id: ID;
+  entityId?: ID; // الجهة التي علّقت بعد الدخول
   name: string;
   text: string;
   at: ISODateTime;
@@ -881,12 +927,9 @@ export interface ScheduleCategory {
 export interface SiteContent {
   heroTitle: string;
   heroSubtitle: string;
-  about: string;
-  pillars: { title: string; text: string }[];
-  journey: { title: string; text: string }[];
-  audience: string;
-  faq: { q: string; a: string }[];
   contactEmail: string;
+  /** الأقسام بالترتيب: يضيفها القائد العام (أو المفوَّض) ويحذفها ويخفيها ويعيد ترتيبها */
+  sections: SiteSection[];
 }
 
 /** واجهة كل دور: ترتيب القائمة الجانبية ومحتوى الرئيسية (بيانات لا كود). الصلاحية نفسها تُحسب من الأدوار */
@@ -954,7 +997,8 @@ export interface Settings {
     evalItems: { key: string; name: string }[]; // بنود المالية في تقييم الرحلة (مثل الترشيد) يقيّم بها وحده
   };
   trackerId?: ID;
-  trackingLink: { token?: string; active: boolean; createdAt?: ISODateTime };
+  /** رابط الداعم الثابت: حد للمحاولات الخاطئة ومدة القفل */
+  supporterLink: { maxAttempts: number; lockMinutes: number; programIdea: string };
   site: SiteContent;
   /** القوائم والرئيسية لكل دور. يعدّلها مسؤول اللجنة التقنية (إعداد متغيّر) */
   ui: UiConfig;
@@ -1009,5 +1053,9 @@ export interface DB {
   notifications: Notification[];
   comments: Comment[];
   trackingComments: TrackingComment[];
+  supporters: SupporterEntity[];
+  /** عدّاد المحاولات الخاطئة (في المنصة الحقيقية على الخادم لكل عنوان) */
+  supporterAccess: { failed: number; lockedUntil?: ISODateTime };
+  finalFiles: FinalFile[];
   settings: Settings;
 }

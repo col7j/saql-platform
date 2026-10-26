@@ -37,6 +37,8 @@ export function buildPeople(): Person[] {
     phone: `05611${String(1000 + i)}`,
     university: universities[i % universities.length],
     major: majors[i % majors.length],
+    // أكملوا ملفاتهم أول دخول، إلا الأخير (لتجربة أول دخول)
+    ...(i < participantNames.length - 1 ? { bank: { iban: `SA03800000006080101${String(67500 + i).padStart(5, '0')}`, bankName: ['الراجحي', 'الأهلي', 'الإنماء'][i % 3] }, profileCompletedAt: new Date(Date.now() - 55 * 86400000).toISOString() } : {}),
   }));
   return [leader, ...staff, ...participants];
 }

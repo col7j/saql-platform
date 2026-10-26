@@ -4,7 +4,7 @@ import { substituteConflict } from '@/domain/capacities';
 import { fmtDate, fmtDateTime, relativeDays } from '@/domain/dates';
 import { tripTypeLabel } from '@/domain/labels';
 import {
-  canSeeEstimatedBudget, canSeeFinance, canTakeTripAttendance, canViewTripPlans, effectiveTrackerId, isTripTeam, trackerConflict, tripFacilitatorId, tripTeamIds, tripTeamLeaderId,
+  canSeeEstimatedBudget, groupsPublished, canSeeFinance, canTakeTripAttendance, canViewTripPlans, effectiveTrackerId, isTripTeam, trackerConflict, tripFacilitatorId, tripTeamIds, tripTeamLeaderId,
 } from '@/domain/permissions';
 import { canPublish, publishChecks, tripDeadlines, tripHasEnded, tripHasStarted, tripStage, tripStageLabel, tripStageOrder } from '@/domain/workflow';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
@@ -60,8 +60,9 @@ export default function TripDetail() {
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Badge tone={trip.type === 'external' ? 'orange' : 'blue'}>{tripTypeLabel[trip.type]}</Badge>
-            {trip.executor.kind === 'group' ? <GroupBadge id={trip.executor.groupId} /> : <Badge tone="purple">{trip.type === 'internal' ? 'لقاء تطويري · فريق العمل' : 'فريق العمل'}</Badge>}
+            {trip.executor.kind === 'group' ? (me.isParticipant && !groupsPublished(db) ? <Badge>مجموعة تُعلن يوم النشر</Badge> : <GroupBadge id={trip.executor.groupId} />) : <Badge tone="purple">{trip.type === 'internal' ? 'لقاء تطويري · فريق العمل' : 'فريق العمل'}</Badge>}
             {trip.isPersonalPlanMeeting && <Badge tone="green">لقاء الخطة الشخصية</Badge>}
+            {trip.pair && <Badge tone="orange">مزدوجة: الجزء {trip.pair.part === 1 ? 'الأول' : 'الثاني'}</Badge>}
             <span>{fmtDate(trip.startDate, { hijri: db.settings.showHijri })}</span>
             {trip.location && <span>· {trip.location}</span>}
           </span>
@@ -157,6 +158,7 @@ function Overview({ tripId, onTab }: { tripId: string; onTab: (t: TabKey) => voi
         </Card>
 
         {trip.description && <Card title="عن الرحلة"><p className="text-sm leading-7 text-ink-600">{trip.description}</p></Card>}
+        {trip.isPersonalPlanMeeting && (isLead || me.isLeader) && <PlanUnlockCard tripId={trip.id} />}
       </div>
 
       <div className="space-y-6">
@@ -241,5 +243,27 @@ function EditDateModal({ open, onClose, tripId }: { open: boolean; onClose: () =
       </div>
       <p className="mt-3 text-xs text-ink-500">تظهر الرحلة في تقويم الجميع، وسيصلهم تنبيه بالتعديل. بنود الجدول لا تُنقل تلقائياً.</p>
     </Modal>
+  );
+}
+
+/** رحلة الخطة الشخصية: من يخطط الرحلة يحدد بند الجدول أو توقيت فتح الخطة للمشاركين */
+function PlanUnlockCard({ tripId }: { tripId: string }) {
+  const db = useDB();
+  const trip = db.trips.find((t) => t.id === tripId)!;
+  const items = trip.schedule.plans[0]?.items ?? [];
+  const u = trip.planUnlock;
+  const [mode, setMode] = useState<'item' | 'time'>(u?.mode ?? 'item');
+  const [itemId, setItemId] = useState(u?.mode === 'item' ? u.itemId : items[0]?.id ?? '');
+  const [at, setAt] = useState(u?.mode === 'time' ? u.at.slice(0, 16) : `${trip.startDate}T10:00`);
+  return (
+    <Card title="فتح الخطة الشخصية" subtitle="تُفتح للمشاركين عند بداية البند المختار أو في التوقيت المحدد">
+      <div className="grid gap-2 sm:grid-cols-[140px_1fr_auto]">
+        <Select value={mode} onChange={(e) => setMode(e.target.value as 'item' | 'time')} options={[{ value: 'item', label: 'بند في الجدول' }, { value: 'time', label: 'توقيت محدد' }]} aria-label="طريقة الفتح" />
+        {mode === 'item'
+          ? <Select value={itemId} onChange={(e) => setItemId(e.target.value)} options={items.map((i) => ({ value: i.id, label: `${fmtDate(i.date)} ${i.start} · ${i.detail}` }))} aria-label="البند" />
+          : <Input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} />}
+        <Button onClick={() => act(() => repos.trips.setPlanUnlock(tripId, mode === 'item' ? { mode: 'item', itemId } : { mode: 'time', at: new Date(at).toISOString() }), 'حُدّد موعد فتح الخطة')}>احفظ</Button>
+      </div>
+    </Card>
   );
 }

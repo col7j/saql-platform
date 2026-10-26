@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fmtDateTime } from '@/domain/dates';
 import { groupOf, groupsPublished } from '@/domain/permissions';
+import { StaffList } from '@/ui/publicBlocks';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Select, Tabs, Table } from '@/ui';
 import { PersonChip } from '@/ui/domain';
@@ -13,7 +14,13 @@ export default function GroupsPage() {
   const [tab, setTab] = useState<'list' | 'formation' | 'transfers'>('list');
   const published = groupsPublished(db);
   if (me.isParticipant && !published)
-    return (<div><PageHeader title="المجموعات" /><Empty title="لم يُنشر تشكيل المجموعات بعد" text="في أول لقاء أو لقاءين يكون الجميع بدون مجموعات. ستصلك التنبيهات عند النشر." /></div>);
+    return (
+      <div>
+        <PageHeader title="المجموعات" />
+        <Empty title="لم يُنشر تشكيل المجموعات بعد" text="ستعرف مجموعتك يوم النشر، وتصلك التنبيهات. حتى ذلك الحين تعرّف على فريق العمل." />
+        <Card title="فريق العمل" className="mt-4"><StaffList /></Card>
+      </div>
+    );
   return (
     <div>
       <PageHeader title="المجموعات" subtitle="أربع مجموعات، لكل منها قائد من المشاركين وميسّر من فريق العمل" />

@@ -31,6 +31,7 @@ import TrackingLinkAdmin from './pages/app/TrackingLinkAdmin';
 import SiteEditor from './pages/app/SiteEditor';
 import SettingsPage from './pages/app/Settings';
 import UsersPage from './pages/app/Users';
+import ProfilePage from './pages/app/Profile';
 
 export default function App() {
   return (
@@ -38,7 +39,8 @@ export default function App() {
       <Routes>
         <Route path="/" element={<PublicHome />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/t/:token" element={<TrackingPage />} />
+        <Route path="/supporter" element={<TrackingPage />} />
+        <Route path="/t/:token" element={<Navigate to="/supporter" replace />} />
         <Route path="/app" element={<AppShell />}>
           <Route index element={<Dashboard />} />
           <Route path="calendar" element={<CalendarPage />} />
@@ -74,6 +76,7 @@ export default function App() {
           <Route path="site-editor" element={<SiteEditor />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

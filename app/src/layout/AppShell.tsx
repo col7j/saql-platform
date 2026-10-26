@@ -85,6 +85,11 @@ export function AppShell() {
     return loc.search.includes(query);
   };
   const allowed = repos.access.canOpen(loc.pathname, loc.search);
+  // أول دخول للمشارك: يُكمل ملفه قبل أي شاشة
+  const onboarding = me.isParticipant && !me.person.profileCompletedAt && loc.pathname !== '/app/profile';
+  useEffect(() => {
+    if (onboarding) nav('/app/profile', { replace: true });
+  }, [onboarding, nav]);
   const linkCls = (active: boolean) => cx('group flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-[15px] transition', active ? 'bg-brand-grad font-medium text-white shadow-md shadow-brand-600/20' : 'text-ink-700 hover:bg-brand-50 hover:text-brand-800');
 
   // القائمة الجانبية: كل الأقسام ظاهرة ومقسّمة إلى مجموعات
@@ -127,7 +132,7 @@ export function AppShell() {
     </nav>
   );
   // الشريط السفلي للجوال: الرئيسية، التقويم، وأهم عنصرين للدور، وزر القائمة الكاملة
-  const roleItems = all.filter((i) => !['/app', '/app/calendar', '/app/notifications'].includes(i.to)).slice(0, 2);
+  const roleItems = all.filter((i) => !['/app', '/app/calendar', '/app/notifications', '/app/profile'].includes(i.to)).slice(0, 2);
   const bottom = [all.find((i) => i.to === '/app'), all.find((i) => i.to === '/app/calendar'), ...roleItems].filter((x): x is NonNullable<typeof x> => !!x);
 
   return (

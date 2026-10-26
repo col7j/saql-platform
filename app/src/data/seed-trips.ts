@@ -167,6 +167,8 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
       published: true, publishedAt: iso(addDays(d, -4)), scheduleVisibility: 'full', scheduleStartedNotified: true,
       schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }] },
       sessions: r.sessions, guests: guests([['أ. نايف البلوي', 'مدرب عجلة الحياة']]),
+      // تُفتح الخطة الشخصية مع بند ورشة «من الرؤية إلى الخطوات»
+      planUnlock: { mode: 'item', itemId: r.items[6].id },
       closure: { teamEvalForm: 'الفريق التزم بالمهام.', photos: ['ph4'] },
       evaluation: { staffRatings: { s7: { score: 9, at: iso(addDays(d, 3)) }, s2: { score: 8, at: iso(addDays(d, 3)) } }, finance: {} },
     }, T);
@@ -188,7 +190,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
       published: true, publishedAt: iso(addDays(d, -2)), scheduleVisibility: 'full', scheduleStartedNotified: true, attendanceTakerId: 'u2', coordinationOwnerId: 'u3',
       schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }] },
       sessions: r.sessions, guests: guests([['الشيخ د. حسن الأنصاري', 'محاضر'], ['أ. مازن العلي', 'مدرب ورشة']]),
-      closure: { teamEvalForm: 'وزعنا المهام مبكراً. التحدي: التنسيق مع المرشد.', experienceForm: 'التجربة رسّخت أهمية الخطة البديلة.', publicReport: 'حضر 21 مشاركاً من المجموعات الأربع. نُفّذت جولة ومحاضرة وورشة. التزام بالجدول بنسبة 89%.', photos: ['ph5', 'ph6', 'ph7', 'ph8'] },
+      closure: { teamEvalForm: 'وزعنا المهام مبكراً. التحدي: التنسيق مع المرشد.', experienceForm: 'التجربة رسّخت أهمية الخطة البديلة.', publicReport: 'حضر 21 مشاركاً من المجموعات الأربع. نُفّذت جولة ومحاضرة وورشة. التزام بالجدول بنسبة 89%.', photos: ['ph5', 'ph6', 'ph7', 'ph8'], driveLink: 'https://drive.google.com/drive/folders/saql-uhud-demo', tweets: ['https://x.com/saql/status/1001', 'https://x.com/saql/status/1002'] },
       evaluation: { staffRatings: { p_lead: { score: 8.5, note: 'رحلة موفقة', at: iso(addDays(d, 2)) }, s7: { score: 8, note: 'تنظيم جيد وتأخر بسيط في الورشة', at: iso(addDays(d, 1)) }, s2: { score: 9, at: iso(addDays(d, 2)) }, s3: { score: 8, at: iso(addDays(d, 2)) }, s4: { score: 8, at: iso(addDays(d, 3)) } }, finance: { rationing: 4, proof_quality: 5 } },
     }, T);
     t.coordinations = t.coordinations.map((c) => ({ ...c, status: 'done' }));

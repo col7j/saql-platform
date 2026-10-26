@@ -1,10 +1,13 @@
 // الخطط الشخصية: الميسّر يرى مجموعته فقط، والقائد العام يرى الكل ويتابع بها أداء الميسّرين
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ASPECT_KEYS, aspectColor, aspectLabel } from '@/domain/labels';
 import { canSeePersonalPlan } from '@/domain/permissions';
 import { isPlanUnlocked, planProgress } from '@/domain/workflow';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
-import { Badge, Button, Card, Empty, Icons, PageHeader, Progress } from '@/ui';
+import type { Attachment } from '@/domain/types';
+import { Badge, Button, Card, Empty, Icons, PageHeader, Progress, Textarea } from '@/ui';
+import { AttachmentInput, AttachmentView } from '@/ui/attachments';
 import { GroupBadge, PersonChip } from '@/ui/domain';
 import { PlanView } from './PlanView';
 
@@ -65,7 +68,32 @@ export function PlanOf() {
   return (
     <div>
       <PageHeader back="/app/plans" title={`خطة ${personName(db, id)}`} subtitle="عرض للمتابعة (لا تعديل)" />
+      <FinalFileCard participantId={id} />
       <PlanView participantId={id} editable={false} />
     </div>
+  );
+}
+
+/** الملف الختامي: يرفعه الميسّر في نهاية البرنامج (يوم الختام قبل الحفل)، ويُحسب جزءاً من الخطة الشخصية */
+function FinalFileCard({ participantId }: { participantId: string }) {
+  const db = useDB();
+  const me = useMe();
+  const f = db.finalFiles.find((x) => x.participantId === participantId);
+  const isFac = db.groups.find((g) => g.memberIds.includes(participantId))?.facilitatorId === me.person.id;
+  const [advice, setAdvice] = useState(f?.advice ?? '');
+  const [att, setAtt] = useState<Attachment | undefined>(f?.attachment);
+  if (!f && !isFac) return null;
+  return (
+    <Card title="الملف الختامي" subtitle="نصائح وبيانات يحمّلها المشارك ويستفيد منها" className="mb-4">
+      {isFac ? (
+        <div className="grid gap-3">
+          <Textarea rows={3} placeholder="نصائح ختامية للمشارك" value={advice} onChange={(e) => setAdvice(e.target.value)} />
+          <AttachmentInput value={att} onChange={setAtt} label="الملف (PDF أو صورة)" />
+          <Button disabled={!att || !advice.trim()} onClick={() => act(() => repos.finalFiles.upload(participantId, advice, att!), 'رُفع الملف الختامي')}>{f ? 'حدّث الملف' : 'ارفع الملف الختامي'}</Button>
+        </div>
+      ) : (
+        <><p className="whitespace-pre-line text-sm">{f!.advice}</p><AttachmentView a={f!.attachment} /></>
+      )}
+    </Card>
   );
 }

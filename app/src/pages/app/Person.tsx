@@ -4,7 +4,9 @@ import { Link, useParams } from 'react-router-dom';
 import { fmtDateTime } from '@/domain/dates';
 import { canSeeFacilitatorNotes, canSeeFinance, canSeePersonalPlan, canWriteFacilitatorNote, getCapabilities, groupOf } from '@/domain/permissions';
 import { act, personName, repos, useDB, useMe, useScores } from '@/state/store';
-import { Avatar, Badge, Button, Card, Empty, KeyVal, PageHeader, Progress, Textarea, askConfirm } from '@/ui';
+import type { Attachment } from '@/domain/types';
+import { Avatar, Badge, Button, Card, Empty, Field, Input, KeyVal, PageHeader, Progress, Textarea, askConfirm } from '@/ui';
+import { AttachmentInput } from '@/ui/attachments';
 import { GroupBadge } from '@/ui/domain';
 
 export default function PersonPage() {
@@ -46,6 +48,7 @@ export default function PersonPage() {
             </Card>
           )}
           {p.kind === 'participant' && me.isLeader && <LeaderEvalCard participantId={p.id} />}
+          {p.kind === 'staff' && me.isLeader && <StaffPublicCard personId={p.id} />}
           {sc && (
             <Card title="التقييم" subtitle={`الترتيب #${sc.rank} · ${sc.total} نقطة`}>
               <div className="space-y-2">
@@ -100,6 +103,24 @@ function LeaderEvalCard({ participantId }: { participantId: string }) {
           <Button onClick={() => askConfirm({ title: 'حفظ التقييم', body: 'التقييم مرة واحدة ولا يُعدَّل بعد الحفظ.', cta: 'احفظ التقييم', run: () => act(() => repos.leaderEval.save(participantId, scores, note || undefined), 'حُفظ التقييم') })}>احفظ</Button>
         </div>
       )}
+    </Card>
+  );
+}
+
+/** القائد العام يضيف بيانات فريق العمل التي تظهر في رابط الداعم (بالأرقام) والموقع العام (بلا أرقام) */
+function StaffPublicCard({ personId }: { personId: string }) {
+  const db = useDB();
+  const p = db.persons.find((x) => x.id === personId)!;
+  const [f, setF] = useState({ title: p.title ?? '', phone: p.phone ?? '' });
+  const [photo, setPhoto] = useState<Attachment | undefined>(p.photo);
+  return (
+    <Card title="البيانات العامة" subtitle="تظهر بموافقة ضمنية ضمن الشروط والأحكام العامة">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="المنصب"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
+        <Field label="الجوال (رابط الداعم فقط)"><Input dir="ltr" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
+        <div className="sm:col-span-2"><AttachmentInput value={photo} onChange={setPhoto} label="الصورة" /></div>
+      </div>
+      <Button className="mt-3" onClick={() => act(() => repos.profile.saveStaff(personId, { title: f.title, phone: f.phone || undefined, photo }), 'حُفظت البيانات')}>احفظ</Button>
     </Card>
   );
 }

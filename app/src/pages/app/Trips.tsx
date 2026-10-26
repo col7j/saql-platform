@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { addDays, fmtDate, relativeDays, todayISO } from '@/domain/dates';
 import { tripTypeLabel } from '@/domain/labels';
-import { isTripTeam, tripTeamLeaderId, trackerConflict } from '@/domain/permissions';
+import { groupsPublished, isTripTeam, tripTeamLeaderId, trackerConflict } from '@/domain/permissions';
 import { tripDeadlines, tripProgress, tripStage, tripStageLabel } from '@/domain/workflow';
 import type { Trip, TripType } from '@/domain/types';
 import { act, repos, useDB, useMe } from '@/state/store';
@@ -92,7 +92,8 @@ export function TripCard({ trip: t }: { trip: Trip }) {
     <Link to={`/app/trips/${t.id}`} className="group flex flex-col rounded-2xl border border-ink-100 bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:border-brand-200">
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge tone={t.type === 'external' ? 'orange' : 'blue'}>{tripTypeLabel[t.type]}</Badge>
-        {t.executor.kind === 'staff' ? <Badge tone="purple">{t.type === 'internal' ? 'لقاء تطويري' : 'فريق العمل'}</Badge> : <GroupBadge id={t.executor.groupId} />}
+        {t.executor.kind === 'staff' ? <Badge tone="purple">{t.type === 'internal' ? 'لقاء تطويري' : 'فريق العمل'}</Badge> : me.isParticipant && !groupsPublished(db) ? <Badge>مجموعة تُعلن يوم النشر</Badge> : <GroupBadge id={t.executor.groupId} />}
+        {t.pair && <Badge tone="orange">مزدوجة</Badge>}
         {t.isPersonalPlanMeeting && <Badge tone="green">لقاء الخطة الشخصية</Badge>}
         {team && <Badge tone="brand">فريقي</Badge>}
       </div>

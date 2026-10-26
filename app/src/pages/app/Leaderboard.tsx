@@ -1,7 +1,8 @@
-// صفحة الترتيب والتقييم (قسم 13.4) — داخل المنصة فقط، ليست في الموقع العام أبداً
+// صفحة الترتيب والتقييم: تظهر بعد نشر التشكيل، وترتيب المجموعات والأفراد بالأسماء يظهر أيضاً في الموقع العام ورابط الداعم
 import { useState } from 'react';
 import { act, personName, repos, useDB, useMe, useScores } from '@/state/store';
-import { Badge, Button, Card, Field, Icons, Input, Modal, Notice, PageHeader, Progress, Select, Table, Tabs, cx } from '@/ui';
+import { groupsPublished } from '@/domain/permissions';
+import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Progress, Select, Table, Tabs, cx } from '@/ui';
 import { GroupBadge, PersonChip } from '@/ui/domain';
 
 const medal = ['🥇', '🥈', '🥉'];
@@ -17,12 +18,13 @@ export default function LeaderboardPage() {
   const mine = scores.persons.find((p) => p.personId === me.person.id);
   const s = db.settings;
   const log = scores.log.filter((l) => me.isStaff || l.personId === me.person.id || l.groupId === me.group?.id);
+  if (me.isParticipant && !groupsPublished(db)) return <div><PageHeader title="الترتيب" /><Empty title="يظهر الترتيب يوم نشر التشكيل" /></div>;
 
   return (
     <div>
       <PageHeader title="الترتيب والتقييم" subtitle={`${s.split.individual}% فردي و${s.split.group}% جماعي · النقاط كسب فقط، لا خصم أبداً · معظم البنود تُحسب حياً من نشاط المنصة`}
         actions={me.isLeader && <Button variant="secondary" onClick={() => setAward(true)} icon={<Icons.Plus className="h-4 w-4" />}>سجّل نقاطاً يدوية</Button>} />
-      <Notice icon={<Icons.ShieldCheck className="h-4 w-4" />}>هذه الصفحة داخل المنصة فقط، ولا تظهر في الموقع العام ولا في رابط المتابعة.</Notice>
+      <Notice icon={<Icons.Info className="h-4 w-4" />}>بعد نشر التشكيل يظهر ترتيب المجموعات والأفراد بالأسماء في المنصة والموقع العام ورابط الداعم، أما النقاط وتفصيلها فداخل المنصة فقط. تقييم المقدّمين يُضاف بعد نهاية البرنامج.</Notice>
       <div className="mt-4"><Tabs value={tab} onChange={setTab} tabs={[{ key: 'ranking', label: 'الترتيب' }, { key: 'groups', label: 'تفصيل المجموعات' }, { key: 'log', label: 'سجل النقاط' }, ...(me.isStaff ? [{ key: 'staff' as const, label: 'نقاط الإدارة' }] : [])]} /></div>
 
       {tab === 'ranking' && (

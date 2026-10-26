@@ -87,33 +87,21 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     feesInPlatform: false,
     feeAmount: 500,
     finance: { maxOpenCustodies: 2, splitAlert: { maxAmount: 300, windowDays: 3, minCount: 3 }, evalItems: [{ key: 'rationing', name: 'الترشيد' }, { key: 'proof_quality', name: 'اكتمال الإثباتات ووضوحها' }] },
-    trackingLink: { active: false },
     ui: defaultUiConfig(),
+    supporterLink: { maxAttempts: 5, lockMinutes: 15, programIdea: 'صقل برنامج لتنمية وتأهيل القيادات الشبابية من طلاب الجامعات في المدينة المنورة، يتعلم فيه المشارك القيادة بممارستها: يخطط مع مجموعته رحلات ولقاءات وينفّذها ويغلقها.' },
     site: {
       heroTitle: 'صقل',
       heroSubtitle: 'برنامج لتنمية وتأهيل القيادات الشبابية من طلاب الجامعات في المدينة المنورة. نتعلم القيادة بممارستها.',
-      about:
-        'صقل برنامج تأهيلي يمتد لعام كامل، يجمع نخبة من الشباب الجامعيين في المدينة المنورة. يحضر المشارك معظم اللقاءات والرحلات مشاركاً، وفي بعضها يكون معدّاً ومنفّذاً مع مجموعته، فيتعلم كيف تُخطّط الرحلات وتُدار وتُغلق.',
-      pillars: [
-        { title: 'التعلّم بالممارسة', text: 'تخطّط المجموعة رحلاتها وتنفّذها وتغلقها بنفسها، بإشراف ميسّر من فريق العمل.' },
-        { title: 'الخطة الشخصية', text: 'عجلة حياة من ستة جوانب، ورؤية وخطوات عملية يتابعها الميسّر في لقاءات فردية.' },
-        { title: 'لقاءات التركيز', text: 'لقاءات قصيرة على مستوى المجموعة، يقدّم فيها المشاركون ويتدرّبون على الطرح.' },
-        { title: 'الرحلات', text: 'رحلات داخلية تمهيدية وأخرى خارجية بسفر وسكن، تصنع تجربة لا تُنسى.' },
-      ],
-      journey: [
-        { title: 'الانطلاقة', text: 'لقاءات تعارف وتأسيس قبل تشكيل المجموعات.' },
-        { title: 'تشكيل المجموعات', text: 'أربع مجموعات، لكل منها قائد من المشاركين وميسّر من فريق العمل.' },
-        { title: 'الرحلات الداخلية', text: 'كل مجموعة تنفّذ رحلة داخل المدينة تمهيداً للخارجية.' },
-        { title: 'الرحلات الخارجية', text: 'رحلات بسفر وسكن تخطّطها المجموعات وتديرها كاملة.' },
-        { title: 'الختام', text: 'تقرير البرنامج وقياس الأثر وتكريم المتميزين.' },
-      ],
-      audience: 'طلاب الجامعات في المدينة المنورة ممن يطمحون لتطوير قدراتهم القيادية.',
-      faq: [
-        { q: 'كم مدة البرنامج؟', a: 'يمتد البرنامج قرابة عام دراسي كامل.' },
-        { q: 'هل البرنامج برسوم؟', a: 'نعم، برسوم رمزية تُسدّد عند القبول.' },
-        { q: 'كيف أتابع لقاءاتي؟', a: 'من خلال المنصة الداخلية بعد تسجيل الدخول.' },
-      ],
       contactEmail: 'info@saql.example',
+      // أقسام بقوالب جاهزة (نص، صورة، قائمة أشخاص، جدول) تُدار من المنصة بلا محرر مواقع حر
+      sections: [
+        { id: 'sec_about', type: 'text', title: 'فكرة البرنامج وأهدافه', hidden: false, body: 'صقل برنامج تأهيلي يمتد لعام كامل، يجمع نخبة من الشباب الجامعيين (18 إلى 22 سنة) في المدينة المنورة. يحضر المشارك معظم اللقاءات والرحلات مشاركاً، وفي بعضها يكون معدّاً ومنفّذاً مع مجموعته، فيتعلم كيف تُخطّط الرحلات وتُدار وتُغلق.' },
+        { id: 'sec_pillars', type: 'table', title: 'محاور البرنامج', hidden: false, table: { source: 'manual', columns: ['المحور', 'الوصف'], rows: [['التعلّم بالممارسة', 'تخطّط المجموعة رحلاتها وتنفّذها وتغلقها بنفسها، بإشراف ميسّر من فريق العمل.'], ['الخطة الشخصية', 'عجلة حياة من ستة جوانب، ورؤية وخطوات عملية يتابعها الميسّر في لقاءات فردية.'], ['لقاءات التركيز', 'لقاءات قصيرة على مستوى المجموعة، يقدّم فيها المشاركون ويتدرّبون على الطرح.'], ['الرحلات', 'رحلات داخلية تمهيدية وأخرى خارجية بسفر وسكن.']] } },
+        { id: 'sec_staff', type: 'people', title: 'فريق العمل', hidden: false, people: 'staff' },
+        { id: 'sec_top', type: 'people', title: 'المشاركون المتميزون', hidden: false, people: 'top5' },
+        { id: 'sec_groups', type: 'table', title: 'المجموعات', hidden: false, table: { source: 'groups', columns: [], rows: [] } },
+        { id: 'sec_faq', type: 'table', title: 'أسئلة شائعة', hidden: false, table: { source: 'manual', columns: ['السؤال', 'الجواب'], rows: [['كم مدة البرنامج؟', 'يمتد البرنامج قرابة عام دراسي كامل.'], ['كيف أتابع لقاءاتي؟', 'من خلال المنصة الداخلية بعد تسجيل الدخول.']] } },
+      ],
     },
   };
 }
@@ -172,12 +160,13 @@ export function defaultUiConfig(): UiConfig {
   const A = 'الإدارة';
   const F = 'المالية';
   const k = (key: string, label?: string) => ({ key, label });
-  const basics = { title: B, items: [k('home'), k('calendar'), k('notifications')] };
+  const basics = { title: B, items: [k('home'), k('calendar'), k('notifications'), k('profile')] };
   return {
     navCatalog: [
       { key: 'home', to: '/app', label: 'الرئيسية', icon: 'home', section: B },
       { key: 'calendar', to: '/app/calendar', label: 'التقويم', icon: 'calendar', section: B },
       { key: 'notifications', to: '/app/notifications', label: 'الإشعارات', icon: 'bell', section: B },
+      { key: 'profile', to: '/app/profile', label: 'ملفي', icon: 'contact', section: B },
       { key: 'trips', to: '/app/trips', label: 'الرحلات', icon: 'map', section: P },
       { key: 'focus', to: '/app/focus', label: 'لقاءات التركيز', icon: 'target', section: P },
       { key: 'meetings', to: '/app/meetings', label: 'الاجتماعات', icon: 'meeting', section: P },

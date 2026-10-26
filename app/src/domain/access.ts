@@ -44,7 +44,7 @@ function isTrackerOrSubstitute(db: DB, pid: ID, c: Capabilities) {
 export function accessibleKeys(db: DB, pid: ID): Set<string> {
   const c = getCapabilities(db, pid);
   const published = groupsPublished(db);
-  const keys = new Set<string>(['home', 'calendar', 'notifications', 'trips', 'library', 'surveys', 'groups', 'leaderboard', 'tasks']);
+  const keys = new Set<string>(['home', 'calendar', 'notifications', 'profile', 'trips', 'library', 'surveys', 'groups', 'leaderboard', 'tasks']);
   const add = (k: string, ok: unknown) => ok && keys.add(k);
   add('focus', c.isStaff || published);
   add('meetings', c.isStaff || c.leaderOf);
@@ -130,7 +130,7 @@ export function homeFor(db: DB, pid: ID): HomeWidget[] {
 const STATIC_ROUTES: Record<string, string> = {
   '': 'home', calendar: 'calendar', notifications: 'notifications', trips: 'trips', focus: 'focus', meetings: 'meetings', plan: 'plan',
   individual: 'individual', plans: 'plans', library: 'library', surveys: 'surveys', groups: 'groups', leaderboard: 'leaderboard', tasks: 'tasks',
-  requests: 'requests', contact: 'contact', tracker: 'tracker', committees: 'committees', people: 'people', insights: 'insights', inbox: 'inbox',
+  requests: 'requests', profile: 'profile', contact: 'contact', tracker: 'tracker', committees: 'committees', people: 'people', insights: 'insights', inbox: 'inbox',
   'tracking-link': 'tracking_link', 'site-editor': 'site_editor', users: 'users', settings: 'settings', finance: 'finance', custody: 'requests',
 };
 

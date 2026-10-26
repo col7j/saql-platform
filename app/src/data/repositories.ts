@@ -8,6 +8,7 @@ import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
 import { hasTempGrant, tempPermissionLabel } from '@/domain/grants';
+import { findSupporterByPassword, supporterLocked } from '@/domain/supporter';
 import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, isEvaluationKey, settingsKeyBlockReason, type EvaluationKey, type EvaluationSettings } from '@/domain/settings';
 import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
@@ -23,7 +24,7 @@ import {
 } from '@/domain/finance';
 import { attachmentError, custodyCloseChecks, custodyFigures, formDuplicateWarnings, insufficientFunds, openCustodyConflict, splitWarning } from '@/domain/ledger';
 import type {
-  Attachment, AuditEntry, BudgetRequest, DirectSpend, EditRequest, EditTarget, FeeStatus, FinancePermission, Meeting, Person, ProgramBudget, ProofKind, SpendForm, TempPermission, WalletEntry,
+  Attachment, AuditEntry, BudgetRequest, DirectSpend, SupporterEntity, EditRequest, EditTarget, FeeStatus, FinancePermission, Meeting, Person, ProgramBudget, ProofKind, SpendForm, TempPermission, WalletEntry,
 } from '@/domain/types';
 
 /** إن أعادت الوصفة false فلا تغيير يُحفظ */
@@ -178,6 +179,11 @@ function tripFormBlock(d: DB, trip: Trip, kind: TripDoc['kind'] | 'budget'): str
   if (kind === 'final_report') return null;
   if (kind !== 'document' && !docFor(d, trip.id, 'document')?.submittedAt) return 'ارفع وثيقة الرحلة أولاً: هي أول ما يُرفع';
   return null;
+}
+export function programPostBlock(d: DB): string | null {
+  const last = [...d.trips].filter((t) => t.type === 'external').sort((a, b) => b.endDate.localeCompare(a.endDate))[0];
+  if (!last) return null;
+  return d.surveys.some((x) => x.context.kind === 'trip' && x.context.id === last.id) ? null : `الاستبيان العام البعدي يُنشأ بعد تسجيل استبيان آخر رحلة خارجية (${last.title})`;
 }
 function tripBudgetBlock(d: DB, tripId: ID): string | null {
   return tripFormBlock(d, findTrip(d, tripId), 'budget');
@@ -535,6 +541,16 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           item.sessionId = sid;
         });
       },
+      /** رحلة الخطة الشخصية: قائد فريقها يحدد بند الجدول أو توقيت فتح الخطة */
+      setPlanUnlock(tripId: ID, unlock: Trip['planUnlock']) {
+        mutate((d) => {
+          const t = findTrip(d, tripId);
+          if (!t.isPersonalPlanMeeting) throw new Error('هذه الرحلة لا تخص الخطة الشخصية');
+          if (tripTeamLeaderId(d, t) !== me() && !isLeaderId(d, me())) throw new Error('يحدده من يخطط الرحلة');
+          if (unlock?.mode === 'item' && !t.schedule.plans[0]?.items.some((i) => i.id === unlock.itemId)) throw new Error('البند غير موجود في الخطة أ');
+          t.planUnlock = unlock;
+        });
+      },
       setScheduleVisibility(tripId: ID, v: Trip['scheduleVisibility']) {
         mutate((d) => {
           const t = findTrip(d, tripId);
@@ -890,6 +906,11 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
     surveys: {
       save(s: Survey) {
         mutate((d) => {
+          // العام البعدي: لا يُنشأ قبل تسجيل استبيان آخر رحلة خارجية
+          if (s.context.kind === 'program' && s.phase === 'post' && !d.surveys.some((x) => x.id === s.id)) {
+            const block = programPostBlock(d);
+            if (block) throw new Error(block);
+          }
           const i = d.surveys.findIndex((x) => x.id === s.id);
           if (i >= 0) d.surveys[i] = s;
           else {
@@ -1503,17 +1524,112 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           pushNotification(d, [personId], 'general', 'عُيّنت متابعاً للرحلات', '/app/tracker');
         });
       },
-      generateTrackingLink() {
-        mutate((d) => (d.settings.trackingLink = { token: Math.random().toString(36).slice(2, 12), active: true, createdAt: nowISO() }));
-      },
-      revokeTrackingLink() {
-        mutate((d) => (d.settings.trackingLink = { ...d.settings.trackingLink, active: false }));
-      },
-      addTrackingComment(name: string, text: string) {
-        mutate((d) => d.trackingComments.push({ id: uid('tc'), name: name || 'زائر', text, at: nowISO(), status: d.settings.trackingCommentsNeedReview ? 'pending' : 'visible' }));
-      },
       moderateTrackingComment(id: ID, status: 'visible' | 'hidden') {
-        mutate((d) => (d.trackingComments.find((c) => c.id === id)!.status = status));
+        mutate((d) => {
+          if (d.persons.find((p) => p.id === me())?.kind !== 'staff') throw new Error('مراجعة التعليقات لفريق العمل');
+          d.trackingComments.find((c) => c.id === id)!.status = status;
+        });
+      },
+    },
+
+    // ───────────── رابط الداعم: كلمة مرور لكل جهة ─────────────
+    supporters: {
+      create(input: { name: string; kind: SupporterEntity['kind']; password: string }) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('جهات رابط الداعم يسجّلها القائد العام');
+          if (!input.name.trim() || !input.password) throw new Error('اكتب اسم الجهة وكلمة المرور');
+          if (findSupporterByPassword(d, input.password)) throw new Error('كلمة المرور مستخدمة لجهة أخرى');
+          const salt = uid('salt');
+          d.supporters.push({ id: uid('sp'), name: input.name.trim(), kind: input.kind, salt, passwordHash: hashPassword(input.password, salt), active: true, placement: 'above', orientation: 'horizontal', primary: false, order: d.supporters.length + 1, createdAt: nowISO() });
+          audit(d, me(), 'إضافة جهة لرابط الداعم', input.name, 'settings');
+        });
+      },
+      setPassword(id: ID, password: string) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('للقائد العام');
+          if (!password) throw new Error('اكتب كلمة المرور');
+          const other = findSupporterByPassword(d, password);
+          if (other && other.id !== id) throw new Error('كلمة المرور مستخدمة لجهة أخرى');
+          const sp = d.supporters.find((x) => x.id === id)!;
+          sp.salt = uid('salt');
+          sp.passwordHash = hashPassword(password, sp.salt);
+          audit(d, me(), 'تغيير كلمة مرور جهة', sp.name, 'settings');
+        });
+      },
+      update(id: ID, patch: Partial<Pick<SupporterEntity, 'name' | 'kind' | 'active' | 'logo' | 'placement' | 'orientation' | 'primary' | 'order'>>) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('للقائد العام');
+          Object.assign(d.supporters.find((x) => x.id === id)!, patch);
+        });
+      },
+      /** الدخول بكلمة المرور: حد للمحاولات الخاطئة ثم قفل مؤقت */
+      login(password: string): ID | null {
+        let found: ID | null = null;
+        mutate((d) => {
+          const locked = supporterLocked(d);
+          if (locked) throw new Error(locked);
+          const sp = findSupporterByPassword(d, password);
+          if (!sp || !sp.active) {
+            d.supporterAccess.failed += 1;
+            if (d.supporterAccess.failed >= d.settings.supporterLink.maxAttempts) d.supporterAccess = { failed: 0, lockedUntil: new Date(Date.now() + d.settings.supporterLink.lockMinutes * 60000).toISOString() };
+            return;
+          }
+          d.supporterAccess = { failed: 0 };
+          found = sp.id;
+        });
+        return found;
+      },
+      /** تعليق الزائر بعد الدخول: لا يظهر إلا بعد الموافقة من «رابط المتابعة» */
+      comment(entityId: ID, name: string, text: string) {
+        mutate((d) => {
+          const sp = d.supporters.find((x) => x.id === entityId && x.active);
+          if (!sp) throw new Error('سجّل الدخول أولاً');
+          if (!text.trim()) throw new Error('اكتب التعليق');
+          d.trackingComments.push({ id: uid('tc'), entityId, name: name.trim() || sp.name, text: text.trim(), at: nowISO(), status: d.settings.trackingCommentsNeedReview ? 'pending' : 'visible' });
+          pushNotification(d, staffIds(d).filter((x) => d.memberships.some((m) => m.personId === x && d.committees.find((c) => c.id === m.committeeId)?.kind === 'media')), 'general', `تعليق جديد في رابط الداعم من ${sp.name}`, '/app/tracking-link');
+        });
+      },
+    },
+
+    // ───────────── الملف الشخصي والختامي ─────────────
+    profile: {
+      /** صاحب الحساب يعبّئ ملفه وصورته وبياناته المالية (أول دخول) */
+      saveOwn(patch: Partial<Pick<Person, 'phone' | 'university' | 'major' | 'photo' | 'bank'>>, complete = false) {
+        mutate((d) => {
+          const p = d.persons.find((x) => x.id === me())!;
+          if (complete && p.kind === 'participant') {
+            const bank = patch.bank ?? p.bank;
+            if (!bank?.iban || !/^SA\d{22}$/.test(bank.iban.replace(/\s/g, ''))) throw new Error('أدخل رقم آيبان سعودي صحيح (SA متبوعاً بـ 22 رقماً)');
+            if (!(patch.photo ?? p.photo)) throw new Error('أضف صورتك الشخصية');
+          }
+          Object.assign(p, patch);
+          if (p.bank) p.bank.iban = p.bank.iban.replace(/\s/g, '').toUpperCase();
+          if (complete) p.profileCompletedAt = nowISO();
+        });
+      },
+      /** القائد العام يضيف بيانات فريق العمل التي تظهر في رابط الداعم والموقع العام */
+      saveStaff(personId: ID, patch: Partial<Pick<Person, 'title' | 'phone' | 'photo'>>) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('بيانات فريق العمل يضيفها القائد العام');
+          const p = d.persons.find((x) => x.id === personId && x.kind === 'staff');
+          if (!p) throw new Error('ليس من فريق العمل');
+          Object.assign(p, patch);
+        });
+      },
+    },
+    finalFiles: {
+      /** الميسّر يرفع الملف الختامي لكل مشارك في مجموعته (نصائح وبيانات يحمّلها المشارك) */
+      upload(participantId: ID, advice: string, attachment: Attachment) {
+        mutate((d) => {
+          const g = groupOf(d, participantId);
+          if (g?.facilitatorId !== me()) throw new Error('الملف الختامي يرفعه ميسّر المجموعة');
+          const err = attachmentError(attachment, 'ملف الختام');
+          if (err) throw new Error(err);
+          if (!advice.trim()) throw new Error('اكتب النصائح');
+          d.finalFiles = d.finalFiles.filter((f) => f.participantId !== participantId);
+          d.finalFiles.push({ participantId, advice: advice.trim(), attachment, uploadedBy: me(), at: nowISO() });
+          pushNotification(d, [participantId], 'general', 'رفع ميسّرك ملفك الختامي', '/app/plan');
+        });
       },
     },
   };

@@ -303,6 +303,7 @@ export function IssueCustodyModal({ ownerKind, ownerId, onClose, requestId, appr
     <Modal open onClose={onClose} title={`عهدة: ${ownerTitle(db, ownerKind, ownerId)}`} footer={<><Button variant="ghost" onClick={onClose}>إلغاء</Button><Button disabled={!attachment || !!conflict} onClick={go}>حوّل العهدة</Button></>}>
       <div className="space-y-3">
         <Field label="المستلم (صاحب العهدة)"><Select value={recipient} onChange={(e) => setRecipient(e.target.value)} options={db.persons.map((p) => ({ value: p.id, label: p.name }))} /></Field>
+        {(() => { const b = db.persons.find((p) => p.id === recipient)?.bank; return b ? <p className="rounded-xl bg-ink-50 p-2 text-xs">الآيبان: <span dir="ltr" className="font-mono">{b.iban}</span>{b.bankName ? ` · ${b.bankName}` : ''} <AttachmentView a={b.barcode} compact /></p> : <p className="text-xs text-ink-400">لم يضف المستلم بياناته البنكية في ملفه بعد.</p>; })()}
         {conflict && <Notice tone="red">{conflict}</Notice>}
         <Field label="المبلغ المعتمد"><Input className="num" type="number" value={approved} disabled={fixedApproved != null} onChange={(e) => setApproved(+e.target.value)} /></Field>
         <Field label="التحويل الآن" hint={`رصيدك الفعلي ${SAR(balance)}. إن لم يكفِ فاصرف جزءاً والباقي دفعة ثانية`}><Input className="num" type="number" value={amount} onChange={(e) => setAmount(+e.target.value)} /></Field>

@@ -43,6 +43,7 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
           )}
         </Card>
 
+        <MediaCard trip={trip} />
         <Card title="تقييم الرحلة" subtitle={`يقيّمها كل فريق العمل (من 10) ويدخل المتوسط في نقاطها · ${count.rated} من ${count.staff}`}>
           {me.isStaff && (mine ? (
             <p className="rounded-xl bg-emerald-50 p-3 text-sm">قيّمتها <b className="num">{mine.score}</b> من 10{mine.note ? ` · ${mine.note}` : ''}</p>
@@ -90,5 +91,24 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** التوثيق: رابط الدرايف والتغريدات يرفعها مسؤول اللجنة الإعلامية، وتظهر في رابط الداعم بعد الإغلاق واعتماد التقرير */
+function MediaCard({ trip }: { trip: Trip }) {
+  const db = useDB();
+  const me = useMe();
+  const isMediaHead = me.committees.some((c) => c.committee.kind === 'media' && c.role === 'leader');
+  const [drive, setDrive] = useState(trip.closure.driveLink ?? '');
+  const [tweets, setTweets] = useState((trip.closure.tweets ?? []).join('\n'));
+  void db;
+  return (
+    <Card title="التوثيق الإعلامي" subtitle="يرفعه مسؤول اللجنة الإعلامية">
+      <div className="grid gap-3">
+        <Field label="رابط درايف التوثيق"><Input dir="ltr" disabled={!isMediaHead} value={drive} onChange={(e) => setDrive(e.target.value)} /></Field>
+        <Field label="روابط التغريدات (رابط في كل سطر)"><Textarea dir="ltr" disabled={!isMediaHead} rows={2} value={tweets} onChange={(e) => setTweets(e.target.value)} /></Field>
+        {isMediaHead && <div><Button onClick={() => act(() => repos.trips.updateClosure(trip.id, { driveLink: drive || undefined, tweets: tweets.split('\n').map((x) => x.trim()).filter(Boolean) }), 'حُفظ التوثيق')}>احفظ التوثيق</Button></div>}
+      </div>
+    </Card>
   );
 }

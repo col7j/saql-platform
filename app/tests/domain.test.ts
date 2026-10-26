@@ -52,9 +52,9 @@ describe('الصفات والصلاحيات', () => {
     expect(trackerConflict(db, 's5', trip('t3'))).toBeNull();
     expect(trackerConflict(db, 'p_lead', trip('t1'))).not.toBeNull();
   });
-  it('الخطة الشخصية تُفتح لمن حضر لقاءها فقط', () => {
+  it('الخطة الشخصية تُفتح للجميع عند البند أو التوقيت المحدد في رحلتها', () => {
     expect(isPlanUnlocked(db, 'u1')).toBe(true);
-    expect(isPlanUnlocked(db, 'u6')).toBe(false);
+    expect(isPlanUnlocked(db, 'u6')).toBe(true);
   });
 });
 

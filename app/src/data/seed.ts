@@ -1,6 +1,6 @@
 // البيانات التجريبية الكاملة. التواريخ نسبية لتاريخ اليوم حتى تبقى الحالات منطقية.
 import { addDays, dateTime, todayISO } from '@/domain/dates';
-import { sha256Hex } from '@/domain/crypto';
+import { hashPassword, sha256Hex } from '@/domain/crypto';
 import { tasksFromTemplates } from '@/domain/workflow';
 import type {
   Attachment, Attendance, AuditEntry, BudgetRequest, Contract, Custody, DirectSpend, EditRequest, FeeRecord, Meeting, DB, FocusMeeting, IndividualMeeting, AvailabilitySlot, LifeAspect, Material, Notification, ProgramNeed, SpendForm, SpendLine, WalletEntry,
@@ -10,7 +10,7 @@ import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, de
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
-export const DB_VERSION = 9;
+export const DB_VERSION = 10;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -224,7 +224,9 @@ export function buildSeed(): DB {
   addPrePost({ kind: 'trip', id: 't4' }, 'استبيان رحلة قُباء الداخلية', true, iso(addDays(T, -1)), null, [['ما معرفتك بمفهوم قيادة الذات؟', 'بعد الرحلة، كيف تعرّف قيادة الذات؟']], ids.slice(0, 9), []);
   addPrePost({ kind: 'trip', id: 't5' }, 'استبيان رحلة سَلع الداخلية', true, iso(addDays(T, -1)), null, [['كيف تدير وقتك حالياً؟', 'بعد الرحلة، ما الذي تغيّر في إدارتك لوقتك؟']], [], []);
   addPrePost({ kind: 'focus', id: 'f_g1_3' }, 'استبيان لقاء التركيز', false, iso(addDays(T, -7)), iso(addDays(T, -6), 21), [['ما معرفتك بالموضوع؟', 'بعد اللقاء، ما معرفتك بالموضوع؟']], ['u1', 'u2', 'u3'], ['u1', 'u2']);
-  surveys.push({ id: 'sv_prog', title: 'استبيان الرضا العام عن البرنامج (منتصف البرنامج)', context: { kind: 'program' }, phase: 'post', mandatory: false, opensAt: iso(addDays(T, -2)), createdBy: LEADER_ID, questions: [{ id: 'sv_prog_q1', text: 'ما مدى رضاك عن البرنامج حتى الآن؟', type: 'scale', isGeneral: true }, { id: 'sv_prog_q2', text: 'ما أكثر جزء استفدت منه؟', type: 'choice', options: ['الرحلات', 'لقاءات التركيز', 'اللقاءات الفردية', 'الخطة الشخصية'], isGeneral: true }, { id: 'sv_prog_q3', text: 'اقتراحاتك للتحسين', type: 'text', isGeneral: true }], responses: [] });
+  // الاستبيان العام القبلي: يظهر أول دخول، وأجابه من أكمل ملفه
+  surveys.push({ id: 'sv_prog', title: 'الاستبيان العام القبلي', context: { kind: 'program' }, phase: 'pre', mandatory: true, opensAt: iso(addDays(T, -60)), createdBy: LEADER_ID, questions: [{ id: 'sv_prog_q1', text: 'إلى أي حد تعرف مهارات القيادة؟', type: 'scale', isGeneral: true }, { id: 'sv_prog_q2', text: 'أكثر ما تتوقع أن تستفيده', type: 'choice', options: ['الرحلات', 'لقاءات التركيز', 'اللقاءات الفردية', 'الخطة الشخصية'], isGeneral: true }, { id: 'sv_prog_q3', text: 'ما الذي تريد تطويره في نفسك؟', type: 'text', isGeneral: true }],
+    responses: participants.filter((p) => p.profileCompletedAt).map((p, k) => ({ id: id('rs'), personId: p.id, answers: { sv_prog_q1: String(2 + (k % 3)), sv_prog_q2: ['الرحلات', 'الخطة الشخصية', 'لقاءات التركيز'][k % 3], sv_prog_q3: 'الثقة في الإلقاء' }, at: iso(addDays(T, -55)) })) });
 
   // ── المكتبة ──
   const materials: Material[] = [];
@@ -541,9 +543,15 @@ export function buildSeed(): DB {
     notifications,
     comments,
     trackingComments: [
-      { id: 'tc1', name: 'أبو عمر (ولي أمر)', text: 'جزاكم الله خيراً على هذا الجهد المبارك.', at: iso(addDays(T, -10)), status: 'visible' },
-      { id: 'tc2', name: 'زائر', text: 'متى التسجيل للدفعة القادمة؟', at: iso(addDays(T, -1)), status: 'pending' },
+      { id: 'tc1', entityId: 'sp1', name: 'جمعية البر بالمدينة', text: 'جزاكم الله خيراً على هذا الجهد المبارك.', at: iso(addDays(T, -10)), status: 'visible' },
+      { id: 'tc2', entityId: 'sp2', name: 'شركة النخيل', text: 'تقرير رحلة أُحُد مميز، ونتطلع للرحلات الخارجية.', at: iso(addDays(T, -1)), status: 'pending' },
     ],
+    // جهات رابط الداعم: كلمة مرور لكل جهة (الكلمات التجريبية في ASSUMPTIONS)
+    supporters: ([['sp1', 'جمعية البر بالمدينة', 'supporter', 'albir2026', true, true], ['sp2', 'شركة النخيل', 'partner', 'nakheel2026', true, false], ['sp3', 'مؤسسة الأثر', 'supporter', 'athar2026', false, false]] as const).map(([sid, name, kind, pw, active, primary], i) => ({
+      id: sid, name, kind, salt: sid, passwordHash: hashPassword(pw, sid), active, primary, logo: undefined, placement: 'above' as const, orientation: i === 1 ? 'vertical' as const : 'horizontal' as const, order: i + 1, createdAt: iso(addDays(T, -58)),
+    })),
+    supporterAccess: { failed: 0 },
+    finalFiles: [],
     settings,
   };
 }

@@ -299,14 +299,26 @@ export function personalPlanTrip(db: DB): Trip | undefined {
   return db.trips.find((t) => t.isPersonalPlanMeeting);
 }
 /** القفل: يُفتح بعد انعقاد "لقاء الخطة الشخصية" لمن حضره، أو بفتح يدوي من الإدارة */
+/** موعد فتح الخطة الشخصية: بند الجدول أو التوقيت الذي يحدده مخطط رحلة الخطة الشخصية (وإلا بداية الرحلة) */
+export function planUnlockAt(db: DB): Date | undefined {
+  const trip = personalPlanTrip(db);
+  if (!trip) return undefined;
+  const u = trip.planUnlock;
+  if (u?.mode === 'time') return new Date(u.at);
+  if (u?.mode === 'item') {
+    const item = trip.schedule.plans[0]?.items.find((i) => i.id === u.itemId);
+    if (item) return itemStart(item);
+  }
+  return tripStartDT(trip);
+}
 export function isPlanUnlocked(db: DB, participantId: ID): boolean {
   const plan = db.personalPlans.find((p) => p.participantId === participantId);
   if (plan?.manuallyUnlocked) return true;
   const trip = personalPlanTrip(db);
-  if (!trip) return false;
-  if (!tripHasStarted(trip)) return false;
-  return db.attendance.some((a) => a.eventKind === 'trip' && a.eventId === trip.id && a.personId === participantId && a.present);
+  const at = planUnlockAt(db);
+  return !!trip && trip.published && !!at && now() >= at;
 }
+
 export function planProgress(plan?: PersonalPlan) {
   const steps = plan?.aspects.flatMap((a) => a.steps) ?? [];
   const done = steps.filter((s) => s.status === 'done').length;
