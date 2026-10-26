@@ -44,14 +44,6 @@ export interface CapacityRule {
   message: string;
 }
 
-export interface Capacity {
-  id: ID;
-  personId: ID;
-  kind: 'site_editor';
-  grantedBy: ID;
-  at: ISODateTime;
-}
-
 /** صلاحيات مؤقتة يمنحها القائد العام لأشخاص يحددهم حتى تاريخ معيّن */
 export type TempPermission = 'register_participants' | 'edit_site' | 'manage_schedule_categories';
 export interface TempGrant {
@@ -794,7 +786,7 @@ export interface DB {
   version: number;
   seededAt: ISODateTime;
   persons: Person[];
-  capacities: Capacity[];
+  tempGrants: TempGrant[];
   accounts: Account[];
   /** قواعد تعارض الصفات: تُطبَّق عند إضافة أي صفة */
   capacityRules: CapacityRule[];

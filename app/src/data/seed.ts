@@ -405,7 +405,8 @@ export function buildSeed(): DB {
     persons,
     capacityRules: structuredClone(defaultCapacityRules),
     accounts: buildAccounts(persons, iso(addDays(T, -60))),
-    capacities: [{ id: 'cap1', personId: 's4', kind: 'site_editor', grantedBy: LEADER_ID, at: iso(addDays(T, -50)) }],
+    // تفويض مؤقت لمسؤول اللجنة الإعلامية بتحرير الموقع (مثال وثيقة القرارات)
+    tempGrants: [{ id: 'gr1', personId: 's6', permission: 'edit_site', grantedBy: LEADER_ID, at: iso(addDays(T, -50)), expiresAt: addDays(T, 40) }],
     groups,
     formation: { status: 'published', publishAt: iso(addDays(T, -45), 20), publishedAt: iso(addDays(T, -45), 20) },
     transfers: [{ id: 'tr1', personId: 'u12', fromGroupId: 'g1', toGroupId: 'g2', by: LEADER_ID, at: iso(addDays(T, -35)), reason: 'تعارض في مواعيد الدراسة' }],

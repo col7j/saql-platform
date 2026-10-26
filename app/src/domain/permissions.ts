@@ -1,5 +1,6 @@
 // منطق الصلاحيات (قسم 3). دوال نقية تأخذ قاعدة البيانات ومعرّف الشخص، ولا تعتمد على الواجهة.
 import { now } from './dates';
+import { hasTempGrant } from './grants';
 import { canOpenFinance, canViewBudget, financePermsOf, isFinanceMember, isFinanceOwner } from './finance';
 import type { Committee, DB, FocusMeeting, Group, ID, Material, Person, Trip, TripDoc } from './types';
 
@@ -17,7 +18,9 @@ export interface Capabilities {
   isMedia: boolean;
   isTechLead: boolean; // مسؤول اللجنة التقنية: المستخدمون وكلمات المرور وفتح قفل الإعدادات
   isTracker: boolean; // متابع الرحلات الثابت
-  isSiteEditor: boolean;
+  isSiteEditor: boolean; // القائد العام أو من يفوّضه بصلاحية مؤقتة
+  canRegisterParticipants: boolean;
+  canManageScheduleCategories: boolean;
   staffTripsLed: Trip[]; // قائد فريق رحلة لفريق العمل
   staffTripsMember: Trip[];
   presenterIn: FocusMeeting[];
@@ -55,7 +58,9 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
   const isMedia = committees.some((c) => c.committee.kind === 'media');
   const isTechLead = committees.some((c) => c.committee.kind === 'tech' && c.role === 'leader');
   const isTracker = db.settings.trackerId === person.id;
-  const isSiteEditor = isLeader || db.capacities.some((c) => c.personId === person.id && c.kind === 'site_editor');
+  const isSiteEditor = hasTempGrant(db, person.id, 'edit_site');
+  const canRegisterParticipants = hasTempGrant(db, person.id, 'register_participants');
+  const canManageScheduleCategories = hasTempGrant(db, person.id, 'manage_schedule_categories');
   const staffTripsLed = db.trips.filter((t) => t.executor.kind === 'staff' && t.executor.leaderId === person.id);
   const staffTripsMember = db.trips.filter((t) => t.executor.kind === 'staff' && t.executor.memberIds.includes(person.id));
   const presenterIn = db.focusMeetings.filter((f) => f.presenterIds.includes(person.id));
@@ -70,13 +75,14 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
     .filter((c) => c.committee.kind !== 'general')
     .forEach((c) => labels.push(c.committee.kind === 'finance' && c.role === 'leader' ? 'مسؤول المالية' : `${c.role === 'leader' ? 'مسؤول' : 'عضو'} ${c.committee.name}`));
   if (isTracker) labels.push('متابع الرحلات');
-  if (isSiteEditor && !isLeader) labels.push('محرّر الموقع');
+  if (isSiteEditor && !isLeader) labels.push('محرّر الموقع (مؤقت)');
+  if (canRegisterParticipants && !isLeader) labels.push('تسجيل المشاركين (مؤقت)');
   if (staffTripsLed.length) labels.push('قائد فريق رحلة');
   if (presenterIn.length && isParticipant) labels.push('مقدّم');
 
   return {
     person, isLeader, isStaff, isParticipant, facilitatorOf, leaderOf, group, committees,
-    isFinance, isFinanceLead, isMedia, isTechLead, isTracker, isSiteEditor, staffTripsLed, staffTripsMember, presenterIn, labels,
+    isFinance, isFinanceLead, isMedia, isTechLead, isTracker, isSiteEditor, canRegisterParticipants, canManageScheduleCategories, staffTripsLed, staffTripsMember, presenterIn, labels,
   };
 }
 

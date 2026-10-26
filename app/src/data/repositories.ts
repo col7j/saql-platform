@@ -6,6 +6,7 @@ import { uid } from '@/domain/id';
 import { groupOf, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
+import { hasTempGrant, tempPermissionLabel } from '@/domain/grants';
 import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
 import type {
@@ -17,7 +18,7 @@ import { docKindLabel } from '@/domain/labels';
 import {
   allocatedFor, assertSpendable, financeOwnerId, hasFinancePerm, invoiceError, isFinanceOwner, linesTotal, ownerLink, ownerTitle, routeFor, spendKindLabel, spendKindOf, FINANCE_PERMS,
 } from '@/domain/finance';
-import type { AuditEntry, BudgetRequest, Person, FinancePermission, InvoiceLine, Meeting, ProgramBudget, SpendKind } from '@/domain/types';
+import type { AuditEntry, BudgetRequest, Person, TempPermission, FinancePermission, InvoiceLine, Meeting, ProgramBudget, SpendKind } from '@/domain/types';
 
 /** إن أعادت الوصفة false فلا تغيير يُحفظ */
 export type Mutate = (recipe: (draft: DB) => unknown) => void;
@@ -142,7 +143,8 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
       create(input: Omit<Person, 'id' | 'isGeneralLeader'>): ID {
         const id = uid(input.kind === 'staff' ? 's' : 'u');
         mutate((d) => {
-          if (!isLeaderId(d, me())) throw new Error('إضافة الأشخاص للقائد العام');
+          if (input.kind === 'staff' ? !isLeaderId(d, me()) : !hasTempGrant(d, me(), 'register_participants'))
+            throw new Error(input.kind === 'staff' ? 'إضافة فريق العمل للقائد العام' : 'تسجيل المشاركين للقائد العام أو من يمنحه صلاحية مؤقتة');
           if (!input.name.trim()) throw new Error('الاسم مطلوب');
           if (!/^\S+@\S+\.\S+$/.test(input.email.trim())) throw new Error('البريد غير صحيح');
           if (d.persons.some((p) => p.email.toLowerCase() === input.email.trim().toLowerCase())) throw new Error('البريد مسجّل لشخص آخر');
@@ -154,10 +156,25 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
         });
         return id;
       },
-      setSiteEditor(personId: ID, on: boolean) {
+    },
+    // ───────────── الصلاحيات المؤقتة (يمنحها القائد العام) ─────────────
+    grants: {
+      grant(personId: ID, permission: TempPermission, expiresAt: string) {
         mutate((d) => {
-          d.capacities = d.capacities.filter((c) => !(c.personId === personId && c.kind === 'site_editor'));
-          if (on) d.capacities.push({ id: uid('cap'), personId, kind: 'site_editor', grantedBy: me(), at: nowISO() });
+          if (!isLeaderId(d, me())) throw new Error('الصلاحيات المؤقتة يمنحها القائد العام');
+          if (!expiresAt || expiresAt < todayISO()) throw new Error('حدد تاريخ انتهاء من اليوم فصاعداً');
+          d.tempGrants.push({ id: uid('gr'), personId, permission, grantedBy: me(), at: nowISO(), expiresAt });
+          audit(d, me(), 'منح صلاحية مؤقتة', `${tempPermissionLabel[permission]} — ${personName(d, personId)} حتى ${expiresAt}`, 'roles');
+          pushNotification(d, [personId], 'general', `مُنحت صلاحية مؤقتة: ${tempPermissionLabel[permission]} حتى ${expiresAt}`);
+        });
+      },
+      revoke(grantId: ID) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('سحب الصلاحيات للقائد العام');
+          const g = d.tempGrants.find((x) => x.id === grantId);
+          if (!g || g.revokedAt) return false;
+          g.revokedAt = nowISO();
+          audit(d, me(), 'سحب صلاحية مؤقتة', `${tempPermissionLabel[g.permission]} — ${personName(d, g.personId)}`, 'roles');
         });
       },
     },
