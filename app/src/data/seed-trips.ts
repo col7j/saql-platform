@@ -167,7 +167,7 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
       description: 'لقاء تطويري يفتح قسم الخطة الشخصية: استبيان قبلي عن عجلة الحياة ومدرب يشرح التعبئة.',
       published: true, publishedAt: iso(addDays(d, -4)), scheduleVisibility: 'full', scheduleStartedNotified: true,
       schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }], changes: [] },
-      sessions: r.sessions, guests: guests([['أ. نايف البلوي', 'مدرب كوتشينج']]),
+      sessions: r.sessions, guests: guests([['أ. نايف البلوي', 'مدرب عجلة الحياة']]),
       closure: { teamEvalForm: 'الفريق التزم بالمهام.', photos: ['ph4'] },
       evaluation: { trackerScore: 9, manual: {} },
     }, T);

@@ -374,7 +374,7 @@ export function buildSeed(): DB {
   // ── الإشعارات ──
   const notifications: Notification[] = [];
   const notify = (toId: string, type: Notification['type'], title: string, link: string, hoursAgo: number, read = false) =>
-    notifications.push({ id: id('nt'), toId, type, title, link, at: new Date(nowDate.getTime() - hoursAgo * 3600000).toISOString(), read, emailed: settings.importantNotifications.includes(type) });
+    notifications.push({ id: id('nt'), toId, type, title, link, at: new Date(nowDate.getTime() - hoursAgo * 3600000).toISOString(), read });
   [...ids, ...persons.filter((p) => p.kind === 'staff').map((p) => p.id)].forEach((pid) => notify(pid, 'schedule_started', 'بدأ جدول رحلة قُباء الداخلية', '/app/trips/t4', 3));
   ids.forEach((pid) => notify(pid, 'trip_published', 'نُشرت رحلة سَلع الداخلية', '/app/trips/t5', 26, true));
   notify(LEADER_ID, 'budget_request', 'ميزانية رحلة العُلا تتجاوز المرصود وتنتظر قرارك', '/app/finance', 5);
@@ -425,14 +425,6 @@ export function buildSeed(): DB {
     committees,
     memberships,
     memberRequests: [{ id: 'mr1', committeeId: 'c_media', personId: 'u13', requestedBy: 's2', note: 'لديه خبرة في التصوير والمونتاج', status: 'pending', at: iso(addDays(T, -1)) }],
-    chat: [
-      { id: 'ch1', committeeId: 'c_media', authorId: 's2', text: 'يا شباب، رحلة قُباء اليوم. سلمان عليك التوثيق.', at: iso(T, 6) },
-      { id: 'ch2', committeeId: 'c_media', authorId: 's4', text: 'أبشر، الكاميرا جاهزة.', at: iso(T, 6, 20) },
-      { id: 'ch3', committeeId: 'c_media', authorId: 'u9', text: 'جهزت قالب التغريدة.', at: iso(T, 7) },
-      { id: 'ch4', committeeId: 'c_fin', authorId: 's1', text: 'الدفعة الثانية لقُباء بعد بداية الرحلة.', at: iso(T, 7) },
-      { id: 'ch5', committeeId: 'c_fin', authorId: 's3', text: 'تمام، وفواتير لقاء الخطة الشخصية أراجعها الليلة.', at: iso(T, 7, 30) },
-      { id: 'ch6', committeeId: 'c_gen', authorId: LEADER_ID, text: 'تذكير: اجتماع الإدارة الأسبوعي الخميس.', at: iso(addDays(T, -1)) },
-    ],
     tasks,
     taskTemplates,
     trips,

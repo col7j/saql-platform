@@ -24,11 +24,10 @@ import type { AuditEntry, BudgetRequest, Person, TempPermission, FinancePermissi
 /** إن أعادت الوصفة false فلا تغيير يُحفظ */
 export type Mutate = (recipe: (draft: DB) => unknown) => void;
 
-/** إضافة إشعار داخلي (وتعليم "بالإيميل" إن كان النوع مهماً في الإعدادات) */
+/** إضافة إشعار داخل المنصة (الإيميل مؤجّل: importantNotifications جاهزة لتحديد ما يصل به لاحقاً) */
 export function pushNotification(d: DB, toIds: ID[], type: NotificationType, title: string, link?: string, body?: string) {
-  const important = d.settings.importantNotifications.includes(type);
   [...new Set(toIds)].filter(Boolean).forEach((toId) =>
-    d.notifications.unshift({ id: uid('nt'), toId, type, title, body, link, at: nowISO(), read: false, emailed: important }),
+    d.notifications.unshift({ id: uid('nt'), toId, type, title, body, link, at: nowISO(), read: false }),
   );
 }
 
@@ -1072,9 +1071,6 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
           }
           pushNotification(d, [r.requestedBy, ...(approve ? [r.personId] : [])], 'committee_member_request', `${approve ? 'وافق' : 'رفض'} القائد العام طلب إضافة العضو`, `/app/committees/${r.committeeId}`);
         });
-      },
-      sendChat(committeeId: ID, text: string) {
-        mutate((d) => d.chat.push({ id: uid('ch'), committeeId, authorId: me(), text, at: nowISO() }));
       },
     },
 

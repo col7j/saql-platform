@@ -148,13 +148,6 @@ export interface MemberRequest {
   at: ISODateTime;
   decidedAt?: ISODateTime;
 }
-export interface ChatMessage {
-  id: ID;
-  committeeId: ID;
-  authorId: ID;
-  text: string;
-  at: ISODateTime;
-}
 
 export type ProofType = 'none' | 'link' | 'file' | 'text';
 export type TaskStatus = 'new' | 'in_progress' | 'done';
@@ -711,7 +704,6 @@ export interface Notification {
   link?: string;
   at: ISODateTime;
   read: boolean;
-  emailed: boolean;
 }
 
 export interface Comment {
@@ -778,7 +770,8 @@ export interface Settings {
   scheduleEditAfterStartNeedsApproval: boolean; // 20.6
   overspendNeedsApproval: boolean; // 20.7
   trackingCommentsNeedReview: boolean; // 20.8
-  importantNotifications: NotificationType[]; // 20.9
+  /** ما يصل بالإيميل عند ربطه لاحقاً (يحدده مسؤول اللجنة التقنية). حالياً كل الإشعارات داخل المنصة فقط */
+  importantNotifications: NotificationType[];
   showHijri: boolean; // 20.11
   feesInPlatform: boolean; // 20.12
   feeAmount: number;
@@ -807,7 +800,6 @@ export interface DB {
   committees: Committee[];
   memberships: CommitteeMembership[];
   memberRequests: MemberRequest[];
-  chat: ChatMessage[];
   tasks: Task[];
   taskTemplates: TaskTemplate[];
   trips: Trip[];

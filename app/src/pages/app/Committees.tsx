@@ -1,5 +1,5 @@
-// اللجان (قسم 12.1): مساحة خاصة لكل لجنة: مهام، مؤشرات حية، إثباتات، أعضاء، شات
-import { useEffect, useRef, useState } from 'react';
+// اللجان (قسم 12.1): مساحة خاصة لكل لجنة: مهام، مؤشرات حية، إثباتات، أعضاء (الشات مؤجّل)
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fmtDateTime, timeAgo } from '@/domain/dates';
 import { uid } from '@/domain/id';
@@ -60,7 +60,7 @@ export function CommitteeDetail() {
   const { id } = useParams();
   const db = useDB();
   const me = useMe();
-  const [tab, setTab] = useState<'tasks' | 'kpis' | 'proofs' | 'members' | 'chat'>('tasks');
+  const [tab, setTab] = useState<'tasks' | 'kpis' | 'proofs' | 'members'>('tasks');
   const [taskOpen, setTaskOpen] = useState(false);
   const c = db.committees.find((x) => x.id === id);
   if (!c || !canSeeCommittee(db, me.person.id, c.id)) return <Empty title="لا تملك صلاحية رؤية هذه اللجنة" text="عضو اللجنة يرى بيانات لجنته فقط." />;
@@ -72,7 +72,7 @@ export function CommitteeDetail() {
   return (
     <div>
       <PageHeader back="/app/committees" title={c.name} subtitle={c.description} actions={manage && tab === 'tasks' && <Button onClick={() => setTaskOpen(true)} icon={<Icons.Plus className="h-4 w-4" />}>أضف مهمة</Button>} />
-      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'tasks', label: `المهام (${tasks.length})` }, { key: 'kpis', label: 'المؤشرات' }, { key: 'proofs', label: `الإثباتات (${proofs.length})` }, { key: 'members', label: `الأعضاء (${members.length})` }, { key: 'chat', label: 'النقاش' }]} />
+      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'tasks', label: `المهام (${tasks.length})` }, { key: 'kpis', label: 'المؤشرات' }, { key: 'proofs', label: `الإثباتات (${proofs.length})` }, { key: 'members', label: `الأعضاء (${members.length})` }]} />
       {tab === 'tasks' && <div className="space-y-2">{tasks.length === 0 ? <Empty title="لا مهام" /> : tasks.map((t) => <TaskRow key={t.id} task={t} />)}</div>}
       {tab === 'kpis' && <Kpis committeeId={c.id} manage={me.isLeader} />}
       {tab === 'proofs' && (
@@ -84,7 +84,6 @@ export function CommitteeDetail() {
         </Card>
       )}
       {tab === 'members' && <Members committeeId={c.id} manage={manage} />}
-      {tab === 'chat' && <Chat committeeId={c.id} />}
       <TaskModal open={taskOpen} onClose={() => setTaskOpen(false)} assignees={members.map((m) => m.personId)} defaults={{ scope: 'committee', committeeId: c.id }} />
     </div>
   );
@@ -183,37 +182,5 @@ function Members({ committeeId, manage }: { committeeId: string; manage: boolean
         )}
       </Modal>
     </div>
-  );
-}
-
-function Chat({ committeeId }: { committeeId: string }) {
-  const db = useDB();
-  const me = useMe();
-  const [text, setText] = useState('');
-  const msgs = db.chat.filter((m) => m.committeeId === committeeId);
-  const end = useRef<HTMLDivElement>(null);
-  useEffect(() => end.current?.scrollIntoView({ block: 'nearest' }), [msgs.length]);
-  return (
-    <Card pad={false}>
-      <div className="h-[420px] space-y-3 overflow-y-auto p-4">
-        {msgs.map((m) => {
-          const mine = m.authorId === me.person.id;
-          return (
-            <div key={m.id} className={cx('flex gap-2', mine && 'flex-row-reverse')}>
-              <Avatar name={personName(db, m.authorId)} size={28} />
-              <div className={cx('max-w-[75%] rounded-2xl px-3 py-2', mine ? 'bg-brand-600 text-white' : 'bg-ink-100')}>
-                <div className={cx('text-[11px]', mine ? 'text-white/75' : 'text-ink-500')}>{personName(db, m.authorId)} · {fmtDateTime(m.at)}</div>
-                <div className="text-sm">{m.text}</div>
-              </div>
-            </div>
-          );
-        })}
-        <div ref={end} />
-      </div>
-      <form onSubmit={(e) => { e.preventDefault(); if (text.trim()) { repos.committees.sendChat(committeeId, text); setText(''); } }} className="flex gap-2 border-t border-ink-100 p-3">
-        <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="اكتب رسالة للجنة" />
-        <Button type="submit" icon={<Icons.Send className="h-4 w-4" />}>أرسل</Button>
-      </form>
-    </Card>
   );
 }

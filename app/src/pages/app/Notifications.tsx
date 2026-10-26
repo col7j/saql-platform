@@ -8,17 +8,17 @@ import { Badge, Button, Card, Empty, Icons, PageHeader, Tabs, cx } from '@/ui';
 export default function NotificationsPage() {
   const db = useDB();
   const me = useMe();
-  const [tab, setTab] = useState<'all' | 'unread' | 'email'>('all');
+  const [tab, setTab] = useState<'all' | 'unread'>('all');
   const mine = db.notifications.filter((n) => n.toId === me.person.id);
-  const list = mine.filter((n) => (tab === 'unread' ? !n.read : tab === 'email' ? n.emailed : true));
+  const list = mine.filter((n) => (tab === 'unread' ? !n.read : true));
   return (
     <div>
       <PageHeader
         title="الإشعارات"
-        subtitle="كل الإشعارات داخل المنصة، والمهمة منها تصل أيضاً على البريد (حسب الإعدادات)"
+        subtitle="كل الإشعارات داخل المنصة فقط"
         actions={<Button variant="secondary" size="sm" onClick={() => repos.notifications.markAllRead()} icon={<Icons.CheckCheck className="h-4 w-4" />}>علّم الكل كمقروء</Button>}
       />
-      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'all', label: `الكل (${mine.length})` }, { key: 'unread', label: `غير المقروء (${mine.filter((n) => !n.read).length})` }, { key: 'email', label: 'وصلت بالبريد' }]} />
+      <Tabs value={tab} onChange={setTab} tabs={[{ key: 'all', label: `الكل (${mine.length})` }, { key: 'unread', label: `غير المقروء (${mine.filter((n) => !n.read).length})` }]} />
       <Card pad={false}>
         {list.length === 0 ? <div className="p-5"><Empty title="لا إشعارات" /></div> : (
           <ul className="divide-y divide-ink-100">
@@ -31,7 +31,6 @@ export default function NotificationsPage() {
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-400">
                       <span>{timeAgo(n.at)}</span>
                       <Badge>{notificationTypeLabel[n.type]}</Badge>
-                      {n.emailed && <Badge tone="orange" icon={<Icons.Mail className="h-3 w-3" />}>بريد</Badge>}
                     </div>
                   </div>
                 </Link>
