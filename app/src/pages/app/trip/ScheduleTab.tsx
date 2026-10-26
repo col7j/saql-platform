@@ -1,6 +1,6 @@
 // محرر الجدول الزمني (الخطط أ وب وما بعدها) + تحليل التصنيفات + المخطط مقابل الفعلي
 import { useEffect, useState } from 'react';
-import { fmtDate, fmtDateTime, fmtTime, minutesOf } from '@/domain/dates';
+import { fmtDate, fmtTime, minutesOf, nowISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { tripTeamLeaderId } from '@/domain/permissions';
 import { actualItems, categoryBreakdown, sortItems, tripHasStarted } from '@/domain/workflow';
@@ -16,7 +16,6 @@ export default function ScheduleTab({ trip }: { trip: Trip }) {
   const [active, setActive] = useState(plans[0]?.id);
   const [dirty, setDirty] = useState(false);
   const [editing, setEditing] = useState<ScheduleItem | null>(null);
-  const [note, setNote] = useState('');
   const [newSessions, setNewSessions] = useState<TripSession[]>([]);
   useEffect(() => { if (!dirty) setPlans(trip.schedule.plans); }, [trip.schedule.plans, dirty]);
   const plan = plans.find((p) => p.id === active) ?? plans[0];
@@ -26,13 +25,13 @@ export default function ScheduleTab({ trip }: { trip: Trip }) {
 
   const updatePlan = (fn: (p: SchedulePlan) => SchedulePlan) => { setPlans(plans.map((p) => (p.id === plan.id ? fn(p) : p))); setDirty(true); };
   const saveItem = (item: ScheduleItem) => updatePlan((p) => ({ ...p, items: p.items.some((i) => i.id === item.id) ? p.items.map((i) => (i.id === item.id ? item : i)) : [...p.items, item] }));
+  // البند الذي بدأ مقفل، وما قبله يُعدَّل بلا اعتماد
+  const begun = (i: ScheduleItem) => `${i.date}T${i.start}` <= nowISO().slice(0, 16);
   const save = () => act(() => {
-    if (started && db.settings.scheduleEditAfterStartNeedsApproval) throw new Error('الإعدادات تتطلب موافقة الإدارة على التعديل بعد الانطلاق');
-    repos.trips.saveSchedule(trip.id, plans, note || undefined, newSessions);
+    repos.trips.saveSchedule(trip.id, plans, newSessions);
     setNewSessions([]);
     setDirty(false);
-    setNote('');
-  }, started ? 'حُفظ التعديل وسُجّل (يؤثر على التقييم)' : 'حُفظ الجدول');
+  }, 'حُفظ الجدول');
 
   const days = [...new Set(sortItems(plan?.items ?? []).map((i) => i.date))];
 
@@ -50,7 +49,7 @@ export default function ScheduleTab({ trip }: { trip: Trip }) {
         )}
       >
         <Tabs value={plan?.id ?? ''} onChange={setActive} tabs={plans.map((p) => ({ key: p.id, label: `${p.name} (${p.items.length})` }))} />
-        {started && <Notice tone="orange">الرحلة انطلقت: أي تعديل الآن يُسجَّل في سجل التعديلات ويؤثر على التقييم{db.settings.scheduleEditAfterStartNeedsApproval ? '، ويتطلب موافقة الإدارة حسب الإعدادات' : ''}.</Notice>}
+        {started && <Notice tone="orange">الرحلة انطلقت: عدّل أو بدّل أي بند قبل بدايته بلا اعتماد، والبند الذي بدأ مقفل. الجدول الفعلي يثبّته متابع الرحلات.</Notice>}
         {!plan || plan.items.length === 0 ? <Empty title="لا بنود في هذه الخطة" text={canEdit ? 'أضف بنود الجدول' : undefined} /> : (
           <div className="mt-3 space-y-5">
             {days.map((d) => (
@@ -68,7 +67,8 @@ export default function ScheduleTab({ trip }: { trip: Trip }) {
                           <div className="text-sm">{i.detail}</div>
                           <div className="mt-0.5 flex flex-wrap gap-1.5"><Badge>{c?.name ?? '—'}</Badge>{session && <Badge tone="blue" icon={<Icons.Presentation className="h-3 w-3" />}>لقاء: {session.title}</Badge>}</div>
                         </div>
-                        {canEdit && (
+                        {canEdit && begun(i) && <span className="flex items-center pe-3 text-ink-300" title="بدأ البند فلا يُعدَّل"><Icons.Lock className="h-4 w-4" /></span>}
+                        {canEdit && !begun(i) && (
                           <div className="flex items-center gap-1 pe-2">
                             <button onClick={() => setEditing(i)} className="rounded p-1 text-ink-400 hover:bg-ink-100"><Icons.Pencil className="h-4 w-4" /></button>
                             <button onClick={() => updatePlan((p) => ({ ...p, items: p.items.filter((x) => x.id !== i.id) }))} className="rounded p-1 text-ink-400 hover:bg-red-50 hover:text-red-600"><Icons.Trash2 className="h-4 w-4" /></button>
@@ -84,28 +84,14 @@ export default function ScheduleTab({ trip }: { trip: Trip }) {
         )}
         {canEdit && dirty && (
           <div className="sticky bottom-3 mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-brand-200 bg-brand-50 p-3">
-            <Input className="min-w-[200px] flex-1" placeholder={trip.published ? 'وصف التعديل (مثال: اعتذر الضيف فاستبدلنا الورشة)' : 'وصف التعديل (اختياري)'} value={note} onChange={(e) => setNote(e.target.value)} />
+            <span className="flex-1 text-sm text-brand-800">تعديلات غير محفوظة</span>
             <Button onClick={save}>احفظ الجدول</Button>
             <Button variant="ghost" onClick={() => { setPlans(trip.schedule.plans); setDirty(false); }}>تراجع</Button>
           </div>
         )}
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Analysis trip={trip} />
-        <Card title="سجل تعديلات الجدول" subtitle="التعديل بعد الانطلاق يُحتسب في التقييم">
-          {trip.schedule.changes.length === 0 ? <p className="text-sm text-ink-400">لا تعديلات مسجّلة</p> : (
-            <ul className="space-y-2">
-              {trip.schedule.changes.map((c) => (
-                <li key={c.id} className="flex items-start gap-2 text-sm">
-                  {c.afterStart ? <Icons.AlertTriangle className="mt-0.5 h-4 w-4 text-accent-600" /> : <Icons.History className="mt-0.5 h-4 w-4 text-ink-400" />}
-                  <div><div>{c.description}</div><div className="text-xs text-ink-400">{personName(db, c.byId)} · {fmtDateTime(c.at)} {c.afterStart && '· بعد الانطلاق'}</div></div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
+      <Analysis trip={trip} />
 
       {editing && (
         <ItemModal item={editing} trip={trip} onClose={() => setEditing(null)}

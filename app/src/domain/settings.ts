@@ -6,7 +6,7 @@ import type { DB, ID, Settings } from './types';
 
 /** إعدادات التقييم: الأوزان والبنود وشروط المواعيد وأوزان الحضور. تُقفل بعد الحفظ */
 export const EVALUATION_KEYS = [
-  'split', 'groupTripSplit', 'evaluationItems', 'presentationCriteria', 'repeatPresentationFactor', 'presentingMaxMultiplier',
+  'split', 'groupTripSplit', 'evaluationItems', 'presentationCriteria', 'presentingExtraBonus', 'presentingRevealAfterEnd', 'leaderEvalItems',
   'lateFactor', 'enrichmentPointsPerMaterial', 'deadlineDefaults', 'attendanceWeights', 'tripAttendanceStates',
 ] as const satisfies readonly (keyof Settings)[];
 export type EvaluationKey = (typeof EVALUATION_KEYS)[number];
@@ -14,7 +14,7 @@ export type EvaluationSettings = Pick<Settings, EvaluationKey>;
 
 export const evaluationKeyLabel: Record<EvaluationKey, string> = {
   split: 'التوزيع الفردي والجماعي', groupTripSplit: 'نصيب الرحلات الداخلية والخارجية', evaluationItems: 'البنود والأوزان',
-  presentationCriteria: 'معايير تقييم المقدّم', repeatPresentationFactor: 'معامل تكرار التقديم', presentingMaxMultiplier: 'حد مضاعف التقديم',
+  presentationCriteria: 'معايير تقييم المقدّم', presentingExtraBonus: 'تميّز التقديم المتكرر', presentingRevealAfterEnd: 'إظهار تقييم المقدّمين', leaderEvalItems: 'بنود تقييم القائد العام',
   lateFactor: 'ما يُكسب عند التأخر', enrichmentPointsPerMaterial: 'نقاط المادة الإثرائية', deadlineDefaults: 'شروط المواعيد',
   attendanceWeights: 'أوزان الحضور', tripAttendanceStates: 'حالات حضور الرحلة',
 };

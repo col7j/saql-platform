@@ -43,7 +43,7 @@ export default function TripDetail() {
 
   const tabs: { key: TabKey; label: string }[] = [];
   if (canPlans) {
-    tabs.push({ key: 'overview', label: 'نظرة عامة' }, { key: 'docs', label: 'الخطط والاعتماد' });
+    tabs.push({ key: 'overview', label: 'نظرة عامة' }, { key: 'docs', label: 'النماذج والاعتماد' });
     if (canSeeOwnerBudget(db, pid, 'trip', trip.id)) tabs.push({ key: 'budget', label: 'الميزانية' });
     tabs.push({ key: 'schedule', label: 'الجدول الزمني' }, { key: 'prep', label: 'التجهيز والمهام' });
   }

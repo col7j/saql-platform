@@ -26,7 +26,7 @@ describe('الصفات والصلاحيات', () => {
     expect(canViewTripPlans(db, 's4', trip('t7'))).toBe(true); // عضو إدارة
   });
   it('قائد المجموعة وحده يعدّل الوثيقة', () => {
-    const doc = docFor(db, 't9', 'initial')!;
+    const doc = docFor(db, 't9', 'document')!;
     expect(canEditTripDoc(db, 'u13', trip('t9'), doc)).toBe(true);
     expect(canEditTripDoc(db, 'u14', trip('t9'), doc)).toBe(false);
   });
@@ -60,7 +60,7 @@ describe('الصفات والصلاحيات', () => {
 
 describe('دورة الاعتماد', () => {
   it('رفض الميسّر يرجعها للفريق، ورفض القائد يرجعها لقائد المجموعة', () => {
-    const doc = docFor(db, 't7', 'detailed')!;
+    const doc = docFor(db, 't7', 'schedule')!;
     expect(canFacilitatorReview(db, 's1', trip('t7'), doc)).toBe(true);
     const rej = applyDocAction(doc, { type: 'facilitator_reject', reason: 'نقص' }, 's1', false);
     expect(rej.status).toBe('returned_by_facilitator');
@@ -73,16 +73,16 @@ describe('دورة الاعتماد', () => {
     expect(lrej.status).toBe('returned_by_leader');
   });
   it('الرفض بلا سبب ممنوع', () => {
-    const doc = docFor(db, 't7', 'detailed')!;
+    const doc = docFor(db, 't7', 'schedule')!;
     expect(() => applyDocAction(doc, { type: 'facilitator_reject', reason: ' ' }, 's1', false)).toThrow();
   });
   it('رحلات فريق العمل ترفع للقائد العام مباشرة', () => {
-    const doc = { ...docFor(db, 't11', 'detailed')!, status: 'submitted' as const };
+    const doc = { ...docFor(db, 't11', 'schedule')!, status: 'submitted' as const };
     expect(canLeaderDecide(db, 'p_lead', trip('t11'), doc)).toBe(true);
   });
   it('النشر لا يعمل إلا باكتمال الشروط', () => {
     expect(canPublish(db, trip('t6'))).toBe(false); // الموازنة غير معتمدة
-    expect(publishChecks(db, trip('t6')).find((c) => c.label.includes('الموازنة'))!.ok).toBe(false);
+    expect(publishChecks(db, trip('t6')).find((c) => c.label.includes('الميزانية'))!.ok).toBe(false);
   });
 });
 

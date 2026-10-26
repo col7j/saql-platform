@@ -34,8 +34,50 @@ export default function TripsPage() {
           {list.map((t) => <TripCard key={t.id} trip={t} />)}
         </div>
       )}
+      <EventsSection />
       {creating && <CreateTripModal onClose={() => setCreating(false)} />}
     </div>
+  );
+}
+
+/** اللقاء الافتتاحي والختامي: واحد لكل منهما، ويجوز إنشاؤه بأثر رجعي كلقاء منتهٍ يتخطى التخطيط والتجهيز */
+function EventsSection() {
+  const db = useDB();
+  const me = useMe();
+  const [creating, setCreating] = useState<'opening' | 'closing' | null>(null);
+  const missing = (['opening', 'closing'] as const).filter((k) => !db.events.some((e) => e.kind === k));
+  return (
+    <Card className="mt-6" title="اللقاء الافتتاحي والختامي" subtitle="الصرف عليهما مباشر أو بعهدة لشخص من القسم المالي"
+      action={me.isLeader && missing.length > 0 && <span className="flex gap-2">{missing.map((k) => <Button key={k} size="sm" variant="secondary" onClick={() => setCreating(k)}>أنشئ {k === 'opening' ? 'الافتتاحي' : 'الختامي'}</Button>)}</span>}>
+      <ul className="space-y-2">
+        {db.events.map((e) => (
+          <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-2 text-sm">
+            <span><b>{e.title}</b> · {fmtDate(e.date)}{e.location ? ` · ${e.location}` : ''}{e.attendees ? ` · حضر ${e.attendees}` : ''}</span>
+            <span className="flex items-center gap-2">
+              {e.retroactive && <Badge tone="purple">أُنشئ بأثر رجعي</Badge>}
+              <Badge tone={e.status === 'done' ? 'green' : 'blue'}>{e.status === 'done' ? 'منتهٍ' : 'مخطَّط'}</Badge>
+              {me.isLeader && e.status === 'planned' && e.date <= todayISO() && <Button size="sm" variant="secondary" onClick={() => act(() => repos.events.markDone(e.id), 'سُجّل انعقاده')}>سجّل الانعقاد</Button>}
+            </span>
+          </li>
+        ))}
+        {db.events.length === 0 && <li className="text-sm text-ink-400">لم يُنشأ بعد</li>}
+      </ul>
+      {creating && <CreateEventModal kind={creating} onClose={() => setCreating(null)} />}
+    </Card>
+  );
+}
+function CreateEventModal({ kind, onClose }: { kind: 'opening' | 'closing'; onClose: () => void }) {
+  const [f, setF] = useState({ title: kind === 'opening' ? 'اللقاء الافتتاحي' : 'اللقاء الختامي', date: todayISO(), location: '', description: '', retroactive: false, attendees: 0 });
+  return (
+    <Modal open onClose={onClose} title={kind === 'opening' ? 'اللقاء الافتتاحي' : 'اللقاء الختامي'} footer={<Button onClick={() => act(() => { repos.events.create({ kind, ...f, attendees: f.attendees || undefined }); onClose(); }, 'أُنشئ اللقاء')}>أنشئ</Button>}>
+      <div className="grid gap-3">
+        <Field label="العنوان"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
+        <Field label="التاريخ"><Input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
+        <Field label="المكان"><Input value={f.location} onChange={(e) => setF({ ...f, location: e.target.value })} /></Field>
+        <Toggle checked={f.retroactive} onChange={(v) => setF({ ...f, retroactive: v })} label="بأثر رجعي: لقاء منتهٍ يتخطى التخطيط والتجهيز" />
+        {f.retroactive && <Field label="عدد الحضور"><Input className="num" type="number" value={f.attendees || ''} onChange={(e) => setF({ ...f, attendees: +e.target.value })} /></Field>}
+      </div>
+    </Modal>
   );
 }
 
@@ -81,7 +123,8 @@ function CreateTripModal({ onClose }: { onClose: () => void }) {
     startDate: addDays(todayISO(), 30), endDate: addDays(todayISO(), 30), location: '', description: '', isPersonalPlanMeeting: false,
   });
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
-  const deadlines = { initial: addDays(f.startDate, -dd.initialDaysBefore), detailed: addDays(f.startDate, -dd.detailedDaysBefore) };
+  const [double, setDouble] = useState({ on: false, groupId2: db.groups[1]?.id ?? '', splitDate: addDays(todayISO(), 31) });
+  const deadlines = { document: addDays(f.startDate, -dd.documentDaysBefore), schedule: addDays(f.startDate, -dd.scheduleDaysBefore), budget: addDays(f.startDate, -dd.budgetDaysBefore) };
   const [dl, setDl] = useState<typeof deadlines | null>(null);
   const finalDl = dl ?? deadlines;
   const executor = f.executorKind === 'group' ? { kind: 'group' as const, groupId: f.groupId } : { kind: 'staff' as const, leaderId: f.leaderId, memberIds: f.memberIds };
@@ -93,7 +136,10 @@ function CreateTripModal({ onClose }: { onClose: () => void }) {
       if (!f.title.trim()) throw new Error('اسم الرحلة مطلوب');
       if (f.endDate < f.startDate) throw new Error('تاريخ النهاية قبل البداية');
       if (f.type === 'internal' && f.endDate !== f.startDate) throw new Error('الرحلة الداخلية لا تتجاوز يوماً');
-      const id = repos.trips.create({ title: f.title, type: f.type, executor, startDate: f.startDate, endDate: f.endDate, location: f.location, description: f.description, isPersonalPlanMeeting: f.isPersonalPlanMeeting, deadlines: finalDl });
+      const base = { title: f.title, type: f.type, startDate: f.startDate, endDate: f.endDate, location: f.location, description: f.description, isPersonalPlanMeeting: f.isPersonalPlanMeeting, deadlines: finalDl };
+      const id = double.on && f.type === 'external' && f.executorKind === 'group'
+        ? repos.trips.createDouble({ ...base, groupIds: [f.groupId, double.groupId2], splitDate: double.splitDate })[0]
+        : repos.trips.create({ ...base, executor });
       onClose();
       nav(`/app/trips/${id}`);
     }, 'أُنشئت الرحلة وأُنشئت مهامها التلقائية');
@@ -125,8 +171,21 @@ function CreateTripModal({ onClose }: { onClose: () => void }) {
         )}
         <Field label="تاريخ البداية"><Input type="date" value={f.startDate} onChange={(e) => set({ startDate: e.target.value, endDate: f.type === 'internal' ? e.target.value : addDays(e.target.value, 2) })} /></Field>
         <Field label="تاريخ النهاية"><Input type="date" value={f.endDate} disabled={f.type === 'internal'} onChange={(e) => set({ endDate: e.target.value })} /></Field>
-        <Field label="الموعد النهائي للخطة المبسطة"><Input type="date" value={finalDl.initial} onChange={(e) => setDl({ ...finalDl, initial: e.target.value })} /></Field>
-        <Field label="الموعد النهائي للتفصيلية والموازنة"><Input type="date" value={finalDl.detailed} onChange={(e) => setDl({ ...finalDl, detailed: e.target.value })} /></Field>
+        <Field label="موعد وثيقة الرحلة (تُرفع أولاً)"><Input type="date" value={finalDl.document} onChange={(e) => setDl({ ...finalDl, document: e.target.value })} /></Field>
+        <Field label="موعد الجدول الزمني"><Input type="date" value={finalDl.schedule} onChange={(e) => setDl({ ...finalDl, schedule: e.target.value })} /></Field>
+        <Field label="موعد الميزانية"><Input type="date" value={finalDl.budget} onChange={(e) => setDl({ ...finalDl, budget: e.target.value })} /></Field>
+        {f.type === 'external' && f.executorKind === 'group' && (
+          <div className="space-y-2 rounded-xl bg-ink-50 p-3 sm:col-span-2">
+            <Toggle checked={double.on} onChange={(v) => setDouble({ ...double, on: v, splitDate: addDays(f.startDate, Math.max(1, Math.round((+new Date(f.endDate) - +new Date(f.startDate)) / 86400000 / 2))) })} label="رحلة مزدوجة: وجهة واحدة لمجموعتين متتاليتين" />
+            {double.on && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field label="المجموعة الثانية"><Select value={double.groupId2} onChange={(e) => setDouble({ ...double, groupId2: e.target.value })} options={db.groups.filter((g) => g.id !== f.groupId).map((g) => ({ value: g.id, label: g.name }))} /></Field>
+                <Field label="نهاية الأولى = بداية الثانية"><Input type="date" value={double.splitDate} onChange={(e) => setDouble({ ...double, splitDate: e.target.value })} /></Field>
+                <p className="text-xs text-ink-500 sm:col-span-2">لكل مجموعة رحلتها المستقلة (نقاطها وعهدتها وإقفالها وتقريرها وحضورها وجدولها الفعلي)، والمصروف المشترك يصرفه مسؤول المالية مباشرة ويوزّعه.</p>
+              </div>
+            )}
+          </div>
+        )}
         <Field label="المكان (مبدئي)"><Input value={f.location} onChange={(e) => set({ location: e.target.value })} /></Field>
         <div className="flex items-end pb-2"><Toggle checked={f.isPersonalPlanMeeting} onChange={(v) => set({ isPersonalPlanMeeting: v })} label="لقاء الخطة الشخصية (يفتح قسم الخطة)" /></div>
         <Field label="وصف" className="sm:col-span-2"><Textarea value={f.description} onChange={(e) => set({ description: e.target.value })} /></Field>

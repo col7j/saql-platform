@@ -6,7 +6,7 @@ import { fmtDateTime } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { SAR } from '@/domain/labels';
 import {
-  ALL_SPEND_KINDS, FINANCE_PERMS, canOpenFinance, financeCommitteeId, financePermsOf, hasFinancePerm, isFinanceOwner,
+  ALL_SPEND_KINDS, FINANCE_PERMS, allocatedFor, canOpenFinance, financeCommitteeId, financePermsOf, hasFinancePerm, isFinanceOwner,
   ownerTitle, requestStage, spendKindGroup, spendKindLabel, spendKindOf,
 } from '@/domain/finance';
 import { activitySpend, budgetOverview, custodyTitle, openCustodyConflict, spentLines, walletBalance, walletFigures, WALLET_IN, walletKindLabel } from '@/domain/ledger';
@@ -218,6 +218,7 @@ function ownerOptions(db: ReturnType<typeof useDB>) {
     ...db.focusMeetings.map((f) => ({ value: `focus:${f.id}`, label: `لقاء تركيز: ${f.title} (${db.groups.find((g) => g.id === f.groupId)?.name})` })),
     ...db.meetings.map((m) => ({ value: `meeting:${m.id}`, label: `اجتماع: ${m.title}` })),
     ...db.programNeeds.map((n) => ({ value: `need:${n.id}`, label: `احتياجات البرنامج: ${n.title}` })),
+    ...db.events.map((e) => ({ value: `event:${e.id}`, label: `${spendKindLabel[e.kind]}: ${e.title}` })),
   ];
 }
 const parseOwner = (v: string) => { const [ownerKind, ownerId] = v.split(':'); return { ownerKind: ownerKind as BudgetOwnerKind, ownerId }; };
@@ -301,7 +302,7 @@ function Needs() {
   const [custodyFor, setCustodyFor] = useState<{ ownerKind: BudgetOwnerKind; ownerId: string } | null>(null);
   const [paying, setPaying] = useState<{ contractId: string; paymentId: string } | null>(null);
   const [payAtt, setPayAtt] = useState<Attachment>();
-  const milestones = db.trips.filter((t) => t.milestone);
+  const events = db.events;
   return (
     <div className="space-y-4">
       <Notice>احتياجات البرنامج والافتتاحي والختامي: صرف مباشر، أو عهدة لشخص يقفلها، والعقود في احتياجات البرنامج فقط.</Notice>
@@ -337,7 +338,8 @@ function Needs() {
       })}
       <Card title="الافتتاحي والختامي" subtitle="صرف مباشر من تبويبه، أو عهدة لشخص يقفلها">
         <ul className="space-y-2">
-          {milestones.map((t) => <li key={t.id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>{t.title} <span className="text-xs text-ink-500">· المصروف {SAR(activitySpend(db, 'trip', t.id).total)}</span></span>{canAct && <Button size="sm" variant="secondary" onClick={() => setCustodyFor({ ownerKind: 'trip', ownerId: t.id })}>عهدة لشخص</Button>}</li>)}
+          {events.map((e) => <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 text-sm"><span>{e.title} <span className="text-xs text-ink-500">· المرصود {SAR(allocatedFor(db, 'event', e.id))} · المصروف {SAR(activitySpend(db, 'event', e.id).total)} (عهدة {SAR(activitySpend(db, 'event', e.id).custody)} + مباشر {SAR(activitySpend(db, 'event', e.id).direct)})</span></span>{canAct && <Button size="sm" variant="secondary" onClick={() => setCustodyFor({ ownerKind: 'event', ownerId: e.id })}>عهدة لشخص</Button>}</li>)}
+          {events.length === 0 && <li className="text-sm text-ink-400">يُنشئهما القائد العام من صفحة الرحلات</li>}
         </ul>
       </Card>
       {contractFor && <ContractModal needId={contractFor} onClose={() => setContractFor(null)} />}
@@ -381,6 +383,18 @@ function FinanceSettings() {
         <Field label="تنبيه التجزئة: الفاتورة الصغيرة حتى (ر.س)"><Input className="num" type="number" value={f.splitAlert.maxAmount} onChange={(e) => setF({ ...f, splitAlert: { ...f.splitAlert, maxAmount: +e.target.value } })} /></Field>
         <Field label="خلال (أيام)"><Input className="num" type="number" value={f.splitAlert.windowDays} onChange={(e) => setF({ ...f, splitAlert: { ...f.splitAlert, windowDays: +e.target.value } })} /></Field>
         <Field label="عدد الفواتير لنفس المورد والنشاط"><Input className="num" type="number" value={f.splitAlert.minCount} onChange={(e) => setF({ ...f, splitAlert: { ...f.splitAlert, minCount: +e.target.value } })} /></Field>
+      </div>
+      <div className="mt-4">
+        <span className="label">بنود المالية في تقييم الرحلة (مثل الترشيد) يقيّم بها مسؤول المالية وحده من 5</span>
+        <div className="space-y-2">
+          {f.evalItems.map((i, idx) => (
+            <div key={i.key} className="flex gap-2">
+              <Input value={i.name} onChange={(e) => setF({ ...f, evalItems: f.evalItems.map((x, j) => (j === idx ? { ...x, name: e.target.value } : x)) })} />
+              <button onClick={() => setF({ ...f, evalItems: f.evalItems.filter((_, j) => j !== idx) })} aria-label="احذف"><Icons.Trash2 className="h-4 w-4 text-ink-400" /></button>
+            </div>
+          ))}
+          <Button size="sm" variant="secondary" onClick={() => setF({ ...f, evalItems: [...f.evalItems, { key: `fe_${Date.now()}`, name: 'بند جديد' }] })}>أضف بنداً</Button>
+        </div>
       </div>
       <Button className="mt-4" onClick={() => act(() => repos.finance.setFinanceSettings(f), 'حُفظت الإعدادات المالية')}>احفظ</Button>
     </Card>

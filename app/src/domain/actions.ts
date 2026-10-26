@@ -77,11 +77,11 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
   // ── قائد فريق الرحلة ──
   db.trips.filter((t) => tripTeamLeaderId(db, t) === personId).forEach((t) => {
     db.docs.filter((d) => d.tripId === t.id).forEach((d) => {
-      const deadline = d.kind === 'initial' ? t.deadlines.initial : t.deadlines.detailed;
+      const deadline = d.kind === 'document' ? t.deadlines.document : t.deadlines.schedule;
       if (d.status === 'returned_by_facilitator' || d.status === 'returned_by_leader') add({ id: `dr_${d.id}`, title: `أُعيدت ${docKindLabel[d.kind]}: ${t.title}`, hint: d.history[d.history.length - 1]?.reason, cta: 'عدّل وأعد الرفع', link: `/app/trips/${t.id}?tab=docs`, tone: 'red', group: 'إعداد الرحلات' });
       else if (d.status === 'draft' && d.kind !== 'final_report' && deadline <= addDays(today, 7)) add({ id: `dd_${d.id}`, title: `${docKindLabel[d.kind]}: ${t.title}`, hint: deadline < today ? 'فات الموعد النهائي' : 'اقترب الموعد النهائي', cta: 'أكمل وارفع', link: `/app/trips/${t.id}?tab=docs`, tone: deadline < today ? 'red' : 'orange', group: 'إعداد الرحلات' });
     });
-    if (db.docs.some((d) => d.tripId === t.id && d.kind === 'initial' && d.status === 'approved') && !requestFor(db, 'trip', t.id) && !t.published)
+    if (db.docs.some((d) => d.tripId === t.id && d.kind === 'document' && d.status === 'approved') && !requestFor(db, 'trip', t.id) && !t.published)
       add({ id: `bq_${t.id}`, title: `قدّم طلب ميزانية ${t.title}`, hint: 'الرحلات تُقدَّم بموازنة تفصيلية', cta: 'جهّز الموازنة', link: `/app/trips/${t.id}?tab=budget`, tone: 'blue', group: 'إعداد الرحلات' });
     if (canPublish(db, t)) add({ id: `pub_${t.id}`, title: `${t.title} جاهزة للنشر`, cta: 'انشر الرحلة', link: `/app/trips/${t.id}`, tone: 'orange', group: 'إعداد الرحلات' });
     if (tripStage(db, t) === 'published' && t.scheduleVisibility === 'hidden' && t.startDate <= addDays(today, 1)) add({ id: `vis_${t.id}`, title: `اعرض جدول ${t.title} للمشاركين`, cta: 'اعرض الجدول', link: `/app/trips/${t.id}?tab=data`, tone: 'orange', group: 'إعداد الرحلات' });
@@ -112,8 +112,13 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
     db.memberRequests.filter((r) => r.status === 'pending').forEach((r) => add({ id: `mr_${r.id}`, title: `طلب إضافة ${db.persons.find((p) => p.id === r.personId)?.name} للجنة`, cta: 'وافق أو ارفض', link: `/app/committees/${r.committeeId}`, tone: 'blue', group: 'اللجان' }));
     db.materials.filter((m) => m.pointsStatus === 'pending').forEach((m) => add({ id: `mp_${m.id}`, title: `طلب نقاط على مادة: ${m.title}`, cta: 'راجع المادة', link: '/app/library', tone: 'blue', group: 'المكتبة' }));
     db.trips.filter((t) => t.trackerSubstitute?.status === 'pending').forEach((t) => add({ id: `ts_${t.id}`, title: `متابع بديل لـ ${t.title}`, cta: 'اعتمد البديل', link: `/app/trips/${t.id}`, tone: 'orange', group: 'الرحلات' }));
-    db.trips.filter((t) => tripStage(db, t) === 'closing' && t.evaluation.leaderScore == null).forEach((t) => add({ id: `le_${t.id}`, title: `قيّم ${t.title}`, cta: 'قيّم الرحلة', link: `/app/trips/${t.id}?tab=closure`, tone: 'blue', group: 'الرحلات' }));
   }
+
+  // ── تقييم الرحلة: كل فريق العمل، وبنود المالية لمسؤولها ──
+  if (c.isStaff)
+    db.trips.filter((t) => ['closing', 'closed'].includes(tripStage(db, t)) && !t.evaluation.staffRatings[personId]).forEach((t) => add({ id: `sr_${t.id}`, title: `قيّم ${t.title} (من 10)`, hint: 'متوسط تقييم فريق العمل يدخل في نقاط الرحلة', cta: 'قيّم الرحلة', link: `/app/trips/${t.id}?tab=closure`, tone: 'blue', group: 'الرحلات' }));
+  if (isFinanceOwner(db, personId))
+    db.trips.filter((t) => t.executor.kind === 'group' && ['closing', 'closed'].includes(tripStage(db, t)) && db.settings.finance.evalItems.some((i) => t.evaluation.finance[i.key] == null)).forEach((t) => add({ id: `fe_${t.id}`, title: `بنود المالية لتقييم ${t.title}`, cta: 'قيّم البنود', link: `/app/trips/${t.id}?tab=closure`, tone: 'blue', group: 'المالية' }));
 
   // ── الاجتماعات ──
   db.meetings.filter((m) => m.ownerId === personId).forEach((m) => {
@@ -125,7 +130,6 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
   db.trips.filter((t) => effectiveTrackerId(db, t) === personId).forEach((t) => {
     const st = tripStage(db, t);
     if (st === 'live') add({ id: `tl_${t.id}`, title: `${t.title} تجري الآن`, hint: 'وثّق ما يحدث مقابل الجدول', cta: 'وثّق التنفيذ', link: `/app/tracker?trip=${t.id}`, tone: 'red', group: 'متابعة الرحلات' });
-    if (st === 'closing' && t.evaluation.trackerScore == null) add({ id: `te_${t.id}`, title: `قيّم ${t.title}`, cta: 'قيّم الرحلة', link: `/app/tracker?trip=${t.id}`, tone: 'blue', group: 'متابعة الرحلات' });
   });
 
   // إزالة التكرار وترتيب بالأولوية

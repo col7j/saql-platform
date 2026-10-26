@@ -1,4 +1,4 @@
-// المسار 1: الوثائق ودورة الاعتماد (المبسطة، التفصيلية، الموازنة، التقرير الختامي)
+// نماذج الرحلة الثلاثة (وثيقة القرارات): الوثيقة أولاً، ثم الجدول الزمني، والميزانية، كلٌّ على حدة بدورة اعتماد. ثم التقرير الختامي
 import { useEffect, useState } from 'react';
 import { fmtDate, fmtDateTime } from '@/domain/dates';
 import { docKindLabel, docStatusLabel, docStatusTone } from '@/domain/labels';
@@ -12,14 +12,14 @@ import { Badge, Button, Card, Field, Icons, Input, Modal, Notice, ReasonModal, S
 import { CommentThread } from '@/ui/domain';
 
 const FIELDS: Record<DocKind, { key: string; label: string; long?: boolean }[]> = {
-  initial: [
+  document: [
     { key: 'location', label: 'المكان' },
-    { key: 'titles', label: 'العناوين (محاور اللقاءات)' },
-    { key: 'outline', label: 'الخطة المبدئية', long: true },
+    { key: 'titles', label: 'الأهداف والمحاور' },
+    { key: 'outline', label: 'وصف الرحلة كاملة (الخطة الواحدة: التنقل، الضيوف، الترتيبات)', long: true },
   ],
-  detailed: [
-    { key: 'summary', label: 'ملخص الخطة التفصيلية', long: true },
-    { key: 'details', label: 'التفاصيل (التجمع، الضيوف، الترتيبات)', long: true },
+  schedule: [
+    { key: 'summary', label: 'ملاحظات على الجدول', long: true },
+    { key: 'details', label: 'الخطة البديلة ومتى تُفعَّل', long: true },
   ],
   final_report: [
     { key: 'summary', label: 'ملخص التقرير', long: true },
@@ -30,13 +30,13 @@ const FIELDS: Record<DocKind, { key: string; label: string; long?: boolean }[]> 
 
 export default function DocsTab({ trip }: { trip: Trip }) {
   const db = useDB();
-  const kinds: DocKind[] = ['initial', 'detailed', 'final_report'];
+  const kinds: DocKind[] = ['document', 'schedule', 'final_report'];
   const docs = kinds.map((k) => docFor(db, trip.id, k)).filter(Boolean) as TripDoc[];
   const [open, setOpen] = useState<string | null>(docs.find((d) => d.status !== 'approved')?.id ?? docs[0]?.id ?? null);
   return (
     <div className="space-y-4">
       <Notice>
-        دورة الاعتماد: الفريق يعبّئ ويرفع ← {trip.executor.kind === 'group' ? 'الميسّر يراجع (رفض بسبب يرجعها للفريق) ← ' : ''}الإدارة تناقش والقائد العام يقرر (رفضه يرجعها لقائد الفريق مباشرة) ← اعتماد. القائد العام هو الوحيد الذي يعتمد.
+        ثلاثة نماذج كلٌّ على حدة: <b>وثيقة الرحلة أولاً</b>، ثم الجدول الزمني، والميزانية (تبويب الميزانية). المسار: {trip.executor.kind === 'group' ? 'الميسّر ثم ' : ''}القائد العام، والرفض يعود لقائد الفريق. النشر لا يعمل إلا باكتمال الاعتمادات وبيانات الرحلة.
       </Notice>
       {docs.map((d) => (
         <DocCard key={d.id} trip={trip} doc={d} open={open === d.id} onToggle={() => setOpen(open === d.id ? null : d.id)} />
@@ -57,11 +57,11 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
   useEffect(() => setFields(doc.fields), [doc.fields]);
 
   const prereq =
-    doc.kind === 'initial' ? null
+    doc.kind === 'document' ? null
       : doc.kind === 'final_report' ? (tripHasEnded(trip) ? null : 'يُرفع التقرير الختامي بعد انتهاء الرحلة')
-        : isApproved(db, trip.id, 'initial') ? null : 'تُفتح بعد اعتماد الخطة المبسطة';
-  const needsSchedule = doc.kind === 'detailed' && !hasSchedule(trip);
-  const deadline = doc.kind === 'initial' ? trip.deadlines.initial : doc.kind === 'final_report' ? undefined : trip.deadlines.detailed;
+        : docFor(db, trip.id, 'document')?.submittedAt ? null : 'ارفع وثيقة الرحلة أولاً: هي أول ما يُرفع';
+  const needsSchedule = doc.kind === 'schedule' && !hasSchedule(trip);
+  const deadline = doc.kind === 'document' ? trip.deadlines.document : doc.kind === 'final_report' ? undefined : trip.deadlines.schedule;
 
   const save = () => act(() => {
     repos.trips.updateDocFields(doc.id, fields);
@@ -111,10 +111,10 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
                   </div>
                 ),
               )}
-              {doc.kind === 'detailed' && (
+              {doc.kind === 'schedule' && (
                 <div className="rounded-xl bg-ink-50 p-3 text-sm">
                   <Icons.CalendarRange className="me-1 inline h-4 w-4 text-brand-600" />
-                  الجدول الزمني جزء من الخطة التفصيلية: {trip.schedule.plans.map((p) => `${p.name} (${p.items.length} بنداً)`).join('، ')}. عدّله من تبويب "الجدول الزمني".
+                  محتوى هذا النموذج هو الجدول: {trip.schedule.plans.map((p) => `${p.name} (${p.items.length} بنداً)`).join('، ')}. عدّله من تبويب "الجدول الزمني" بتصنيفات يحددها القائد العام.
                   {needsSchedule && <span className="mt-1 block text-red-600">لم يُضف الجدول بعد.</span>}
                 </div>
               )}

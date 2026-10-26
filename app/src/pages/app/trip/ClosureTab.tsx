@@ -1,7 +1,8 @@
-// الإغلاق (قسم 6.10) والتقييم: نماذج الفريق، الإغلاق المالي، التقرير، تقييم المتابع والقائد العام
+// الإغلاق والتقييم: نماذج الفريق، الإغلاق المالي، التقرير، تقييم كل فريق العمل للرحلة، وبنود المالية
 import { useState } from 'react';
-import { canTrackTrip, tripTeamLeaderId } from '@/domain/permissions';
-import { closureChecks, isApproved } from '@/domain/workflow';
+import { isFinanceOwner } from '@/domain/finance';
+import { tripTeamLeaderId } from '@/domain/permissions';
+import { closureChecks, isApproved, staffRatingCount, tripHasEnded } from '@/domain/workflow';
 import type { Trip } from '@/domain/types';
 import { act, repos, useDB, useMe, useScores } from '@/state/store';
 import { Badge, Button, Card, Checklist, Field, Icons, Input, Notice, Stars, Textarea } from '@/ui';
@@ -11,11 +12,12 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
   const me = useMe();
   const scores = useScores();
   const isLead = tripTeamLeaderId(db, trip) === me.person.id;
-  const isTracker = canTrackTrip(db, me.person.id, trip);
-  const canEval = isTracker || me.isLeader;
+  const finOwner = isFinanceOwner(db, me.person.id);
+  const mine = trip.evaluation.staffRatings[me.person.id];
+  const ratings = Object.entries(trip.evaluation.staffRatings);
+  const count = staffRatingCount(db, trip);
   const [forms, setForms] = useState({ teamEvalForm: trip.closure.teamEvalForm ?? '', experienceForm: trip.closure.experienceForm ?? '', publicReport: trip.closure.publicReport ?? '' });
-  const [ev, setEv] = useState({ trackerScore: trip.evaluation.trackerScore ?? 0, trackerNote: trip.evaluation.trackerNote ?? '', leaderScore: trip.evaluation.leaderScore ?? 0, leaderNote: trip.evaluation.leaderNote ?? '' });
-  const manualItems = db.settings.evaluationItems.filter((i) => i.scope === 'group' && i.enabled && (i.mode === 'manual' || i.mode === 'mixed') && i.key !== 'trip_eval');
+  const [rating, setRating] = useState({ score: 8, note: '' });
   const groupScore = trip.executor.kind === 'group' ? scores.groups.find((g) => g.groupId === (trip.executor as { groupId: string }).groupId) : undefined;
   const tripScore = groupScore?.[trip.type].trips.find((t) => t.tripId === trip.id);
 
@@ -41,37 +43,27 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
           )}
         </Card>
 
-        <Card title="تقييم الرحلة" subtitle="المتابع يقيّم، والقائد العام يقيّم، ومنهما تخرج نتيجة الرحلة للمجموعة">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-ink-100 p-3">
-              <div className="mb-2 text-sm font-bold">تقييم متابع الرحلات (من 10)</div>
-              <Input type="number" min={0} max={10} step={0.5} disabled={!isTracker} value={ev.trackerScore} onChange={(e) => setEv({ ...ev, trackerScore: +e.target.value })} />
-              <Textarea className="mt-2" disabled={!isTracker} rows={2} placeholder="ملاحظات" value={ev.trackerNote} onChange={(e) => setEv({ ...ev, trackerNote: e.target.value })} />
-              {isTracker && <Button size="sm" className="mt-2" onClick={() => act(() => repos.trips.evaluate(trip.id, { trackerScore: ev.trackerScore, trackerNote: ev.trackerNote }), 'حُفظ تقييم المتابع')}>احفظ</Button>}
+        <Card title="تقييم الرحلة" subtitle={`يقيّمها كل فريق العمل (من 10) ويدخل المتوسط في نقاطها · ${count.rated} من ${count.staff}`}>
+          {me.isStaff && (mine ? (
+            <p className="rounded-xl bg-emerald-50 p-3 text-sm">قيّمتها <b className="num">{mine.score}</b> من 10{mine.note ? ` · ${mine.note}` : ''}</p>
+          ) : !tripHasEnded(trip) ? <Notice>يُفتح التقييم بعد انتهاء الرحلة.</Notice> : (
+            <div className="grid gap-2 rounded-xl bg-ink-50 p-3 sm:grid-cols-[110px_1fr_auto]">
+              <Input className="num" type="number" min={0} max={10} step={0.5} value={rating.score} onChange={(e) => setRating({ ...rating, score: +e.target.value })} aria-label="التقييم من 10" />
+              <Input placeholder="ملاحظة (اختياري)" value={rating.note} onChange={(e) => setRating({ ...rating, note: e.target.value })} />
+              <Button onClick={() => act(() => repos.trips.rateTrip(trip.id, rating.score, rating.note || undefined), 'حُفظ تقييمك')}>قيّم الرحلة</Button>
             </div>
-            <div className="rounded-2xl border border-ink-100 p-3">
-              <div className="mb-2 text-sm font-bold">تقييم القائد العام (من 10)</div>
-              <Input type="number" min={0} max={10} step={0.5} disabled={!me.isLeader} value={ev.leaderScore} onChange={(e) => setEv({ ...ev, leaderScore: +e.target.value })} />
-              <Textarea className="mt-2" disabled={!me.isLeader} rows={2} placeholder="ملاحظات" value={ev.leaderNote} onChange={(e) => setEv({ ...ev, leaderNote: e.target.value })} />
-              {me.isLeader && <Button size="sm" className="mt-2" onClick={() => act(() => repos.trips.evaluate(trip.id, { leaderScore: ev.leaderScore, leaderNote: ev.leaderNote }), 'حُفظ تقييم القائد العام')}>احفظ</Button>}
-            </div>
-          </div>
+          ))}
+          {me.isLeader && ratings.length > 0 && (
+            <ul className="mt-3 space-y-1 text-sm">{ratings.map(([pid, r]) => <li key={pid} className="flex justify-between"><span>{db.persons.find((p) => p.id === pid)?.name}{r.note ? <span className="text-xs text-ink-500"> · {r.note}</span> : null}</span><b className="num">{r.score}</b></li>)}</ul>
+          )}
           {trip.executor.kind === 'group' && (
             <div className="mt-5">
-              <div className="mb-2 text-sm font-bold">بنود التقييم الجماعي اليدوية (من 5)</div>
-              <div className="space-y-3">
-                {manualItems.map((item) => (
-                  <div key={item.key} className="rounded-xl bg-ink-50 p-3">
-                    <div className="mb-1 text-xs font-bold text-ink-600">{item.name}</div>
-                    {(item.subItems?.length ? item.subItems.filter((s) => s.key !== 'all_presented' && !(s.key === 'housing' && trip.type === 'internal')) : [{ key: '', name: item.name, weight: 1 }]).map((s) => {
-                      const k = s.key ? `${item.key}.${s.key}` : item.key;
-                      return (
-                        <div key={k} className="flex items-center justify-between py-1 text-sm">
-                          <span>{s.name}</span>
-                          <Stars value={trip.evaluation.manual[k]} onChange={canEval ? (v) => repos.trips.evaluate(trip.id, { manual: { [k]: v } }) : undefined} />
-                        </div>
-                      );
-                    })}
+              <div className="mb-2 text-sm font-bold">بنود المسؤول المالي (من 5) <span className="text-xs font-normal text-ink-500">يحددها ويقيّم بها وحده، وتظهر في المنصة</span></div>
+              <div className="space-y-1">
+                {db.settings.finance.evalItems.map((i) => (
+                  <div key={i.key} className="flex items-center justify-between rounded-xl bg-ink-50 px-3 py-1.5 text-sm">
+                    <span>{i.name}</span>
+                    <Stars value={trip.evaluation.finance[i.key]} onChange={finOwner ? (v) => act(() => repos.trips.rateTripFinance(trip.id, i.key, v)) : undefined} />
                   </div>
                 ))}
               </div>

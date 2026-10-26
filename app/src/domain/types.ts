@@ -191,7 +191,7 @@ export type TripExecutor =
   | { kind: 'staff'; leaderId: ID; memberIds: ID[] };
 
 /** الموازنة لم تعد وثيقة في دورة الخطط، بل طلب ميزانية مستقل (BudgetRequest) */
-export type DocKind = 'initial' | 'detailed' | 'final_report';
+export type DocKind = 'document' | 'schedule' | 'final_report';
 export type DocStatus =
   | 'draft'
   | 'submitted' // بانتظار الميسّر (أو القائد العام في رحلات فريق العمل)
@@ -236,13 +236,6 @@ export interface SchedulePlan {
   name: string; // الخطة أ، الخطة ب...
   items: ScheduleItem[];
 }
-export interface ScheduleChange {
-  id: ID;
-  at: ISODateTime;
-  byId: ID;
-  description: string;
-  afterStart: boolean;
-}
 export interface ActualScheduleEntry {
   id: ID;
   tripId: ID;
@@ -276,13 +269,10 @@ export interface Coordination {
   note?: string;
 }
 
+/** تقييم الرحلة: كل فريق العمل يقيّمها (من 10) ويدخل المتوسط في نقاطها، وبنود المالية يقيّم بها مسؤول المالية وحده (من 5) */
 export interface TripEvaluation {
-  trackerScore?: number; // من 10
-  trackerNote?: string;
-  leaderScore?: number; // من 10
-  leaderNote?: string;
-  /** درجات يدوية لبنود التقييم الجماعي (0..5) مفتاحها: evaluationItemKey.subKey */
-  manual: Record<string, number>;
+  staffRatings: Record<ID, { score: number; note?: string; at: ISODateTime }>;
+  finance: Record<string, number>;
 }
 
 export interface Trip {
@@ -296,13 +286,15 @@ export interface Trip {
   description?: string;
   isPersonalPlanMeeting: boolean;
   /** اللقاء الافتتاحي أو الختامي (نوع صرف مستقل) */
-  milestone?: 'opening' | 'closing';
-  deadlines: { initial: ISODate; detailed: ISODate };
+  /** الرحلة الخارجية المزدوجة: وجهة واحدة لمجموعتين متتاليتين، ونهاية الأولى بداية الثانية */
+  pair?: { tripId: ID; part: 1 | 2 };
+  /** مواعيد النماذج الثلاثة: الوثيقة أولاً، ثم الجدول والميزانية */
+  deadlines: { document: ISODate; schedule: ISODate; budget: ISODate };
   createdAt: ISODateTime;
   createdBy: ID;
   published: boolean;
   publishedAt?: ISODateTime;
-  schedule: { plans: SchedulePlan[]; changes: ScheduleChange[] };
+  schedule: { plans: SchedulePlan[] };
   scheduleVisibility: 'hidden' | 'full' | 'next24';
   scheduleStartedNotified?: boolean;
   sessions: TripSession[];
@@ -313,8 +305,6 @@ export interface Trip {
   trackerSubstitute?: { candidateId: ID; reason?: string; status: 'pending' | 'approved' | 'rejected' };
   closure: { teamEvalForm?: string; experienceForm?: string; publicReport?: string; photos: string[] };
   evaluation: TripEvaluation;
-  /** درجات الالتزام بالوقت لكل مشارك يرصدها قائد المجموعة (0..5) */
-  punctuality: Record<ID, number>;
 }
 
 // ───────────── لقاءات التركيز ─────────────
@@ -481,7 +471,7 @@ export interface MaterialView {
 /** أنواع الصرف السبعة (وثيقة القرارات): تنفيذ البرنامج وإداري. لكل نوع طريقان: عهدة أو صرف مباشر */
 export type SpendKind = 'internal_trip' | 'external_trip' | 'focus' | 'opening' | 'closing' | 'meeting' | 'program_needs';
 /** ما يُربط به الصرف: رحلة (ومنها الافتتاحي والختامي)، لقاء تركيز، اجتماع، بند من احتياجات البرنامج */
-export type BudgetOwnerKind = 'trip' | 'focus' | 'meeting' | 'need';
+export type BudgetOwnerKind = 'trip' | 'focus' | 'meeting' | 'need' | 'event';
 
 /** مرفق حقيقي: يُحفظ اسمه وبصمته (SHA-256 لمحتوى الملف) ومعاينة مصغّرة للصور */
 export interface Attachment {
@@ -759,14 +749,42 @@ export interface Meeting {
 }
 
 // ───────────── الحضور والنقاط ─────────────
+/** حالات الحضور: الرحلة (التحضير العام) مبكر/في الوقت/متأخر/غائب، ولقاءات التركيز ولقاءات الرحلة حاضر/غائب */
+export type AttendanceStatus = 'early' | 'on_time' | 'late' | 'present' | 'absent';
 export interface Attendance {
   id: ID;
-  eventKind: 'trip' | 'focus' | 'individual';
-  eventId: ID;
+  eventKind: 'trip' | 'focus' | 'individual' | 'trip_session';
+  eventId: ID; // للقاء الرحلة: معرّف الرحلة
+  sessionId?: ID;
   personId: ID;
-  present: boolean;
+  status: AttendanceStatus;
+  present: boolean; // كل ما عدا الغياب
   byId: ID;
   at: ISODateTime;
+}
+
+/** التقييم الفردي من القائد العام: مرة واحدة لكل مشارك ببنود يحددها (مجموعها 100) */
+export interface LeaderEvaluation {
+  participantId: ID;
+  scores: Record<string, number>;
+  note?: string;
+  byId: ID;
+  at: ISODateTime;
+}
+
+/** اللقاء الافتتاحي والختامي: واحد لكل منهما، ويجوز إنشاؤه بأثر رجعي كلقاء منتهٍ يتخطى التخطيط والتجهيز */
+export interface ProgramEvent {
+  id: ID;
+  kind: 'opening' | 'closing';
+  title: string;
+  date: ISODate;
+  location?: string;
+  description?: string;
+  status: 'planned' | 'done';
+  retroactive: boolean;
+  attendees?: number;
+  createdBy: ID;
+  createdAt: ISODateTime;
 }
 
 export interface PointsEntry {
@@ -902,13 +920,17 @@ export interface Settings {
   groupTripSplit: { internal: number; external: number };
   evaluationItems: EvaluationItem[];
   presentationCriteria: { key: string; name: string }[];
-  repeatPresentationFactor: number; // 20.2
-  presentingMaxMultiplier: number;
+  /** التقديم المتكرر: يُحسب متوسط مرات التقديم، ويُضاف تميّز عن كل مرة بعد الأولى (نسبة من نقاط البند) */
+  presentingExtraBonus: number;
+  /** نتائج تقييم المقدّمين تظهر بعد نهاية البرنامج */
+  presentingRevealAfterEnd: boolean;
+  /** بنود تقييم القائد العام الفردي (مرة واحدة لكل مشارك) ومجموع أقصاها 100 */
+  leaderEvalItems: { key: string; name: string; max: number }[];
   lateFactor: number; // ما يُكسب من النقطة عند التأخر عن الموعد النهائي
   enrichmentPointsPerMaterial: number;
   targets: { focusMeetingsPerGroup: number; individualMeetingsPerParticipant: number };
   programCounts: { staffInternal: number; groupInternal: number; groupExternal: number; staffExternal: number };
-  deadlineDefaults: { initialDaysBefore: number; detailedDaysBefore: number; finalReportDaysAfter: number; reminderDaysBefore: number };
+  deadlineDefaults: { documentDaysBefore: number; scheduleDaysBefore: number; budgetDaysBefore: number; finalReportDaysAfter: number; financeCloseDaysAfter: number; reminderDaysBefore: number };
   /** وزن كل نوع حضور في التقييم الفردي (لقاءات التركيز، الرحلة، لقاءات الرحلة) */
   attendanceWeights: { focus: number; trip: number; tripSession: number };
   /** ما يُكسب من نقطة حضور الرحلة لكل حالة (0..1). الغياب صفر دائماً: لا خصم */
@@ -917,7 +939,8 @@ export interface Settings {
   evaluationLock: { locked: boolean; at?: ISODateTime; by?: ID };
   scheduleCategories: ScheduleCategory[];
   scheduleRevealHours: number;
-  scheduleEditAfterStartNeedsApproval: boolean; // 20.6
+  /** نسبة فريق العمل الذين يلزم تقييمهم للرحلة قبل إغلاقها */
+  tripRatingQuorum: number;
   trackingCommentsNeedReview: boolean; // 20.8
   /** ما يصل بالإيميل عند ربطه لاحقاً (يحدده مسؤول اللجنة التقنية). حالياً كل الإشعارات داخل المنصة فقط */
   importantNotifications: NotificationType[];
@@ -928,6 +951,7 @@ export interface Settings {
   finance: {
     maxOpenCustodies: number; // عدد العهد المفتوحة المتزامنة للشخص (بشرط ألا يتكرر نوعها)
     splitAlert: { maxAmount: number; windowDays: number; minCount: number }; // تنبيه تجزئة المصروف
+    evalItems: { key: string; name: string }[]; // بنود المالية في تقييم الرحلة (مثل الترشيد) يقيّم بها وحده
   };
   trackerId?: ID;
   trackingLink: { token?: string; active: boolean; createdAt?: ISODateTime };
@@ -956,6 +980,8 @@ export interface DB {
   tasks: Task[];
   taskTemplates: TaskTemplate[];
   trips: Trip[];
+  events: ProgramEvent[];
+  leaderEvaluations: LeaderEvaluation[];
   docs: TripDoc[];
   actualSchedule: ActualScheduleEntry[];
   focusMeetings: FocusMeeting[];

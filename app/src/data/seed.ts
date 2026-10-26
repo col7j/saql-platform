@@ -10,7 +10,7 @@ import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, de
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
-export const DB_VERSION = 8;
+export const DB_VERSION = 9;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -38,14 +38,27 @@ export function buildSeed(): DB {
 
   // ── الحضور ──
   const attendance: Attendance[] = [];
-  const mark = (eventKind: Attendance['eventKind'], eventId: string, personId: string, present: boolean, byId: string, when: string) =>
-    attendance.push({ id: id('at'), eventKind, eventId, personId, present, byId, at: when });
+  // حضور الرحلة بحالاته (مبكر/في الوقت/متأخر/غائب)، والتركيز ولقاءات الرحلة حاضر/غائب
+  const mark = (eventKind: Attendance['eventKind'], eventId: string, personId: string, present: boolean, byId: string, when: string, sessionId?: string) => {
+    const roll = rand();
+    const status: Attendance['status'] = !present ? 'absent' : eventKind !== 'trip' ? 'present' : roll < 0.25 ? 'early' : roll < 0.8 ? 'on_time' : 'late';
+    attendance.push({ id: id('at'), eventKind, eventId, sessionId, personId, status, present, byId, at: when });
+  };
   const absentPlan = new Set(['u6', 'u12', 'u18', 'u24']); // لم يحضروا لقاء الخطة الشخصية: خططهم مقفلة
   for (const t of trips.filter((x) => ['t1', 't2', 't3'].includes(x.id))) {
     participants.forEach((p) => {
       const present = t.id === 't2' ? !absentPlan.has(p.id) : rand() > 0.12;
       mark('trip', t.id, p.id, present, t.id === 't3' ? 'u2' : 's7', iso(t.startDate, 9));
     });
+  }
+  // لقاءات الرحلات المنفذة (تصنيفات يلزمها تحضير): يسجّلها مسؤول التحضير
+  for (const t of trips.filter((x) => ['t1', 't2', 't3'].includes(x.id))) {
+    const prep = new Set(settings.scheduleCategories.filter((c) => c.requiresPrep).map((c) => c.id));
+    (t.schedule.plans[0]?.items ?? []).filter((i) => i.sessionId && prep.has(i.categoryId)).forEach((i) =>
+      participants.forEach((p) => {
+        const wasThere = attendance.find((a) => a.eventKind === 'trip' && a.eventId === t.id && a.personId === p.id)?.present;
+        mark('trip_session', t.id, p.id, !!wasThere && rand() > 0.08, t.id === 't3' ? 'u2' : 's7', iso(t.startDate, 12), i.sessionId);
+      }));
   }
   // الرحلة الجارية: حضّر المكلّف جزءاً من المشاركين
   participants.slice(0, 16).forEach((p) => mark('trip', 't4', p.id, rand() > 0.1, 'u8', new Date().toISOString()));
@@ -261,12 +274,12 @@ export function buildSeed(): DB {
     return full.id;
   };
   const per = programBudget.focus.perItem;
-  const tripReq = (tripId: string, by: string, kind: 'opening' | 'internal_trip' | 'external_trip', allocated: number, status: BudgetRequest['status'], history: BudgetRequest['history']) => {
+  const tripReq = (tripId: string, by: string, kind: 'internal_trip' | 'external_trip', allocated: number, status: BudgetRequest['status'], history: BudgetRequest['history']) => {
     const lines = budgets[tripId];
     return req({ ownerKind: 'trip', ownerId: tripId, spendKind: kind, requestedBy: by, lines, amount: lines.reduce((s, l) => s + l.qty * l.price, 0), allocated, status }, history);
   };
   // رحلات فريق العمل للقائد العام مباشرة، ورحلات المجموعات: الميسّر ثم القائد العام
-  const rT1 = tripReq('t1', 's2', 'opening', programBudget.opening, 'approved', [reqEv('s2', 'submit', 66), reqEv(LEADER_ID, 'leader_approve', 65)]);
+  const rT1 = tripReq('t1', 's2', 'internal_trip', 3500, 'approved', [reqEv('s2', 'submit', 66), reqEv(LEADER_ID, 'leader_approve', 65)]);
   const rT2 = tripReq('t2', 's3', 'internal_trip', 3500, 'approved', [reqEv('s3', 'submit', 42), reqEv(LEADER_ID, 'leader_approve', 41)]);
   const rT3 = tripReq('t3', 'u1', 'internal_trip', 3500, 'approved', [reqEv('u1', 'submit', 28), reqEv('s1', 'facilitator_approve', 27), reqEv(LEADER_ID, 'leader_approve', 26)]);
   const rT4 = tripReq('t4', 'u7', 'internal_trip', 3500, 'approved', [reqEv('u7', 'submit', 13), reqEv('s2', 'facilitator_approve', 12), reqEv(LEADER_ID, 'leader_approve', 11)]);
@@ -301,13 +314,13 @@ export function buildSeed(): DB {
     return f;
   };
   const closedTrip = (cid: string, requestId: string, tripId: string, recipient: string, d: string, ago: number) => {
-    custody(cid, requestId, 'trip', tripId, tripId === 't1' ? 'opening' : 'internal_trip', recipient, 3240, [[3240, ago]], 'closed', ago + 1, { closedAt: iso(addDays(d, 9)), closedBy: 's5', closeRequestedAt: iso(addDays(d, 5)) });
+    custody(cid, requestId, 'trip', tripId, 'internal_trip', recipient, 3240, [[3240, ago]], 'closed', ago + 1, { closedAt: iso(addDays(d, 9)), closedBy: 's5', closeRequestedAt: iso(addDays(d, 5)) });
     form(cid, recipient, 'مؤسسة النقل الذهبي', `${cid}-101`, ago - 6, [['bc_transport', 'باص كوستر', 1000, 'accepted']]);
     form(cid, recipient, 'مطعم الطيبين', `${cid}-102`, ago - 6, [['bc_food', 'غداء الرحلة', 1080, 'accepted']]);
     form(cid, recipient, 'محمصة المدينة', `${cid}-103`, ago - 6, [['bc_hosting', 'قهوة وتمر', 200, 'accepted'], ['bc_food', 'ماء ووجبات خفيفة', 80, 'accepted']]);
     form(cid, recipient, 'المحاضر', `${cid}-104`, ago - 6, [['bc_guests', 'مكافأة المحاضر', 500, 'accepted']], `إيصال-مكافأة-${cid}.jpg`);
   };
-  // الافتتاحي: فائض 80 أُرجع بإيصال
+  // اللقاء التطويري الأول: فائض 80 أُرجع بإيصال
   closedTrip('cu_t1', rT1, 't1', 's2', addDays(T, -52), 58);
   form('cu_t1', 's2', 'متنزه الملك فهد', 'cu_t1-105', 52, [['bc_tickets', 'رسوم دخول', 300, 'accepted']]);
   const c1 = custodies.find((c) => c.id === 'cu_t1')!;
@@ -350,6 +363,8 @@ export function buildSeed(): DB {
     const e = wout('direct_spend', total, `فاتورة-مباشر-${dsId}.jpg`, ago, { directSpendId: dsId });
     directSpends.push({ id: dsId, allocations, vendor, serial, invoiceDate: addDays(T, -ago), proofKind: 'invoice', attachment: e.attachment, lines: lines.map(([categoryId, item, amount]) => ({ id: id('dl'), categoryId, item, amount })), total, byId: 's5', at: iso(addDays(T, -ago)), walletEntryId: e.id });
   };
+  // اللقاء الافتتاحي: أُنشئ بأثر رجعي ويُصرف عليه مباشرة
+  direct([{ ownerKind: 'event', ownerId: 'ev_open', amount: 2400 }], 'قاعة الملتقى', 'Q-118', 59, [['bc_hosting', 'إيجار القاعة والضيافة', 2400]]);
   direct([{ ownerKind: 'trip', ownerId: 't4', amount: 800 }], 'شركة الرحلات المتحدة', 'U-3301', 4, [['bc_transport', 'حافلة إضافية', 800]]);
   // مصروف مشترك (سكن) موزّع على رحلتين خارجيتين، والفاتورة مرة واحدة
   direct([{ ownerKind: 'trip', ownerId: 't7', amount: 3500 }, { ownerKind: 'trip', ownerId: 't8', amount: 2500 }], 'فندق الريف', 'H-2207', 3, [['bc_housing', 'حجز سكن مشترك', 6000]]);
@@ -364,7 +379,7 @@ export function buildSeed(): DB {
   const lineT1 = spendForms.find((f) => f.custodyId === 'cu_t1')!.lines[0];
   const editRequests: EditRequest[] = [{
     id: 'er1', target: { kind: 'spend_line', formId: spendForms.find((f) => f.custodyId === 'cu_t1')!.id, lineId: lineT1.id }, patch: { amount: 950 },
-    summary: `باص كوستر (الافتتاحي): المبلغ 1000 ← 950 ر.س`, reason: 'خصم لاحق من المورد بعد الاعتماد', requestedBy: 's5', at: iso(addDays(T, -1)), status: 'pending',
+    summary: `باص كوستر (اللقاء التطويري الأول): المبلغ 1000 ← 950 ر.س`, reason: 'خصم لاحق من المورد بعد الاعتماد', requestedBy: 's5', at: iso(addDays(T, -1)), status: 'pending',
   }];
 
   const audit: AuditEntry[] = [
@@ -459,9 +474,9 @@ export function buildSeed(): DB {
   notify('u14', 'task_assigned', 'أُسندت لك مهمة: حجز الموقع وتصريح الدخول', '/app/tasks', 50, true);
 
   const comments = [
-    { id: id('cm'), target: { kind: 'doc' as const, id: docs.find((d) => d.tripId === 't7' && d.kind === 'detailed')!.id }, authorId: 'u3', text: 'أقترح نقل زيارة المعالم للصباح الباكر بسبب الحر.', kind: 'suggestion' as const, at: iso(addDays(T, -1), 20) },
-    { id: id('cm'), target: { kind: 'doc' as const, id: docs.find((d) => d.tripId === 't7' && d.kind === 'detailed')!.id }, authorId: 's2', text: 'فكرة جيدة، والوقت المخصص للراحة كافٍ.', kind: 'comment' as const, at: iso(T, 9) },
-    { id: id('cm'), target: { kind: 'doc' as const, id: docs.find((d) => d.tripId === 't8' && d.kind === 'initial')!.id }, authorId: 'u10', text: 'ممكن نضيف لقاء عن القيادة والطبيعة مع ضيف من الطائف.', kind: 'suggestion' as const, at: iso(T, 8) },
+    { id: id('cm'), target: { kind: 'doc' as const, id: docs.find((d) => d.tripId === 't7' && d.kind === 'schedule')!.id }, authorId: 'u3', text: 'أقترح نقل زيارة المعالم للصباح الباكر بسبب الحر.', kind: 'suggestion' as const, at: iso(addDays(T, -1), 20) },
+    { id: id('cm'), target: { kind: 'doc' as const, id: docs.find((d) => d.tripId === 't7' && d.kind === 'schedule')!.id }, authorId: 's2', text: 'فكرة جيدة، والوقت المخصص للراحة كافٍ.', kind: 'comment' as const, at: iso(T, 9) },
+    { id: id('cm'), target: { kind: 'doc' as const, id: docs.find((d) => d.tripId === 't8' && d.kind === 'document')!.id }, authorId: 'u10', text: 'ممكن نضيف لقاء عن القيادة والطبيعة مع ضيف من الطائف.', kind: 'suggestion' as const, at: iso(T, 8) },
     { id: id('cm'), target: { kind: 'task' as const, id: tasks.find((t) => t.title === 'تجهيز تقرير منتصف البرنامج')!.id }, authorId: LEADER_ID, text: 'أضف مقارنة القبلي بالبعدي لكل رحلة.', kind: 'comment' as const, at: iso(addDays(T, -2)) },
   ];
 
@@ -492,6 +507,13 @@ export function buildSeed(): DB {
     tasks,
     taskTemplates,
     trips,
+    // الافتتاحي منتهٍ (أُنشئ بأثر رجعي متخطياً التخطيط والتجهيز)، والختامي مخطَّط
+    events: [
+      { id: 'ev_open', kind: 'opening', title: 'اللقاء الافتتاحي', date: addDays(T, -60), location: 'قاعة الملتقى · المدينة المنورة', description: 'حفل افتتاح البرنامج وتعريف المشاركين بالمسار.', status: 'done', retroactive: true, attendees: 24, createdBy: LEADER_ID, createdAt: iso(addDays(T, -10)) },
+      { id: 'ev_close', kind: 'closing', title: 'اللقاء الختامي وحفل التكريم', date: addDays(T, 145), location: 'قاعة الملتقى · المدينة المنورة', status: 'planned', retroactive: false, createdBy: LEADER_ID, createdAt: iso(addDays(T, -40)) },
+    ],
+    // تقييم القائد العام الفردي: مرة واحدة لمن اختارهم
+    leaderEvaluations: ['u1', 'u7', 'u13'].map((pid, i) => ({ participantId: pid, scores: { leadership: 16 - i, teamwork: 13, responsibility: 12 + i, communication: 12, growth: 13, creativity: 15 - i * 2 }, byId: LEADER_ID, at: iso(addDays(T, -5 + i)) })),
     docs,
     actualSchedule: actual,
     focusMeetings,

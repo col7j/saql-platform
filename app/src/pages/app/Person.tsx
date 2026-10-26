@@ -4,7 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import { fmtDateTime } from '@/domain/dates';
 import { canSeeFacilitatorNotes, canSeeFinance, canSeePersonalPlan, canWriteFacilitatorNote, getCapabilities, groupOf } from '@/domain/permissions';
 import { act, personName, repos, useDB, useMe, useScores } from '@/state/store';
-import { Avatar, Badge, Button, Card, Empty, KeyVal, PageHeader, Progress, Textarea } from '@/ui';
+import { Avatar, Badge, Button, Card, Empty, KeyVal, PageHeader, Progress, Textarea, askConfirm } from '@/ui';
 import { GroupBadge } from '@/ui/domain';
 
 export default function PersonPage() {
@@ -45,6 +45,7 @@ export default function PersonPage() {
               )}
             </Card>
           )}
+          {p.kind === 'participant' && me.isLeader && <LeaderEvalCard participantId={p.id} />}
           {sc && (
             <Card title="التقييم" subtitle={`الترتيب #${sc.rank} · ${sc.total} نقطة`}>
               <div className="space-y-2">
@@ -70,5 +71,35 @@ export default function PersonPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** تقييم القائد العام الفردي: مرة واحدة ببنود يحددها في الإعدادات (مجموعها 100) */
+function LeaderEvalCard({ participantId }: { participantId: string }) {
+  const db = useDB();
+  const items = db.settings.leaderEvalItems;
+  const ev = db.leaderEvaluations.find((e) => e.participantId === participantId);
+  const [scores, setScores] = useState<Record<string, number>>(Object.fromEntries(items.map((i) => [i.key, 0])));
+  const [note, setNote] = useState('');
+  const total = items.reduce((s, i) => s + (ev ? ev.scores[i.key] ?? 0 : scores[i.key] ?? 0), 0);
+  const max = items.reduce((s, i) => s + i.max, 0);
+  return (
+    <Card title="تقييمك الفردي (مرة واحدة)" subtitle={ev ? `قيّمته ${fmtDateTime(ev.at)} · ${total} من ${max}` : `${total} من ${max}`}>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {items.map((i) => (
+          <label key={i.key} className="flex items-center justify-between gap-2 rounded-xl bg-ink-50 px-3 py-2 text-sm">
+            <span>{i.name} <span className="text-xs text-ink-400">/ {i.max}</span></span>
+            {ev ? <b className="num">{ev.scores[i.key] ?? 0}</b> : <input type="number" min={0} max={i.max} className="num w-16 rounded-lg border border-ink-200 px-2 py-1" value={scores[i.key] ?? 0} onChange={(e) => setScores({ ...scores, [i.key]: Math.max(0, Math.min(i.max, +e.target.value)) })} />}
+          </label>
+        ))}
+      </div>
+      {ev?.note && <p className="mt-2 text-xs text-ink-500">{ev.note}</p>}
+      {!ev && (
+        <div className="mt-3 flex gap-2">
+          <Textarea rows={1} placeholder="ملاحظة (اختياري)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <Button onClick={() => askConfirm({ title: 'حفظ التقييم', body: 'التقييم مرة واحدة ولا يُعدَّل بعد الحفظ.', cta: 'احفظ التقييم', run: () => act(() => repos.leaderEval.save(participantId, scores, note || undefined), 'حُفظ التقييم') })}>احفظ</Button>
+        </div>
+      )}
+    </Card>
   );
 }

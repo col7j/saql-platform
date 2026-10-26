@@ -119,8 +119,8 @@ function Evaluation() {
         </Card>
         <Card title="معاملات">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="معامل التميّز عند تكرار التقديم" hint="20.2 · مثال 0.5 = نصف النقاط في المرة الثانية"><Input type="number" step={0.1} value={s.repeatPresentationFactor} onChange={(e) => setS({ ...s, repeatPresentationFactor: num(e.target.value) })} /></Field>
-            <Field label="الحد الأعلى لمضاعف التقديم"><Input type="number" step={0.1} value={s.presentingMaxMultiplier} onChange={(e) => setS({ ...s, presentingMaxMultiplier: num(e.target.value) })} /></Field>
+            <Field label="تميّز التقديم المتكرر" hint="يُحسب متوسط مرات التقديم، ويُضاف هذا عن كل مرة بعد الأولى (0.1 = 10% من نقاط البند)"><Input type="number" step={0.05} value={s.presentingExtraBonus} onChange={(e) => setS({ ...s, presentingExtraBonus: num(e.target.value) })} /></Field>
+            <div className="flex items-end pb-2"><Toggle checked={s.presentingRevealAfterEnd} onChange={(v) => setS({ ...s, presentingRevealAfterEnd: v })} label="تقييم المقدّمين يظهر بعد نهاية البرنامج" /></div>
             <Field label="ما يُكسب عند التأخر عن الموعد" hint="نسبة من النقطة (0 إلى 1)"><Input type="number" step={0.1} value={s.lateFactor} onChange={(e) => setS({ ...s, lateFactor: Math.min(1, num(e.target.value)) })} /></Field>
             <Field label="نقاط المادة الإثرائية"><Input type="number" value={s.enrichmentPointsPerMaterial} onChange={(e) => setS({ ...s, enrichmentPointsPerMaterial: num(e.target.value) })} /></Field>
           </div>
@@ -136,9 +136,11 @@ function Evaluation() {
       <div className="grid gap-6 lg:grid-cols-2">
         <Card title="شروط المواعيد (بالأيام)" subtitle="التأخر عنها يعني ألا تُكسب النقطة كاملة">
           <div className="grid gap-3 sm:grid-cols-2">
-            {dd('initialDaysBefore', 'الخطة المبسطة قبل الرحلة بـ')}
-            {dd('detailedDaysBefore', 'التفصيلية والموازنة قبل الرحلة بـ')}
-            {dd('finalReportDaysAfter', 'التقرير الختامي بعد الرحلة بـ')}
+            {dd('documentDaysBefore', 'وثيقة الرحلة قبلها بـ')}
+            {dd('scheduleDaysBefore', 'الجدول الزمني قبلها بـ')}
+            {dd('budgetDaysBefore', 'الميزانية قبلها بـ')}
+            {dd('financeCloseDaysAfter', 'الإغلاق المالي بعدها بـ')}
+            {dd('finalReportDaysAfter', 'التقرير الختامي بعدها بـ')}
             {dd('reminderDaysBefore', 'التنبيه قبل الموعد بـ')}
           </div>
         </Card>
@@ -156,6 +158,18 @@ function Evaluation() {
           </div>
         </Card>
       </div>
+      <Card title="بنود تقييم القائد العام الفردي" subtitle={`يقيّم بها أي مشارك مرة واحدة · المجموع ${s.leaderEvalItems.reduce((a, i) => a + i.max, 0)} (المقترح 100، ومنها الإبداع والابتكار)`}
+        action={<Button size="sm" variant="secondary" onClick={() => setS({ ...s, leaderEvalItems: [...s.leaderEvalItems, { key: uid('le'), name: 'بند جديد', max: 10 }] })} icon={<Icons.Plus className="h-4 w-4" />}>أضف بنداً</Button>}>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {s.leaderEvalItems.map((i, idx) => (
+            <div key={i.key} className="flex items-center gap-2">
+              <Input value={i.name} onChange={(e) => setS({ ...s, leaderEvalItems: s.leaderEvalItems.map((x, j) => (j === idx ? { ...x, name: e.target.value } : x)) })} />
+              <Input className="num w-20" type="number" value={i.max} onChange={(e) => setS({ ...s, leaderEvalItems: s.leaderEvalItems.map((x, j) => (j === idx ? { ...x, max: num(e.target.value) } : x)) })} aria-label="الحد الأعلى" />
+              <button onClick={() => setS({ ...s, leaderEvalItems: s.leaderEvalItems.filter((_, j) => j !== idx) })} className="text-ink-300 hover:text-red-600"><Icons.Trash2 className="h-4 w-4" /></button>
+            </div>
+          ))}
+        </div>
+      </Card>
       {section('individual')}
       {section('group')}
       </fieldset>
@@ -300,7 +314,10 @@ function OpenPoints() {
   return (
     <Card title="النقاط المفتوحة (القسم 20)" subtitle="مبنية قابلة للتعديل حتى تُحسم">
       <div className="grid gap-2 md:grid-cols-2">
-        {row('تعديل الجدول بعد الانطلاق يحتاج موافقة الإدارة', '20.6', s.scheduleEditAfterStartNeedsApproval, 'scheduleEditAfterStartNeedsApproval')}
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-3">
+          <div><div className="text-sm font-medium">نصاب تقييم فريق العمل للرحلة قبل إغلاقها</div><div className="text-[11px] text-ink-400">نسبة من فريق العمل (0 إلى 1)</div></div>
+          <Input type="number" step={0.1} className="w-24" value={s.tripRatingQuorum} onChange={(e) => repos.settings.update({ tripRatingQuorum: Math.min(1, num(e.target.value)) })} />
+        </div>
         {row('تعليقات رابط المتابعة تحتاج مراجعة قبل الظهور', '20.8', s.trackingCommentsNeedReview, 'trackingCommentsNeedReview')}
         {row('عرض التاريخ الهجري مع الميلادي', '20.11', s.showHijri, 'showHijri')}
         {row('دفع الرسوم داخل المنصة (وإلا تُسجَّل فقط)', '20.12', s.feesInPlatform, 'feesInPlatform')}
@@ -309,8 +326,8 @@ function OpenPoints() {
           <Input type="number" className="w-28" value={s.feeAmount} onChange={(e) => repos.settings.update({ feeAmount: num(e.target.value) })} />
         </div>
         <div className="rounded-xl border border-ink-100 px-3 py-3 text-sm">
-          <div className="font-medium">الإبداع والابتكار (20.3)</div>
-          <div className="text-[11px] text-ink-400">فعّله من تبويب "التقييم والأوزان" كبند جماعي.</div>
+          <div className="font-medium">الإبداع والابتكار</div>
+          <div className="text-[11px] text-ink-400">أحد بنود تقييم القائد العام الفردي (تبويب التقييم والأوزان).</div>
         </div>
       </div>
     </Card>

@@ -70,14 +70,14 @@ export function custodyFamily(kind: SpendKind): string {
 /** ما يُصرف عليه بعهدة يفتحها مسؤول المالية مباشرة بلا طلب (يقفلها صاحبها) */
 export const DIRECT_CUSTODY_KINDS: SpendKind[] = ['opening', 'closing', 'program_needs'];
 
-export function spendKindOfTrip(trip: Pick<Trip, 'milestone' | 'type'>): SpendKind {
-  if (trip.milestone) return trip.milestone;
+export function spendKindOfTrip(trip: Pick<Trip, 'type'>): SpendKind {
   return trip.type === 'internal' ? 'internal_trip' : 'external_trip';
 }
 export function spendKindOf(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID): SpendKind {
   if (ownerKind === 'focus') return 'focus';
   if (ownerKind === 'meeting') return 'meeting';
   if (ownerKind === 'need') return 'program_needs';
+  if (ownerKind === 'event') return db.events.find((e) => e.id === ownerId)?.kind ?? 'opening';
   const t = db.trips.find((x) => x.id === ownerId);
   return t ? spendKindOfTrip(t) : 'internal_trip';
 }
@@ -91,7 +91,7 @@ export function perItem(rule: AllocationRule): number {
 export function defaultDivisor(db: DB, kind: 'focus' | 'internal_trip' | 'external_trip'): number {
   if (kind === 'focus') return db.groups.length * db.programBudget.focusLimits.min;
   const type = kind === 'internal_trip' ? 'internal' : 'external';
-  return db.trips.filter((t) => t.type === type && !t.milestone).length;
+  return db.trips.filter((t) => t.type === type).length;
 }
 
 /** ترتيب لقاء التركيز داخل مجموعته (بترتيب الإنشاء) */
@@ -120,12 +120,10 @@ export function allocatedFor(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID): n
     return m?.allocated ?? b.meetingDefault;
   }
   if (ownerKind === 'need') return 0; // احتياجات البرنامج مرصودها إجمالي لا لكل بند
+  if (ownerKind === 'event') return db.events.find((e) => e.id === ownerId)?.kind === 'closing' ? b.closing : b.opening;
   const t = db.trips.find((x) => x.id === ownerId);
   if (!t) return 0;
-  const kind = spendKindOfTrip(t);
-  if (kind === 'opening') return b.opening;
-  if (kind === 'closing') return b.closing;
-  return perItem(kind === 'internal_trip' ? b.internalTrip : b.externalTrip);
+  return perItem(spendKindOfTrip(t) === 'internal_trip' ? b.internalTrip : b.externalTrip);
 }
 
 // ───────────── الطلبات ─────────────
@@ -156,12 +154,13 @@ export function ownerTitle(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID) {
   if (ownerKind === 'trip') return db.trips.find((t) => t.id === ownerId)?.title ?? 'رحلة';
   if (ownerKind === 'focus') return db.focusMeetings.find((f) => f.id === ownerId)?.title ?? 'لقاء تركيز';
   if (ownerKind === 'need') return db.programNeeds.find((n) => n.id === ownerId)?.title ?? 'احتياج';
+  if (ownerKind === 'event') return db.events.find((e) => e.id === ownerId)?.title ?? 'لقاء';
   return db.meetings.find((m) => m.id === ownerId)?.title ?? 'اجتماع';
 }
 export function ownerLink(ownerKind: BudgetOwnerKind, ownerId: ID) {
   if (ownerKind === 'trip') return `/app/trips/${ownerId}?tab=budget`;
   if (ownerKind === 'focus') return `/app/focus/${ownerId}`;
-  if (ownerKind === 'need') return '/app/finance?tab=needs';
+  if (ownerKind === 'need' || ownerKind === 'event') return '/app/finance?tab=needs';
   return `/app/meetings/${ownerId}`;
 }
 /** ميسّر المجموعة المنفِّذة لرحلة (لمسار ميزانية الرحلة) */

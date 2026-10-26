@@ -68,11 +68,11 @@ function baseTrip(p: Partial<Trip> & Pick<Trip, 'id' | 'title' | 'type' | 'execu
     location: '',
     description: '',
     isPersonalPlanMeeting: false,
-    deadlines: { initial: addDays(p.startDate, -21), detailed: addDays(p.startDate, -10) },
+    deadlines: { document: addDays(p.startDate, -21), schedule: addDays(p.startDate, -10), budget: addDays(p.startDate, -10) },
     createdAt: new Date(addDays(T, -70)).toISOString(),
     createdBy: LEADER_ID,
     published: false,
-    schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: [] }, { id: nid('pl'), name: 'الخطة ب', items: [] }], changes: [] },
+    schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: [] }, { id: nid('pl'), name: 'الخطة ب', items: [] }] },
     scheduleVisibility: 'hidden',
     sessions: [],
     guests: [],
@@ -82,8 +82,7 @@ function baseTrip(p: Partial<Trip> & Pick<Trip, 'id' | 'title' | 'type' | 'execu
       ...(p.type === 'external' ? [{ key: 'housing' as const, status: 'pending' as const }, { key: 'hosting' as const, status: 'pending' as const }] : [{ key: 'hosting' as const, status: 'pending' as const }]),
     ],
     closure: { photos: [] },
-    evaluation: { manual: {} },
-    punctuality: {},
+    evaluation: { staffRatings: {}, finance: {} },
     ...p,
   };
 }
@@ -135,23 +134,23 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     ]);
   const guests = (names: [string, string][], confirmed = true) => names.map(([name, role]) => ({ id: nid('gs'), name, role, confirmed }));
 
-  // 1) لقاء تطويري أول (فريق عمل) — مغلق
+  // 1) لقاء تطويري أول (رحلة داخلية لفريق العمل) — مغلق
   {
     const d = addDays(T, -52);
     const r = buildRun(at(d, 8), internalTpl('معنى القيادة الشبابية', 'اكتشف نقاط قوتك'), 'د. سامي الغامدي');
     const t = baseTrip({
-      id: 't1', title: 'اللقاء الافتتاحي: الانطلاقة', milestone: 'opening', type: 'internal', executor: { kind: 'staff', leaderId: 's2', memberIds: ['s3', 's4'] },
+      id: 't1', title: 'اللقاء التطويري الأول: الانطلاقة', type: 'internal', executor: { kind: 'staff', leaderId: 's2', memberIds: ['s3', 's4'] },
       startDate: d, endDate: d, location: 'قاعة الملتقى · المدينة المنورة', description: 'لقاء التأسيس والتعارف قبل تشكيل المجموعات.',
       published: true, publishedAt: iso(addDays(d, -3)), scheduleVisibility: 'full', scheduleStartedNotified: true,
-      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }], changes: [] },
+      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }] },
       sessions: r.sessions, guests: guests([['د. سامي الغامدي', 'محاضر'], ['أ. وائل حسن', 'مدرب ورشة']]),
       closure: { teamEvalForm: 'أداء الفريق ممتاز، والتحدي الأكبر كان ضبط الوقت.', experienceForm: 'تعلمنا أهمية التجهيز المبكر للضيافة.', publicReport: 'حضر 22 مشاركاً، وقُدّمت محاضرة وورشة. انطلاقة موفقة للبرنامج.', photos: ['ph1', 'ph2', 'ph3'] },
-      evaluation: { trackerScore: 8, leaderScore: 9, manual: {} },
+      evaluation: { staffRatings: { p_lead: { score: 9, at: iso(addDays(d, 3)) }, s7: { score: 8, at: iso(addDays(d, 3)) }, s1: { score: 8, at: iso(addDays(d, 3)) }, s5: { score: 9, at: iso(addDays(d, 3)) } }, finance: {} },
     }, T);
     t.coordinations = t.coordinations.map((c) => ({ ...c, status: 'done' }));
     trips.push(t);
-    doc('t1', 'initial', 'approved', iso(addDays(d, -25)), initialFields('قاعة الملتقى'), approvedChain('t1', null, addDays(d, -25)));
-    doc('t1', 'detailed', 'approved', iso(addDays(d, -12)), detailedFields, approvedChain('t1', null, addDays(d, -12)));
+    doc('t1', 'document', 'approved', iso(addDays(d, -25)), initialFields('قاعة الملتقى'), approvedChain('t1', null, addDays(d, -25)));
+    doc('t1', 'schedule', 'approved', iso(addDays(d, -12)), detailedFields, approvedChain('t1', null, addDays(d, -12)));
     doc('t1', 'final_report', 'approved', iso(addDays(d, 4)), { summary: 'تقرير اللقاء التطويري الأول', achievements: 'تعارف المشاركين، وبناء التوقعات.', recommendations: 'تقديم موعد الغداء.' }, approvedChain('t1', null, addDays(d, 4)));
     internalBudget('t1');
     r.items.forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't1', refItemId: it.id, followed: i === 6 ? 'none' : i === 1 ? 'B' : 'A', note: i === 6 ? 'تأخر الضيف 20 دقيقة: وقت بدل ضائع' : undefined, actualStart: it.start, actualEnd: it.end, byId: 's7', at: iso(d, 18) }));
@@ -166,14 +165,14 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
       startDate: d, endDate: d, location: 'مزرعة الريحان · طريق الهجرة', isPersonalPlanMeeting: true,
       description: 'لقاء تطويري يفتح قسم الخطة الشخصية: استبيان قبلي عن عجلة الحياة ومدرب يشرح التعبئة.',
       published: true, publishedAt: iso(addDays(d, -4)), scheduleVisibility: 'full', scheduleStartedNotified: true,
-      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }], changes: [] },
+      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }] },
       sessions: r.sessions, guests: guests([['أ. نايف البلوي', 'مدرب عجلة الحياة']]),
       closure: { teamEvalForm: 'الفريق التزم بالمهام.', photos: ['ph4'] },
-      evaluation: { trackerScore: 9, manual: {} },
+      evaluation: { staffRatings: { s7: { score: 9, at: iso(addDays(d, 3)) }, s2: { score: 8, at: iso(addDays(d, 3)) } }, finance: {} },
     }, T);
     trips.push(t);
-    doc('t2', 'initial', 'approved', iso(addDays(d, -24)), initialFields('مزرعة الريحان'), approvedChain('t2', null, addDays(d, -24)));
-    doc('t2', 'detailed', 'approved', iso(addDays(d, -11)), detailedFields, approvedChain('t2', null, addDays(d, -11)));
+    doc('t2', 'document', 'approved', iso(addDays(d, -24)), initialFields('مزرعة الريحان'), approvedChain('t2', null, addDays(d, -24)));
+    doc('t2', 'schedule', 'approved', iso(addDays(d, -11)), detailedFields, approvedChain('t2', null, addDays(d, -11)));
     doc('t2', 'final_report', 'submitted', iso(addDays(d, 6)), { summary: 'تقرير لقاء الخطة الشخصية', achievements: 'عبّأ 20 مشاركاً عجلة الحياة.', recommendations: 'متابعة الغائبين بلقاء تعويضي.' });
     internalBudget('t2');
     r.items.forEach((it) => actual.push({ id: nid('ac'), tripId: 't2', refItemId: it.id, followed: 'A', byId: 's7', at: iso(d, 18) }));
@@ -187,16 +186,15 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
       id: 't3', title: 'رحلة أُحُد الداخلية: معالم السيرة', type: 'internal', executor: { kind: 'group', groupId: 'g1' },
       startDate: d, endDate: d, location: 'جبل أُحُد ومجمع الشهداء', description: 'رحلة في معالم السيرة النبوية بالمدينة.',
       published: true, publishedAt: iso(addDays(d, -2)), scheduleVisibility: 'full', scheduleStartedNotified: true, attendanceTakerId: 'u2', coordinationOwnerId: 'u3',
-      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }], changes: [{ id: nid('ch'), at: iso(d, 11), byId: 'u1', description: 'تبديل موعد الاستراحة مع الغداء', afterStart: true }] },
+      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }] },
       sessions: r.sessions, guests: guests([['الشيخ د. حسن الأنصاري', 'محاضر'], ['أ. مازن العلي', 'مدرب ورشة']]),
       closure: { teamEvalForm: 'وزعنا المهام مبكراً. التحدي: التنسيق مع المرشد.', experienceForm: 'التجربة رسّخت أهمية الخطة البديلة.', publicReport: 'حضر 21 مشاركاً من المجموعات الأربع. نُفّذت جولة ومحاضرة وورشة. التزام بالجدول بنسبة 89%.', photos: ['ph5', 'ph6', 'ph7', 'ph8'] },
-      evaluation: { trackerScore: 8, trackerNote: 'تنظيم جيد وتأخر بسيط في الورشة', leaderScore: 8.5, leaderNote: 'رحلة موفقة', manual: { 'coordination.transport': 5, 'coordination.food': 4, 'coordination.hosting': 4, 'program_mgmt.schedule_topics': 4, 'program_mgmt.activation': 5, 'program_mgmt.flexibility': 4 } },
-      punctuality: { u1: 5, u2: 5, u3: 4, u4: 3, u5: 5, u6: 4, u7: 5, u8: 3, u9: 4, u13: 5, u14: 4, u19: 4, u20: 3 },
+      evaluation: { staffRatings: { p_lead: { score: 8.5, note: 'رحلة موفقة', at: iso(addDays(d, 2)) }, s7: { score: 8, note: 'تنظيم جيد وتأخر بسيط في الورشة', at: iso(addDays(d, 1)) }, s2: { score: 9, at: iso(addDays(d, 2)) }, s3: { score: 8, at: iso(addDays(d, 2)) }, s4: { score: 8, at: iso(addDays(d, 3)) } }, finance: { rationing: 4, proof_quality: 5 } },
     }, T);
     t.coordinations = t.coordinations.map((c) => ({ ...c, status: 'done' }));
     trips.push(t);
-    doc('t3', 'initial', 'approved', iso(addDays(d, -24)), initialFields('جبل أُحُد'), approvedChain('t3', 's1', addDays(d, -24)));
-    doc('t3', 'detailed', 'approved', iso(addDays(d, -11)), detailedFields, [ap('s1', 'facilitator', 'reject', iso(addDays(d, -12)), 'الجدول لا يتضمن وقتاً للصلاة'), ap('s1', 'facilitator', 'approve', iso(addDays(d, -11), 14), undefined, 2), ap(LEADER_ID, 'leader', 'approve', iso(addDays(d, -10)), undefined, 2)], 2);
+    doc('t3', 'document', 'approved', iso(addDays(d, -24)), initialFields('جبل أُحُد'), approvedChain('t3', 's1', addDays(d, -24)));
+    doc('t3', 'schedule', 'approved', iso(addDays(d, -11)), detailedFields, [ap('s1', 'facilitator', 'reject', iso(addDays(d, -12)), 'الجدول لا يتضمن وقتاً للصلاة'), ap('s1', 'facilitator', 'approve', iso(addDays(d, -11), 14), undefined, 2), ap(LEADER_ID, 'leader', 'approve', iso(addDays(d, -10)), undefined, 2)], 2);
     doc('t3', 'final_report', 'approved', iso(addDays(d, 5)), { summary: 'تقرير رحلة أُحُد الداخلية', achievements: 'تنفيذ كامل البرنامج ومشاركة كل المجموعات.', recommendations: 'تقليل وقت التنقل.' }, approvedChain('t3', 's1', addDays(d, 5)));
     internalBudget('t3');
     r.items.forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't3', refItemId: it.id, followed: i === 6 ? 'none' : 'A', note: i === 6 ? 'بدأت الورشة متأخرة 15 دقيقة' : undefined, actualStart: i === 6 ? it.start.replace(/:(\d\d)$/, ':15') : it.start, actualEnd: it.end, categoryId: it.categoryId, byId: 's7', at: iso(d, 18) }));
@@ -213,13 +211,13 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
       id: 't4', title: 'رحلة قُباء الداخلية: على خطى الهجرة', type: 'internal', executor: { kind: 'group', groupId: 'g2' },
       startDate: d, endDate: r.items[r.items.length - 1].date, location: 'مسجد قُباء ومسار الهجرة', description: 'رحلة على مسار الهجرة النبوية مع لقاءين.',
       published: true, publishedAt: iso(addDays(T, -3)), scheduleVisibility: 'full', scheduleStartedNotified: true, attendanceTakerId: 'u8', coordinationOwnerId: 'u9',
-      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }], changes: [] },
+      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }] },
       sessions: r.sessions, guests: guests([['د. عادل الحربي', 'محاضر'], ['أ. طارق السيد', 'مدرب ورشة']]),
     }, T);
     t.coordinations = t.coordinations.map((c) => ({ ...c, status: 'done' }));
     trips.push(t);
-    doc('t4', 'initial', 'approved', iso(addDays(T, -26)), initialFields('مسجد قُباء'), approvedChain('t4', 's2', addDays(T, -26)));
-    doc('t4', 'detailed', 'approved', iso(addDays(T, -9)), detailedFields, approvedChain('t4', 's2', addDays(T, -9)));
+    doc('t4', 'document', 'approved', iso(addDays(T, -26)), initialFields('مسجد قُباء'), approvedChain('t4', 's2', addDays(T, -26)));
+    doc('t4', 'schedule', 'approved', iso(addDays(T, -9)), detailedFields, approvedChain('t4', 's2', addDays(T, -9)));
     internalBudget('t4');
     // المتابع وثّق أول بندين
     r.items.slice(0, 2).forEach((it, i) => actual.push({ id: nid('ac'), tripId: 't4', refItemId: it.id, followed: i === 0 ? 'A' : 'B', byId: 's7', at: new Date().toISOString() }));
@@ -232,12 +230,12 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     const t = baseTrip({
       id: 't5', title: 'رحلة سَلع الداخلية: القائد والفريق', type: 'internal', executor: { kind: 'group', groupId: 'g3' },
       startDate: d, endDate: d, location: 'جبل سَلع وحديقة الملك فهد', published: true, publishedAt: iso(addDays(T, -1)), scheduleVisibility: 'hidden', attendanceTakerId: 'u14',
-      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }], changes: [] },
+      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: altInternal(r.items) }] },
       sessions: r.sessions, guests: guests([['أ. فهد القحطاني', 'محاضر'], ['م. باسل يماني', 'مدرب ورشة']]),
     }, T);
     trips.push(t);
-    doc('t5', 'initial', 'approved', iso(addDays(T, -14)), initialFields('جبل سَلع'), approvedChain('t5', 's3', addDays(T, -14)));
-    doc('t5', 'detailed', 'approved', iso(addDays(T, -3)), detailedFields, approvedChain('t5', 's3', addDays(T, -3)));
+    doc('t5', 'document', 'approved', iso(addDays(T, -14)), initialFields('جبل سَلع'), approvedChain('t5', 's3', addDays(T, -14)));
+    doc('t5', 'schedule', 'approved', iso(addDays(T, -3)), detailedFields, approvedChain('t5', 's3', addDays(T, -3)));
     internalBudget('t5');
   }
 
@@ -248,12 +246,12 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     const t = baseTrip({
       id: 't6', title: 'رحلة العقيق الداخلية: وادي المبادرات', type: 'internal', executor: { kind: 'group', groupId: 'g4' },
       startDate: d, endDate: d, location: 'وادي العقيق',
-      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: [] }], changes: [] },
+      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: [] }] },
       sessions: r.sessions, guests: guests([['د. منصور العنزي', 'محاضر'], ['أ. حاتم سراج', 'مدرب ورشة']], false),
     }, T);
     trips.push(t);
-    doc('t6', 'initial', 'approved', iso(addDays(T, -3)), initialFields('وادي العقيق'), approvedChain('t6', 's4', addDays(T, -3)));
-    doc('t6', 'detailed', 'approved', iso(addDays(T, -1), 9), detailedFields, [ap('s4', 'facilitator', 'approve', iso(addDays(T, -1), 13))].concat([ap(LEADER_ID, 'leader', 'approve', iso(T, 9))]));
+    doc('t6', 'document', 'approved', iso(addDays(T, -3)), initialFields('وادي العقيق'), approvedChain('t6', 's4', addDays(T, -3)));
+    doc('t6', 'schedule', 'approved', iso(addDays(T, -1), 9), detailedFields, [ap('s4', 'facilitator', 'approve', iso(addDays(T, -1), 13))].concat([ap(LEADER_ID, 'leader', 'approve', iso(T, 9))]));
     internalBudget('t6');
   }
 
@@ -262,49 +260,49 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     const d = addDays(T, 40);
     const r = externalDays(d, 3, ['القيادة في التاريخ', 'التخطيط الاستراتيجي', 'صناعة الأثر']);
     const t = baseTrip({
-      id: 't7', title: 'رحلة أُحُد الخارجية: العُلا', type: 'external', executor: { kind: 'group', groupId: 'g1' },
-      startDate: d, endDate: addDays(d, 2), location: 'العُلا', coordinationOwnerId: 'u4',
-      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: [] }], changes: [] },
+      id: 't7', title: 'رحلة أُحُد الخارجية: العُلا (الجزء الأول)', type: 'external', executor: { kind: 'group', groupId: 'g1' },
+      startDate: d, endDate: addDays(d, 2), location: 'العُلا', coordinationOwnerId: 'u4', pair: { tripId: 't8', part: 1 },
+      schedule: { plans: [{ id: nid('pl'), name: 'الخطة أ', items: r.items }, { id: nid('pl'), name: 'الخطة ب', items: [] }] },
       sessions: r.sessions, guests: guests([['د. ناصر الشمري', 'محاضر'], ['أ. ريان فلاته', 'مرشد سياحي']], false),
     }, T);
     t.coordinations = t.coordinations.map((c) => (c.key === 'transport' ? { ...c, status: 'in_progress', note: 'عروض أسعار من 3 شركات نقل' } : c.key === 'housing' ? { ...c, status: 'in_progress', note: 'حجز مبدئي لنُزل تراثي' } : c));
     trips.push(t);
-    doc('t7', 'initial', 'approved', iso(addDays(T, -22)), { ...initialFields('العُلا'), titles: 'القيادة في التاريخ · التخطيط الاستراتيجي' }, approvedChain('t7', 's1', addDays(T, -22)));
-    doc('t7', 'detailed', 'submitted', iso(addDays(T, -1)), detailedFields);
+    doc('t7', 'document', 'approved', iso(addDays(T, -22)), { ...initialFields('العُلا'), titles: 'القيادة في التاريخ · التخطيط الاستراتيجي' }, approvedChain('t7', 's1', addDays(T, -22)));
+    doc('t7', 'schedule', 'submitted', iso(addDays(T, -1)), detailedFields);
     externalBudget('t7');
   }
 
-  // 8) رحلة قُباء الخارجية — الخطة المبسطة أعادها الميسّر
+  // 8) رحلة قُباء الخارجية — الجزء الثاني من رحلة العُلا المزدوجة (تبدأ حيث تنتهي رحلة أُحُد)، والوثيقة أعادها الميسّر
   {
-    const d = addDays(T, 55);
-    const t = baseTrip({ id: 't8', title: 'رحلة قُباء الخارجية: الطائف', type: 'external', executor: { kind: 'group', groupId: 'g2' }, startDate: d, endDate: addDays(d, 2), location: 'الطائف' }, T);
+    const d = addDays(T, 42);
+    const t = baseTrip({ id: 't8', title: 'رحلة قُباء الخارجية: العُلا (الجزء الثاني)', type: 'external', executor: { kind: 'group', groupId: 'g2' }, startDate: d, endDate: addDays(d, 2), location: 'العُلا', pair: { tripId: 't7', part: 2 } }, T);
     trips.push(t);
-    doc('t8', 'initial', 'returned_by_facilitator', iso(addDays(T, -2)), { location: 'الطائف · الشفا', titles: 'القيادة والطبيعة', outline: 'رحلة ثلاثة أيام بين الهدا والشفا.' }, [ap('s2', 'facilitator', 'reject', iso(addDays(T, -1)), 'العناوين عامة جداً، حددوا محاور اللقاءات والضيوف المقترحين.')]);
+    doc('t8', 'document', 'returned_by_facilitator', iso(addDays(T, -2)), { location: 'العُلا · الحِجر', titles: 'القيادة والطبيعة', outline: 'ثلاثة أيام تكمل برنامج أُحُد في العُلا.' }, [ap('s2', 'facilitator', 'reject', iso(addDays(T, -1)), 'العناوين عامة جداً، حددوا محاور اللقاءات والضيوف المقترحين.')]);
   }
 
   // 9) رحلة سَلع الخارجية — الخطة المبسطة مسودة
   {
     const d = addDays(T, 75);
     trips.push(baseTrip({ id: 't9', title: 'رحلة سَلع الخارجية: أبها', type: 'external', executor: { kind: 'group', groupId: 'g3' }, startDate: d, endDate: addDays(d, 3), location: 'أبها' }, T));
-    doc('t9', 'initial', 'draft', null, { location: 'أبها', titles: '', outline: '' });
+    doc('t9', 'document', 'draft', null, { location: 'أبها', titles: '', outline: '' });
   }
 
   // 10) رحلة العقيق الخارجية — الخطة المبسطة متأخرة عن موعدها
   {
     const d = addDays(T, 18);
     const t = baseTrip({ id: 't10', title: 'رحلة العقيق الخارجية: تبوك', type: 'external', executor: { kind: 'group', groupId: 'g4' }, startDate: addDays(T, 90), endDate: addDays(T, 92), location: 'تبوك' }, T);
-    t.deadlines = { initial: addDays(T, -2), detailed: addDays(T, 60) };
+    t.deadlines = { document: addDays(T, -2), schedule: addDays(T, 60), budget: addDays(T, 60) };
     trips.push(t);
-    doc('t10', 'initial', 'draft', null, { location: 'تبوك', titles: 'القيادة في البيئات الصعبة', outline: '' });
+    doc('t10', 'document', 'draft', null, { location: 'تبوك', titles: 'القيادة في البيئات الصعبة', outline: '' });
     void d;
   }
 
   // 11) رحلة ينبع (فريق عمل خارجية) — مبسطة معتمدة مباشرة من القائد العام
   {
     const d = addDays(T, 110);
-    trips.push(baseTrip({ id: 't11', title: 'اللقاء الختامي: رحلة ينبع', milestone: 'closing', type: 'external', executor: { kind: 'staff', leaderId: 's1', memberIds: ['s2', 's6'] }, startDate: d, endDate: addDays(d, 2), location: 'ينبع البحر' }, T));
-    doc('t11', 'initial', 'approved', iso(addDays(T, -5)), initialFields('ينبع البحر'), [ap(LEADER_ID, 'leader', 'approve', iso(addDays(T, -4)))]);
-    doc('t11', 'detailed', 'draft', null, { summary: '', details: '' });
+    trips.push(baseTrip({ id: 't11', title: 'رحلة ينبع (فريق العمل)', type: 'external', executor: { kind: 'staff', leaderId: 's1', memberIds: ['s2', 's6'] }, startDate: d, endDate: addDays(d, 2), location: 'ينبع البحر' }, T));
+    doc('t11', 'document', 'approved', iso(addDays(T, -5)), initialFields('ينبع البحر'), [ap(LEADER_ID, 'leader', 'approve', iso(addDays(T, -4)))]);
+    doc('t11', 'schedule', 'draft', null, { summary: '', details: '' });
   }
 
   return { trips, docs, budgets, actual };

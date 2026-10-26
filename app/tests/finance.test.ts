@@ -126,9 +126,9 @@ describe('العهدة ونموذج الصرف', () => {
   it('العهد المتزامنة: لا يتكرر النوع، وبحد يضبطه مسؤول المالية', () => {
     const h = harness('s5');
     expect(() => h.repos.finance.issueCustody({ ownerKind: 'need', ownerId: 'nd1', recipientId: 'p_lead', approved: 100, amount: 100, attachment: att('n1') })).toThrow(/النوع نفسه/);
-    h.repos.finance.issueCustody({ ownerKind: 'trip', ownerId: 't1', recipientId: 's4', approved: 100, amount: 100, attachment: att('o1') });
+    h.repos.finance.issueCustody({ ownerKind: 'event', ownerId: 'ev_open', recipientId: 's4', approved: 100, amount: 100, attachment: att('o1') });
     h.repos.finance.setFinanceSettings({ maxOpenCustodies: 1 });
-    expect(() => h.repos.finance.issueCustody({ ownerKind: 'trip', ownerId: 't11', recipientId: 's4', approved: 100, amount: 100, attachment: att('o2') })).toThrow(/الحد المسموح/);
+    expect(() => h.repos.finance.issueCustody({ ownerKind: 'event', ownerId: 'ev_close', recipientId: 's4', approved: 100, amount: 100, attachment: att('o2') })).toThrow(/الحد المسموح/);
   });
   it('النموذج محجوز حتى المراجعة، ويُفك الحجز بالرفض، ويُقبل ولو تجاوز الرصيد (عجز)', () => {
     const h = harness('s2');

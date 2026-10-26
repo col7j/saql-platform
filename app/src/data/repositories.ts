@@ -3,7 +3,7 @@
 // لتحويل النموذج إلى منصة حقيقية: نكتب تنفيذاً آخر لنفس الواجهة يتصل بالخادم.
 import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
-import { canManageCommittee, canSeeCommittee, groupOf, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
+import { canManageCommittee, canSeeCommittee, groupOf, groupsPublished, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
@@ -13,8 +13,8 @@ import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
 import type {
   AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
-  LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ScheduleChange, SchedulePlan, Settings,
-  StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
+  LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ProgramEvent, SchedulePlan, Settings,
+  Attendance, StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
 } from '@/domain/types';
 import { docKindLabel } from '@/domain/labels';
 import {
@@ -55,7 +55,7 @@ export interface CreateTripInput {
   location?: string;
   description?: string;
   isPersonalPlanMeeting: boolean;
-  deadlines: { initial: string; detailed: string };
+  deadlines: Trip['deadlines'];
 }
 
 function personName(d: DB, id: ID) {
@@ -172,9 +172,15 @@ function submitRequestIn(d: DB, pid: ID, input: { ownerKind: BudgetRequest['owne
   else if (status === 'pending_finance') pushNotification(d, financeIdsWith(d, 'approve_within').filter((x) => x !== pid), 'budget_request', `طلب ميزانية ضمن المرصود: ${t} (${amount} ر.س)`, '/app/finance');
   else pushNotification(d, [leaderId(d)], 'budget_request', `طلب ميزانية بانتظار قرارك: ${t} (${amount} ر.س)${over}`, '/app/finance');
 }
-/** شرط ترتيب نماذج الرحلة: الوثيقة أولاً (يُضبط مع نماذج الرحلة) */
-function tripBudgetBlock(_d: DB, _tripId: ID): string | null {
+/** شروط رفع نماذج الرحلة: تخطيط رحلات المجموعات بعد نشر التشكيل، والوثيقة أول ما يُرفع */
+function tripFormBlock(d: DB, trip: Trip, kind: TripDoc['kind'] | 'budget'): string | null {
+  if (trip.executor.kind === 'group' && !groupsPublished(d)) return 'تخطيط رحلات المجموعات يبدأ بعد نشر التشكيل';
+  if (kind === 'final_report') return null;
+  if (kind !== 'document' && !docFor(d, trip.id, 'document')?.submittedAt) return 'ارفع وثيقة الرحلة أولاً: هي أول ما يُرفع';
   return null;
+}
+function tripBudgetBlock(d: DB, tripId: ID): string | null {
+  return tripFormBlock(d, findTrip(d, tripId), 'budget');
 }
 /** تطبيق طلب تعديل سجل معتمد بعد موافقة القائد العام */
 function applyEditIn(d: DB, er: EditRequest) {
@@ -402,16 +408,16 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
         mutate((d) => {
           const trip: Trip = {
             id, ...input, createdAt: nowISO(), createdBy: me(), published: false,
-            schedule: { plans: [{ id: uid('pl'), name: 'الخطة أ', items: [] }, { id: uid('pl'), name: 'الخطة ب', items: [] }], changes: [] },
+            schedule: { plans: [{ id: uid('pl'), name: 'الخطة أ', items: [] }, { id: uid('pl'), name: 'الخطة ب', items: [] }] },
             scheduleVisibility: 'hidden', sessions: [], guests: [],
             coordinations: input.type === 'external'
               ? (['transport', 'food', 'housing', 'hosting'] as const).map((key) => ({ key, status: 'pending' as const }))
               : (['transport', 'food', 'hosting'] as const).map((key) => ({ key, status: 'pending' as const })),
-            closure: { photos: [] }, evaluation: { manual: {} }, punctuality: {},
+            closure: { photos: [] }, evaluation: { staffRatings: {}, finance: {} },
           };
           d.trips.push(trip);
           if (trip.executor.kind === 'staff') assertNoCapacityConflict(d, [trip.executor.leaderId, ...trip.executor.memberIds]);
-          (['initial', 'detailed'] as const).forEach((kind) => d.docs.push({ id: uid('doc'), tripId: id, kind, status: 'draft', version: 1, fields: {}, history: [] }));
+          (['document', 'schedule'] as const).forEach((kind) => d.docs.push({ id: uid('doc'), tripId: id, kind, status: 'draft', version: 1, fields: {}, history: [] }));
           d.tasks.push(...tasksFromTemplates(d, trip, me()));
           const team = tripTeamIds(d, trip);
           pushNotification(d, team, 'general', `أُسندت إليكم رحلة جديدة: ${trip.title}`, `/app/trips/${id}`);
@@ -420,11 +426,34 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
         });
         return id;
       },
+      /** الرحلة الخارجية المزدوجة: وجهة واحدة لمجموعتين متتاليتين، نهاية الأولى بداية الثانية، ولكل منهما رحلتها المستقلة */
+      createDouble(input: Omit<CreateTripInput, 'executor' | 'endDate'> & { groupIds: [ID, ID]; splitDate: string; endDate: string }): [ID, ID] {
+        if (!isLeaderId(read(), me())) throw new Error('إنشاء الرحلات للقائد العام');
+        if (input.type !== 'external') throw new Error('الرحلة المزدوجة خارجية فقط');
+        if (input.groupIds[0] === input.groupIds[1]) throw new Error('اختر مجموعتين مختلفتين');
+        if (!(input.startDate < input.splitDate && input.splitDate < input.endDate)) throw new Error('موعد التبديل بين البداية والنهاية');
+        const g = (id: ID) => read().groups.find((x) => x.id === id)?.name ?? '';
+        const a = this.create({ ...input, title: `${input.title} — ${g(input.groupIds[0])} (الجزء الأول)`, executor: { kind: 'group', groupId: input.groupIds[0] }, endDate: input.splitDate });
+        const b = this.create({ ...input, title: `${input.title} — ${g(input.groupIds[1])} (الجزء الثاني)`, executor: { kind: 'group', groupId: input.groupIds[1] }, startDate: input.splitDate, endDate: input.endDate,
+          deadlines: { document: addDays(input.splitDate, -read().settings.deadlineDefaults.documentDaysBefore), schedule: addDays(input.splitDate, -read().settings.deadlineDefaults.scheduleDaysBefore), budget: addDays(input.splitDate, -read().settings.deadlineDefaults.budgetDaysBefore) } });
+        mutate((d) => {
+          findTrip(d, a).pair = { tripId: b, part: 1 };
+          findTrip(d, b).pair = { tripId: a, part: 2 };
+        });
+        return [a, b];
+      },
       update(tripId: ID, patch: Partial<Trip>) {
         mutate((d) => {
           const t = findTrip(d, tripId);
           const dateChanged = patch.startDate && patch.startDate !== t.startDate;
           Object.assign(t, patch);
+          // المزدوجة: نهاية الأولى بداية الثانية، وتتحدث تلقائياً
+          if (t.pair) {
+            const other = d.trips.find((x) => x.id === t.pair!.tripId);
+            if (other && t.pair.part === 1 && patch.endDate) other.startDate = t.endDate;
+            if (other && t.pair.part === 2 && patch.startDate) other.endDate = t.startDate;
+            if (other && (other.startDate > other.endDate)) throw new Error('التوقيت الجديد يجعل الجزء الآخر بلا مدة');
+          }
           if (t.executor.kind === 'staff') assertNoCapacityConflict(d, [t.executor.leaderId, ...t.executor.memberIds]);
           if (dateChanged) pushNotification(d, [...allParticipants(d), ...staffIds(d)], 'general', `تعديل تاريخ ${t.title}`, `/app/trips/${tripId}`);
         });
@@ -440,6 +469,10 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           let doc = d.docs.find((x) => x.id === docId);
           if (!doc) throw new Error('الوثيقة غير موجودة');
           const trip = findTrip(d, doc.tripId);
+          if (action.type === 'submit') {
+            const block = tripFormBlock(d, trip, doc.kind);
+            if (block) throw new Error(block);
+          }
           const isStaff = trip.executor.kind === 'staff';
           const updated = applyDocAction(doc, action, me(), isStaff);
           Object.assign(doc, updated);
@@ -459,24 +492,32 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (action.type === 'leader_reject') pushNotification(d, [teamLead, fac], 'approval_rejected', `أعاد القائد العام ${label}: ${action.reason}`, link);
           if (action.type === 'leader_approve' || action.type === 'leader_edit_approve') {
             pushNotification(d, [...team, fac], 'approval_approved', `اعتُمدت ${label}`, link);
-            // فتح التقرير الختامي بعد اعتماد التفصيلية تلقائياً
-            if (doc.kind === 'detailed' && !docFor(d, trip.id, 'final_report'))
+            // فتح التقرير الختامي بعد اعتماد الجدول تلقائياً
+            if (doc.kind === 'schedule' && !docFor(d, trip.id, 'final_report'))
               d.docs.push({ id: uid('doc'), tripId: trip.id, kind: 'final_report', status: 'draft', version: 1, fields: {}, history: [] });
           }
         });
       },
-      /** حفظ الجدول. أي تعديل بعد الانطلاق يُسجَّل ويؤثر على التقييم */
-      saveSchedule(tripId: ID, plans: SchedulePlan[], changeNote?: string, newSessions: TripSession[] = []) {
+      /** حفظ الجدول: يُعدَّل أي بند قبل بدايته بلا اعتماد، والبند الذي بدأ لا يُعدَّل. لا سجل للتعديلات */
+      saveSchedule(tripId: ID, plans: SchedulePlan[], newSessions: TripSession[] = []) {
         mutate((d) => {
           const t = findTrip(d, tripId);
+          const nowKey = nowISO().slice(0, 16);
+          const startedKey = (i: { date: string; start: string }) => `${i.date}T${i.start}` <= nowKey;
+          // البنود التي بدأت مقفلة: يجب أن تبقى كما هي في كل خطة
+          t.schedule.plans.forEach((old) => {
+            const next = plans.find((p) => p.id === old.id);
+            old.items.filter(startedKey).forEach((i) => {
+              const n = next?.items.find((x) => x.id === i.id);
+              if (!n || n.date !== i.date || n.start !== i.start || n.end !== i.end || n.categoryId !== i.categoryId || n.detail !== i.detail) throw new Error(`البند «${i.detail}» بدأ فلا يُعدَّل`);
+            });
+          });
+          plans.forEach((p) => p.items.filter((i) => !t.schedule.plans.some((o) => o.items.some((x) => x.id === i.id))).forEach((i) => {
+            if (startedKey(i)) throw new Error(`لا يُضاف بند يبدأ في وقت مضى («${i.detail}»)`);
+          }));
           t.schedule.plans = plans;
           t.sessions.push(...newSessions);
-          const started = t.published && plans[0]?.items.some((i) => `${i.date}T${i.start}` <= nowISO().slice(0, 16));
-          if (t.published || changeNote) {
-            const ch: ScheduleChange = { id: uid('ch'), at: nowISO(), byId: me(), description: changeNote || 'تعديل على الجدول', afterStart: !!started };
-            t.schedule.changes.push(ch);
-            if (t.published) pushNotification(d, [...tripTeamIds(d, t), ...staffIds(d)], 'general', `عُدّل جدول ${t.title}`, `/app/trips/${tripId}`);
-          }
+          if (t.published) pushNotification(d, [...tripTeamIds(d, t), ...staffIds(d)], 'general', `حُدّث جدول ${t.title}`, `/app/trips/${tripId}`);
           // ربط اللقاءات ببنود الجدول
           const sessions = plans[0]?.items.filter((i) => i.sessionId) ?? [];
           t.sessions = t.sessions.filter((s) => sessions.some((i) => i.sessionId === s.id)).map((s) => {
@@ -529,15 +570,16 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           pushNotification(d, [...allParticipants(d), ...staffIds(d)], 'schedule_started', `بدأ جدول ${t.title}`, `/app/trips/${tripId}`);
         });
       },
-      setAttendance(eventKind: 'trip' | 'focus', eventId: ID, personId: ID, present: boolean) {
+      /** الحضور: الرحلة بحالاتها (مسؤول التحضير أو قائد الفريق)، والتركيز (قائد المجموعة)، ولقاءات الرحلة التي يلزمها تحضير */
+      setAttendance(eventKind: 'trip' | 'focus' | 'trip_session', eventId: ID, personId: ID, status: Attendance['status'], sessionId?: ID) {
         mutate((d) => {
-          const ex = d.attendance.find((a) => a.eventKind === eventKind && a.eventId === eventId && a.personId === personId);
-          if (ex) Object.assign(ex, { present, byId: me(), at: nowISO() });
-          else d.attendance.push({ id: uid('at'), eventKind, eventId, personId, present, byId: me(), at: nowISO() });
+          if (eventKind === 'trip' && status === 'present') status = 'on_time';
+          if (eventKind !== 'trip' && !['present', 'absent'].includes(status)) throw new Error('الحالات هنا: حاضر أو غائب');
+          const present = status !== 'absent';
+          const ex = d.attendance.find((a) => a.eventKind === eventKind && a.eventId === eventId && a.personId === personId && a.sessionId === sessionId);
+          if (ex) Object.assign(ex, { status, present, byId: me(), at: nowISO() });
+          else d.attendance.push({ id: uid('at'), eventKind, eventId, sessionId, personId, status, present, byId: me(), at: nowISO() });
         });
-      },
-      setPunctuality(tripId: ID, personId: ID, score: number) {
-        mutate((d) => (findTrip(d, tripId).punctuality[personId] = score));
       },
       recordActual(tripId: ID, refItemId: ID, entry: { followed: 'A' | 'B' | 'none'; note?: string; actualStart?: string; actualEnd?: string; categoryId?: ID }) {
         mutate((d) => {
@@ -546,10 +588,24 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           else d.actualSchedule.push({ id: uid('ac'), tripId, refItemId, ...entry, byId: me(), at: nowISO() });
         });
       },
-      evaluate(tripId: ID, patch: Partial<Trip['evaluation']>) {
+      /** كل عضو في فريق العمل يقيّم الرحلة مرة (من 10)، والمتوسط يدخل في نقاطها */
+      rateTrip(tripId: ID, score: number, note?: string) {
         mutate((d) => {
+          const p = d.persons.find((x) => x.id === me());
+          if (p?.kind !== 'staff') throw new Error('تقييم الرحلة لفريق العمل');
           const t = findTrip(d, tripId);
-          t.evaluation = { ...t.evaluation, ...patch, manual: { ...t.evaluation.manual, ...(patch.manual ?? {}) } };
+          if (!(score >= 0 && score <= 10)) throw new Error('التقييم من 0 إلى 10');
+          if (t.evaluation.staffRatings[me()]) throw new Error('قيّمت هذه الرحلة من قبل');
+          t.evaluation.staffRatings[me()] = { score, note, at: nowISO() };
+        });
+      },
+      /** بنود المالية (مثل الترشيد): يقيّم بها مسؤول المالية وحده (من 5) */
+      rateTripFinance(tripId: ID, key: string, score: number) {
+        mutate((d) => {
+          ownerOnly(d, me());
+          if (!d.settings.finance.evalItems.some((i) => i.key === key)) throw new Error('البند غير موجود');
+          if (!(score >= 0 && score <= 5)) throw new Error('التقييم من 0 إلى 5');
+          findTrip(d, tripId).evaluation.finance[key] = score;
         });
       },
       updateClosure(tripId: ID, patch: Partial<Trip['closure']>) {
@@ -590,6 +646,47 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (!t.trackerSubstitute) return;
           t.trackerSubstitute.status = approve ? 'approved' : 'rejected';
           if (approve) pushNotification(d, [t.trackerSubstitute.candidateId], 'general', `كُلّفت بمتابعة ${t.title} بديلاً عن المتابع`, `/app/tracker`);
+        });
+      },
+    },
+
+    // ───────────── اللقاء الافتتاحي والختامي ─────────────
+    events: {
+      /** واحد لكل منهما. بأثر رجعي = لقاء منتهٍ يتخطى التخطيط والتجهيز */
+      create(input: { kind: ProgramEvent['kind']; title: string; date: string; location?: string; description?: string; retroactive: boolean; attendees?: number }): ID {
+        const id = uid('ev');
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('إنشاء الافتتاحي والختامي للقائد العام');
+          if (d.events.some((e) => e.kind === input.kind)) throw new Error(input.kind === 'opening' ? 'يوجد لقاء افتتاحي واحد بالفعل' : 'يوجد لقاء ختامي واحد بالفعل');
+          if (!input.title.trim() || !input.date) throw new Error('اكتب العنوان والتاريخ');
+          if (input.retroactive && input.date > todayISO()) throw new Error('اللقاء بأثر رجعي تاريخه مضى');
+          d.events.push({ id, ...input, title: input.title.trim(), status: input.retroactive ? 'done' : 'planned', createdBy: me(), createdAt: nowISO() });
+          if (!input.retroactive) pushNotification(d, [...allParticipants(d), ...staffIds(d)], 'general', `أُدرج في التقويم: ${input.title}`, '/app/calendar');
+        });
+        return id;
+      },
+      markDone(id: ID, attendees?: number) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('للقائد العام');
+          const e = d.events.find((x) => x.id === id);
+          if (!e) throw new Error('اللقاء غير موجود');
+          Object.assign(e, { status: 'done', attendees });
+        });
+      },
+    },
+
+    // ───────────── تقييم القائد العام الفردي (مرة واحدة) ─────────────
+    leaderEval: {
+      save(participantId: ID, scores: Record<string, number>, note?: string) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('هذا التقييم للقائد العام');
+          if (!d.persons.some((p) => p.id === participantId && p.kind === 'participant')) throw new Error('يُقيَّم المشاركون فقط');
+          if (d.leaderEvaluations.some((e) => e.participantId === participantId)) throw new Error('قيّمت هذا المشارك من قبل: التقييم مرة واحدة');
+          for (const i of d.settings.leaderEvalItems) {
+            const v = scores[i.key];
+            if (v == null || v < 0 || v > i.max) throw new Error(`«${i.name}» من 0 إلى ${i.max}`);
+          }
+          d.leaderEvaluations.push({ participantId, scores, note, byId: me(), at: nowISO() });
         });
       },
     },
@@ -728,7 +825,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
         mutate((d) => {
           const m = d.individualMeetings.find((x) => x.id === id)!;
           Object.assign(m, { status: 'done', notesOnPlan, notesOnMeeting });
-          d.attendance.push({ id: uid('at'), eventKind: 'individual', eventId: id, personId: m.participantId, present: true, byId: me(), at: nowISO() });
+          d.attendance.push({ id: uid('at'), eventKind: 'individual', eventId: id, personId: m.participantId, status: 'present', present: true, byId: me(), at: nowISO() });
           if (attachment?.title) {
             const mid = uid('mt');
             d.materials.push({ id: mid, title: attachment.title, type: attachment.type, url: attachment.url || 'https://example.com', uploaderId: me(), origin: 'individual', revealMode: 'auto', revealed: true, audience: { kind: 'person', personId: m.participantId }, at: nowISO() });

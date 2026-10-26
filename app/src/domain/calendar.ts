@@ -10,7 +10,7 @@ export interface CalEvent {
   start?: string;
   end?: string;
   title: string;
-  kind: 'trip' | 'staff_trip' | 'focus' | 'umrah' | 'individual' | 'step' | 'deadline';
+  kind: 'trip' | 'staff_trip' | 'event' | 'focus' | 'umrah' | 'individual' | 'step' | 'deadline';
   scope: 'general' | 'group' | 'personal';
   link: string;
 }
@@ -18,6 +18,7 @@ export interface CalEvent {
 export const calKindLabel: Record<CalEvent['kind'], string> = {
   trip: 'رحلة',
   staff_trip: 'لقاء تطويري / رحلة فريق العمل',
+  event: 'الافتتاحي والختامي',
   focus: 'لقاء تركيز',
   umrah: 'لقاء العمرة',
   individual: 'لقاء فردي',
@@ -27,6 +28,7 @@ export const calKindLabel: Record<CalEvent['kind'], string> = {
 export const calKindColor: Record<CalEvent['kind'], string> = {
   trip: '#00708c',
   staff_trip: '#00b9d1',
+  event: '#3f4246',
   focus: '#f79845',
   umrah: '#2fa37b',
   individual: '#6b6fc9',
@@ -41,6 +43,7 @@ export function eventsFor(db: DB, personId: ID): CalEvent[] {
   db.trips.forEach((t) =>
     out.push({ id: `trip_${t.id}`, date: t.startDate, endDate: t.endDate, title: t.title, kind: t.executor.kind === 'staff' ? 'staff_trip' : 'trip', scope: 'general', link: `/app/trips/${t.id}` }),
   );
+  db.events.forEach((e) => out.push({ id: `ev_${e.id}`, date: e.date, title: e.title, kind: 'event', scope: 'general', link: '/app/trips' }));
   // خاص بالمجموعة: لقاءات التركيز
   db.focusMeetings.forEach((f) => {
     if (!f.date) return;
@@ -67,7 +70,7 @@ export function eventsFor(db: DB, personId: ID): CalEvent[] {
   // المواعيد النهائية للفريق المنفذ والإدارة
   db.trips.forEach((t) => {
     if (!(isTripTeam(db, personId, t) || c.isStaff)) return;
-    tripDeadlines(db, t).filter((d) => !d.done && d.kind !== 'budget').forEach((d) =>
+    tripDeadlines(db, t).filter((d) => !d.done).forEach((d) =>
       out.push({ id: `dl_${t.id}_${d.kind}`, date: d.date, title: `${d.label}: ${t.title}`, kind: 'deadline', scope: c.isStaff && !isTripTeam(db, personId, t) ? 'general' : 'group', link: `/app/trips/${t.id}` }),
     );
   });

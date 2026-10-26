@@ -161,12 +161,12 @@ export function scheduleAdherence(db: DB, trip: Trip): number | null {
 
 // ───────────── حالة الرحلة ─────────────
 export type TripStage =
-  | 'initial' | 'detailed' | 'budget' | 'trip_data' | 'ready' | 'published' | 'live' | 'closing' | 'closed';
+  | 'document' | 'schedule' | 'budget' | 'trip_data' | 'ready' | 'published' | 'live' | 'closing' | 'closed';
 
 export const tripStageLabel: Record<TripStage, string> = {
-  initial: 'الخطة المبسطة',
-  detailed: 'الخطة التفصيلية',
-  budget: 'بانتظار اعتماد الموازنة',
+  document: 'وثيقة الرحلة',
+  schedule: 'الجدول الزمني',
+  budget: 'بانتظار اعتماد الميزانية',
   trip_data: 'استكمال بيانات الرحلة',
   ready: 'جاهزة للنشر',
   published: 'منشورة',
@@ -174,7 +174,7 @@ export const tripStageLabel: Record<TripStage, string> = {
   closing: 'قيد الإغلاق',
   closed: 'مغلقة',
 };
-export const tripStageOrder: TripStage[] = ['initial', 'detailed', 'budget', 'trip_data', 'ready', 'published', 'live', 'closing', 'closed'];
+export const tripStageOrder: TripStage[] = ['document', 'schedule', 'budget', 'trip_data', 'ready', 'published', 'live', 'closing', 'closed'];
 
 export function tripStage(db: DB, trip: Trip): TripStage {
   if (trip.published) {
@@ -182,8 +182,8 @@ export function tripStage(db: DB, trip: Trip): TripStage {
     if (tripHasStarted(trip)) return 'live';
     return 'published';
   }
-  if (!isApproved(db, trip.id, 'initial')) return 'initial';
-  if (!isApproved(db, trip.id, 'detailed')) return 'detailed';
+  if (!isApproved(db, trip.id, 'document')) return 'document';
+  if (!isApproved(db, trip.id, 'schedule')) return 'schedule';
   if (!isBudgetApproved(db, 'trip', trip.id)) return 'budget';
   if (!tripDataComplete(trip)) return 'trip_data';
   return 'ready';
@@ -200,9 +200,9 @@ export function tripDataComplete(trip: Trip): boolean {
 
 export function publishChecks(db: DB, trip: Trip) {
   return [
-    { label: 'اعتماد الخطة المبسطة', ok: isApproved(db, trip.id, 'initial') },
-    { label: 'اعتماد الخطة التفصيلية (الجدول)', ok: isApproved(db, trip.id, 'detailed') },
-    { label: 'اعتماد الموازنة (طلب الميزانية)', ok: isBudgetApproved(db, 'trip', trip.id) },
+    { label: 'اعتماد وثيقة الرحلة', ok: isApproved(db, trip.id, 'document') },
+    { label: 'اعتماد الجدول الزمني', ok: isApproved(db, trip.id, 'schedule') },
+    { label: 'اعتماد الميزانية', ok: isBudgetApproved(db, 'trip', trip.id) },
     { label: 'اكتمال الجدول في بيانات الرحلة', ok: hasSchedule(trip) },
     { label: 'إضافة الضيوف وتأكيدهم', ok: trip.guests.length > 0 && trip.guests.every((g) => g.confirmed) },
   ];
@@ -220,8 +220,13 @@ export function closureChecks(db: DB, trip: Trip) {
     { key: 'experience', label: 'نموذج إغلاق التجربة', ok: !!trip.closure.experienceForm },
     { key: 'finance', label: 'الإغلاق المالي (العهدة)', ok: custody?.status === 'closed' },
     { key: 'report', label: 'اعتماد التقرير الختامي', ok: isApproved(db, trip.id, 'final_report') },
-    { key: 'evaluation', label: 'تقييم المتابع والقائد العام', ok: trip.evaluation.trackerScore != null && trip.evaluation.leaderScore != null },
+    { key: 'evaluation', label: `تقييم فريق العمل (${staffRatingCount(db, trip).rated} من ${staffRatingCount(db, trip).needed} على الأقل)`, ok: staffRatingCount(db, trip).rated >= staffRatingCount(db, trip).needed },
   ];
+}
+/** كل فريق العمل يقيّم الرحلة، ويكفي للإغلاق نصاب يضبطه القائد العام */
+export function staffRatingCount(db: DB, trip: Trip) {
+  const staff = db.persons.filter((p) => p.kind === 'staff').length;
+  return { rated: Object.keys(trip.evaluation.staffRatings).length, needed: Math.max(1, Math.ceil(staff * db.settings.tripRatingQuorum)), staff };
 }
 export function isTripClosed(db: DB, trip: Trip) {
   return closureChecks(db, trip).every((c) => c.ok);
@@ -235,9 +240,9 @@ export function tripDeadlines(db: DB, trip: Trip) {
     const onTime = submittedAt ? submittedAt.slice(0, 10) <= date : null;
     list.push({ kind, label, date, done: !!submittedAt, late: !submittedAt && today > date, onTime });
   };
-  mk('initial', 'رفع الخطة المبسطة', trip.deadlines.initial, docFor(db, trip.id, 'initial')?.submittedAt);
-  mk('detailed', 'رفع الخطة التفصيلية', trip.deadlines.detailed, docFor(db, trip.id, 'detailed')?.submittedAt);
-  mk('budget', 'رفع طلب الميزانية (موازنة تفصيلية)', trip.deadlines.detailed, requestFor(db, 'trip', trip.id)?.submittedAt);
+  mk('document', 'رفع وثيقة الرحلة', trip.deadlines.document, docFor(db, trip.id, 'document')?.submittedAt);
+  mk('schedule', 'رفع الجدول الزمني', trip.deadlines.schedule, docFor(db, trip.id, 'schedule')?.submittedAt);
+  mk('budget', 'رفع الميزانية', trip.deadlines.budget, requestFor(db, 'trip', trip.id)?.submittedAt);
   return list;
 }
 
