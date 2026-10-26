@@ -12,6 +12,13 @@ export const EVALUATION_KEYS = [
 export type EvaluationKey = (typeof EVALUATION_KEYS)[number];
 export type EvaluationSettings = Pick<Settings, EvaluationKey>;
 
+export const evaluationKeyLabel: Record<EvaluationKey, string> = {
+  split: 'التوزيع الفردي والجماعي', groupTripSplit: 'نصيب الرحلات الداخلية والخارجية', evaluationItems: 'البنود والأوزان',
+  presentationCriteria: 'معايير تقييم المقدّم', repeatPresentationFactor: 'معامل تكرار التقديم', presentingMaxMultiplier: 'حد مضاعف التقديم',
+  lateFactor: 'ما يُكسب عند التأخر', enrichmentPointsPerMaterial: 'نقاط المادة الإثرائية', deadlineDefaults: 'شروط المواعيد',
+  attendanceWeights: 'أوزان الحضور', tripAttendanceStates: 'حالات حضور الرحلة',
+};
+
 export function isEvaluationKey(k: string): k is EvaluationKey {
   return (EVALUATION_KEYS as readonly string[]).includes(k);
 }

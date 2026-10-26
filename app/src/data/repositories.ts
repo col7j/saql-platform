@@ -7,7 +7,7 @@ import { groupOf, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTra
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
 import { hasTempGrant, tempPermissionLabel } from '@/domain/grants';
-import { canEditEvaluation, canUnlockEvaluation, isEvaluationKey, settingsKeyBlockReason, type EvaluationSettings } from '@/domain/settings';
+import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, isEvaluationKey, settingsKeyBlockReason, type EvaluationKey, type EvaluationSettings } from '@/domain/settings';
 import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
 import type {
@@ -1113,9 +1113,10 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID) {
           if (d.settings.evaluationLock.locked) throw new Error('إعدادات التقييم مقفلة. يفتحها مسؤول اللجنة التقنية');
           if (!canEditEvaluation(d, me())) throw new Error('إعدادات التقييم يضبطها القائد العام');
           for (const k of Object.keys(patch)) if (!isEvaluationKey(k)) throw new Error(`«${k}» ليس من إعدادات التقييم`);
+          const changed = (Object.keys(patch) as EvaluationKey[]).filter((k) => JSON.stringify(patch[k]) !== JSON.stringify(d.settings[k]));
           Object.assign(d.settings, patch);
           d.settings.evaluationLock = { locked: true, at: nowISO(), by: me() };
-          audit(d, me(), 'حفظ إعدادات التقييم وقفلها', Object.keys(patch).join('، '), 'settings');
+          audit(d, me(), 'حفظ إعدادات التقييم وقفلها', changed.length ? `تغيّر: ${changed.map((k) => evaluationKeyLabel[k]).join('، ')}` : 'بلا تغيير في القيم', 'settings');
         });
       },
       unlockEvaluation(reason: string) {
