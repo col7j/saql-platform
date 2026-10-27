@@ -10,8 +10,8 @@ const trip = (id: string) => db.trips.find((t) => t.id === id)!;
 
 describe('الصفات والصلاحيات', () => {
   it('تتجمع الصفات على الشخص', () => {
-    const c = getCapabilities(db, 's1');
-    expect(c.facilitatorOf.map((g) => g.id)).toEqual(['g1']);
+    const c = getCapabilities(db, 's3');
+    expect(c.facilitatorOf.map((g) => g.id)).toEqual(['g3']);
     expect(c.isFinance).toBe(true);
     expect(c.isFinanceLead).toBe(false);
     const owner = getCapabilities(db, 's5');
@@ -31,7 +31,8 @@ describe('الصفات والصلاحيات', () => {
     expect(canEditTripDoc(db, 'u14', trip('t9'), doc)).toBe(false);
   });
   it('المالية للجنة المالية والقائد العام فقط', () => {
-    expect(canSeeFinance(db, 's1')).toBe(true);
+    expect(canSeeFinance(db, 's3')).toBe(true);
+    expect(canSeeFinance(db, 's1')).toBe(false); // الميسّر خارج اللجنة المالية
     expect(canSeeFinance(db, 'p_lead')).toBe(true);
     expect(canSeeFinance(db, 's2')).toBe(false);
     expect(canSeeFinance(db, 'u1')).toBe(false);

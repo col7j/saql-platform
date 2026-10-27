@@ -1,12 +1,12 @@
 // القسم المالي: يملكه مسؤول اللجنة المالية، ويرى كل عضو ما فُوِّض به فقط
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { financeTabsFor } from '@/domain/access';
+import { Link, useSearchParams } from 'react-router-dom';
+import { financeSectionOf, financeTabsFor, navFor, type FinanceSection } from '@/domain/access';
 import { fmtDateTime } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { SAR } from '@/domain/labels';
 import {
-  ALL_SPEND_KINDS, FINANCE_PERMS, allocatedFor, canOpenFinance, financeCommitteeId, financePermsOf, hasFinancePerm, isFinanceOwner,
+  ALL_SPEND_KINDS, FINANCE_PERMS, allocatedFor, canOpenFinance, canViewBudget, financeCommitteeId, financePermsOf, hasFinancePerm, isFinanceOwner,
   ownerTitle, requestStage, spendKindGroup, spendKindLabel, spendKindOf,
 } from '@/domain/finance';
 import { activitySpend, budgetOverview, custodyTitle, openCustodyConflict, spentLines, walletBalance, walletFigures, WALLET_IN, walletKindLabel } from '@/domain/ledger';
@@ -16,23 +16,32 @@ import type { Attachment, BudgetOwnerKind, BudgetRequest, FeeRecord, FeeStatus, 
 import { AttachmentInput, AttachmentView } from '@/ui/attachments';
 import { EditRequestButton, EditRequestsList } from './EditRequest';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
-import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, MoreMenu, Notice, PageHeader, Progress, Select, StatusPill, Table, Tabs, Toggle, askConfirm, cx } from '@/ui';
+import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, MoreMenu, NavIcon, Notice, PageHeader, Progress, Select, Stat, StatusPill, Table, Tabs, Toggle, askConfirm, cx } from '@/ui';
+import { AuditLog } from './Audit';
+import { RequestsCustody } from './RequestsCustody';
 import { PersonChip } from '@/ui/domain';
 import { BudgetWizard } from './BudgetWizard';
 import { CustodyCard, IssueCustodyModal, LinesEditor, SpendFormView, categoryLabel, newLine, toLines } from './CustodyCard';
 import { RequestPanel } from './RequestPanel';
 
-type Tab = 'requests' | 'invoices' | 'custody' | 'wallet' | 'direct' | 'needs' | 'budget' | 'edits' | 'categories' | 'team' | 'settings' | 'audit' | 'fees' | 'analysis';
-const tabLabel: Record<Tab, string> = {
-  requests: 'الطلبات', invoices: 'الفواتير', custody: 'العهد والإغلاق', wallet: 'المحفظة', direct: 'الصرف المباشر', needs: 'احتياجات البرنامج', budget: 'الموازنة',
-  edits: 'طلبات التعديل', categories: 'التصنيفات', team: 'الفريق والصلاحيات', settings: 'الإعدادات المالية', audit: 'سجل التدقيق', fees: 'الرسوم', analysis: 'التحليلات',
+const sectionLabel: Record<FinanceSection, string> = {
+  overview: 'نظرة عامة', requests: 'الطلبات والعهد', invoices: 'مراجعة الفواتير', direct: 'الصرف المباشر والاحتياجات والعقود',
+  wallet: 'المحفظة والموازنة', fees: 'الرسوم', reports: 'التقارير', settings: 'إعدادات المالية',
+};
+const sectionHint: Record<FinanceSection, string> = {
+  overview: 'الرصيد والداخل والمصروف وما ينتظر المراجعة', requests: 'طلبات الميزانية والعهد وإغلاقها', invoices: 'بند بند: اعتمد أو ارفض',
+  direct: 'الصرف بلا عهدة، واحتياجات البرنامج والعقود', wallet: 'حركة المحفظة والموازنة العامة', fees: 'رسوم المشاركين والاستثناءات',
+  reports: 'التحليلات وسجل التدقيق', settings: 'التصنيفات والفريق والصلاحيات وطلبات التعديل',
+};
+const sectionIcon: Record<FinanceSection, string> = {
+  overview: 'chart', requests: 'receipt', invoices: 'clipboard', direct: 'layers', wallet: 'wallet', fees: 'contact', reports: 'history', settings: 'settings',
 };
 
 export default function FinancePage() {
   const db = useDB();
   const me = useMe();
   const pid = me.person.id;
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const owner = isFinanceOwner(db, pid);
   if (!canOpenFinance(db, pid)) return <Empty title="القسم المالي للجنة المالية والقائد العام" text="تجد ميزانية لقاءاتك أو رحلتك داخل صفحتها، وطلباتك في «طلباتي»." />;
 
@@ -45,95 +54,103 @@ export default function FinancePage() {
       </div>
     );
 
-  // التبويبات من فحص الوصول نفسه (ما لم يُبنَ بعد يُستبعد)
-  const tabs = financeTabsFor(db, pid).filter((t): t is Tab => t in tabLabel);
-  const tab = (tabs.includes(params.get('tab') as Tab) ? params.get('tab') : 'requests') as Tab;
-  const main = tabs.slice(0, 5);
-  const extra = tabs.slice(4);
-  const setTab = (t: Tab) => setParams({ tab: t });
+  // الأقسام من فحص الوصول نفسه. لمن لا تظهر له الأقسام في قائمته تُفتح من «نظرة عامة»
+  const sections = financeTabsFor(db, pid);
+  const picked = financeSectionOf(params.get('tab')) ?? (params.get('req') ? 'requests' : 'overview');
+  const sec = sections.includes(picked) ? picked : 'overview';
+  const inNav = navFor(db, pid).all.some((i) => i.key.startsWith('finance_'));
+  const subtitle = sec === 'overview'
+    ? owner ? `أنت مسؤول المالية · رصيدك الفعلي ${SAR(walletBalance(db))}` : me.isLeader ? 'تراقب المالية: تعتمد التجاوزات وتعديل السجلات المعتمدة من «بانتظار اعتمادي»، ولا تصرف' : `صلاحياتك: ${financePermsOf(db, pid).map((p) => FINANCE_PERMS.find((x) => x.key === p)!.label).join('، ') || 'لا صلاحيات مفوّضة بعد'}`
+    : sectionHint[sec];
 
   return (
     <div>
-      <PageHeader title="المالية" subtitle={owner ? `أنت مسؤول المالية · رصيدك الفعلي ${SAR(walletBalance(db))}` : me.isLeader ? 'تراقب المالية: تعتمد التجاوزات وتعديل السجلات المعتمدة، ولا تصرف' : `صلاحياتك: ${financePermsOf(db, pid).map((p) => FINANCE_PERMS.find((x) => x.key === p)!.label).join('، ') || 'لا صلاحيات مفوّضة بعد'}`}
-        actions={extra.length > 0 && <MoreMenu label="أقسام أخرى" items={extra.map((t) => ({ label: tabLabel[t], onClick: () => setTab(t) }))} />} />
-      {!db.programBudget.setupDone && <Notice tone="orange">لم يُعدّ مسؤول المالية الموازنة العامة بعد، لذا لا تُقبل طلبات جديدة.</Notice>}
-      <div className="mt-2">
-        <Tabs value={main.includes(tab) ? tab : (tab as Tab)} onChange={setTab} tabs={(main.includes(tab) ? main : [...main, tab]).map((t) => ({ key: t, label: tabLabel[t] }))} />
-      </div>
-      {tab === 'requests' && <Requests focusId={params.get('req')} />}
-      {tab === 'custody' && <Custodies />}
-      {tab === 'invoices' && <Invoices />}
-      {tab === 'wallet' && <Wallet />}
-      {tab === 'direct' && <Direct />}
-      {tab === 'needs' && <Needs />}
-      {tab === 'edits' && <EditRequestsList />}
-      {tab === 'settings' && <FinanceSettings />}
-      {tab === 'budget' && <BudgetTab />}
-      {tab === 'categories' && <Categories />}
-      {tab === 'team' && <Team />}
-      {tab === 'audit' && <Audit />}
-      {tab === 'fees' && <Fees />}
-      {tab === 'analysis' && <Analysis />}
+      <PageHeader title={sec === 'overview' && !inNav ? 'المالية' : sectionLabel[sec]} subtitle={subtitle} back={!inNav && sec !== 'overview' ? '/app/finance' : undefined} />
+      {!db.programBudget.setupDone && <div className="mb-4"><Notice tone="orange">لم يُعدّ مسؤول المالية الموازنة العامة بعد، لذا لا تُقبل طلبات جديدة.</Notice></div>}
+      {sec === 'overview' && <Overview sections={inNav ? [] : sections.filter((x) => x !== 'overview')} />}
+      {sec === 'requests' && <RequestsCustody perspective="finance" focusId={params.get('req')} />}
+      {sec === 'invoices' && <Invoices />}
+      {sec === 'direct' && <div className="space-y-8"><Direct /><Needs /></div>}
+      {sec === 'wallet' && <div className="space-y-8"><Wallet /><BudgetTab /></div>}
+      {sec === 'fees' && <Fees />}
+      {sec === 'reports' && <Reports />}
+      {sec === 'settings' && <SettingsSection />}
     </div>
   );
 }
 
-// ───────────── الطلبات ─────────────
-function Requests({ focusId }: { focusId: string | null }) {
+// ───────────── نظرة عامة ─────────────
+function Overview({ sections }: { sections: FinanceSection[] }) {
   const db = useDB();
   const me = useMe();
-  const [filter, setFilter] = useState<'mine' | 'all'>('mine');
-  const [open, setOpen] = useState<string | null>(focusId);
   const pid = me.person.id;
-  const waitingOnMe = (r: BudgetRequest) => requestStage(db, r).waitingOnId === pid;
-  const list = [...db.budgetRequests].reverse().filter((r) => (filter === 'mine' ? waitingOnMe(r) : true));
+  const w = walletFigures(db);
+  const pendingLines = db.spendForms.flatMap((f) => f.lines).filter((l) => l.status === 'pending');
+  const waitingReq = db.budgetRequests.filter((r) => requestStage(db, r).waitingOnId === pid).length;
+  const closing = db.custodies.filter((c) => c.status === 'closing').length;
+  const go = (t: FinanceSection) => `/app/finance?tab=${t}`;
+  const can = (t: FinanceSection) => financeTabsFor(db, pid).includes(t);
   return (
-    <div className="space-y-3">
-      <Tabs value={filter} onChange={setFilter} tabs={[{ key: 'mine', label: `تنتظرني (${db.budgetRequests.filter(waitingOnMe).length})` }, { key: 'all', label: `كل الطلبات (${db.budgetRequests.length})` }]} />
-      {list.length === 0 ? <Empty title="لا طلبات تنتظرك" text="ستظهر هنا طلبات الميزانية التي تحتاج قرارك أو صرفك." icon={<Icons.Inbox className="h-8 w-8" />} /> : list.map((r) => {
-        const st = requestStage(db, r);
-        const isOpen = open === r.id;
-        return (
-          <div key={r.id} className={cx('rounded-2xl border bg-white shadow-card', isOpen ? 'border-brand-200' : 'border-ink-100')}>
-            <button onClick={() => setOpen(isOpen ? null : r.id)} className="flex min-h-[64px] w-full flex-wrap items-center gap-3 px-4 py-3 text-start">
-              <div className="min-w-0 flex-1">
-                <div className="font-medium">{ownerTitle(db, r.ownerKind, r.ownerId)}</div>
-                <div className="mt-0.5 text-xs text-ink-500">{spendKindLabel[r.spendKind]} · {personName(db, r.requestedBy)} · <span className="num">{SAR(r.amount)}</span> من المرصود <span className="num">{SAR(r.allocated)}</span>{r.amount > r.allocated && <span className="text-accent-700"> (تجاوز)</span>}</div>
-              </div>
-              <StatusPill label={st.label} tone={st.tone} next={st.next} waitingOn={st.waitingOn} compact />
-              <Icons.ChevronDown className={cx('h-4 w-4 transition', isOpen && 'rotate-180')} />
-            </button>
-            {isOpen && <div className="border-t border-ink-100 p-3"><RequestPanel ownerKind={r.ownerKind} ownerId={r.ownerId} title="تفاصيل الطلب" /></div>}
+    <div className="space-y-8">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
+        <Stat label="الرصيد الفعلي" value={SAR(w.balance)} icon={<Icons.Wallet className="h-5 w-5" />} to={can('wallet') ? go('wallet') : undefined} />
+        <Stat label="الداخل" value={SAR(w.in)} icon={<Icons.ArrowDownToLine className="h-5 w-5" />} tone="green" to={can('wallet') ? go('wallet') : undefined} />
+        <Stat label="المصروف" value={SAR(w.out)} icon={<Icons.ArrowUpFromLine className="h-5 w-5" />} to={can('reports') ? go('reports') : undefined} />
+        <Stat label="بنود بانتظار المراجعة" value={pendingLines.length} hint={SAR(pendingLines.reduce((s, l) => s + l.amount, 0))} icon={<Icons.ReceiptText className="h-5 w-5" />} tone="accent" to={can('invoices') ? go('invoices') : undefined} />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:gap-6">
+        <Stat label="طلبات تنتظرك" value={waitingReq} icon={<Icons.Inbox className="h-5 w-5" />} tone="accent" to={go('requests')} />
+        <Stat label="عهد بطلب إغلاق" value={closing} icon={<Icons.LockKeyhole className="h-5 w-5" />} to={go('requests')} />
+      </div>
+      {sections.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-lg font-bold">الأقسام</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+            {sections.map((t) => (
+              <Link key={t} to={go(t)} className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-ink-100 bg-white p-5 shadow-card transition hover:border-brand-200 hover:shadow-lift">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600"><NavIcon name={sectionIcon[t]} /></span>
+                <span className="min-w-0"><span className="block font-bold text-ink-900">{sectionLabel[t]}</span><span className="block text-xs text-ink-500">{sectionHint[t]}</span></span>
+              </Link>
+            ))}
           </div>
-        );
-      })}
+        </section>
+      )}
     </div>
   );
 }
 
-// ───────────── العهد ─────────────
-function Custodies() {
-  const db = useDB();
-  const [open, setOpen] = useState<string | null>(null);
-  const list = [...db.custodies].sort((a, b) => Number(a.status === 'closed') - Number(b.status === 'closed'));
-  if (!list.length) return <Empty title="لا عهد بعد" text="تُحوَّل العهدة من الطلب المعتمد في تبويب «الطلبات»، أو مباشرة للافتتاحي والختامي واحتياجات البرنامج." />;
+// ───────────── التقارير: التحليلات + سجل التدقيق ─────────────
+function Reports() {
+  const [t, setT] = useState<'analysis' | 'audit'>('analysis');
   return (
-    <div className="space-y-3">
-      {list.map((c) => {
-        const req = db.budgetRequests.find((r) => r.id === c.requestId);
-        const st = req ? requestStage(db, req) : null;
-        return (
-          <div key={c.id} className="rounded-2xl border border-ink-100 bg-white shadow-card">
-            <button onClick={() => setOpen(open === c.id ? null : c.id)} className="flex min-h-[64px] w-full flex-wrap items-center gap-3 px-4 py-3 text-start">
-              <div className="min-w-0 flex-1"><div className="font-medium">{ownerTitle(db, c.ownerKind, c.ownerId)}</div><div className="text-xs text-ink-500">{spendKindLabel[c.spendKind]} · {personName(db, c.recipientId)} · <span className="num">{SAR(c.approved)}</span></div></div>
-              {!st && <Badge tone={custodyStatusTone[c.status]}>{custodyStatusLabel[c.status]}</Badge>}
-              {st && <StatusPill label={st.label} tone={st.tone} next={st.next} waitingOn={st.waitingOn} compact />}
-              <Icons.ChevronDown className={cx('h-4 w-4', open === c.id && 'rotate-180')} />
-            </button>
-            {open === c.id && <div className="border-t border-ink-100 p-3"><CustodyCard custody={c} embedded /></div>}
-          </div>
-        );
-      })}
+    <div>
+      <Tabs value={t} onChange={setT} tabs={[{ key: 'analysis', label: 'التحليلات' }, { key: 'audit', label: 'سجل التدقيق' }]} />
+      {t === 'analysis' ? <Analysis /> : <AuditLog areas={['finance']} subtitle="من، ماذا، متى: كل تفويض وكل قرار وكل صرف" />}
+    </div>
+  );
+}
+
+// ───────────── إعدادات المالية: التصنيفات + الفريق + الإعدادات + طلبات التعديل ─────────────
+function SettingsSection() {
+  const db = useDB();
+  const me = useMe();
+  const pid = me.person.id;
+  const owner = isFinanceOwner(db, pid);
+  const view = canViewBudget(db, pid);
+  const parts = [
+    { key: 'categories' as const, label: 'التصنيفات', ok: true },
+    { key: 'team' as const, label: 'الفريق والصلاحيات', ok: owner || view },
+    { key: 'settings' as const, label: 'الإعدادات', ok: owner },
+    { key: 'edits' as const, label: 'طلبات التعديل', ok: owner || view },
+  ].filter((x) => x.ok);
+  const [t, setT] = useState(parts[0].key);
+  return (
+    <div>
+      <Tabs value={t} onChange={setT} tabs={parts} />
+      {t === 'categories' && <Categories />}
+      {t === 'team' && <Team />}
+      {t === 'settings' && <FinanceSettings />}
+      {t === 'edits' && <EditRequestsList />}
     </div>
   );
 }
@@ -511,20 +528,6 @@ function Team() {
           </div>
         ))}
       </div>
-    </Card>
-  );
-}
-
-function Audit() {
-  const db = useDB();
-  return (
-    <Card title="سجل التدقيق" subtitle="من، ماذا، متى: كل تفويض وكل قرار وكل صرف" pad={false}>
-      {db.audit.filter((a) => (a.area ?? 'finance') === 'finance').length === 0 ? <div className="p-5"><Empty title="لا سجلات بعد" /></div> : (
-        <Table>
-          <thead><tr><th>متى</th><th>من</th><th>ماذا</th><th>التفاصيل</th></tr></thead>
-          <tbody>{db.audit.filter((a) => (a.area ?? 'finance') === 'finance').map((a) => <tr key={a.id}><td className="whitespace-nowrap text-xs">{fmtDateTime(a.at)}</td><td><PersonChip id={a.byId} size={22} /></td><td className="font-medium">{a.action}</td><td className="text-xs text-ink-600">{a.detail}</td></tr>)}</tbody>
-        </Table>
-      )}
     </Card>
   );
 }

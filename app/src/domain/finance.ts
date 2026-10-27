@@ -165,7 +165,7 @@ export function ownerTitle(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID) {
 export function ownerLink(ownerKind: BudgetOwnerKind, ownerId: ID) {
   if (ownerKind === 'trip') return `/app/trips/${ownerId}?tab=budget`;
   if (ownerKind === 'focus') return `/app/focus/${ownerId}`;
-  if (ownerKind === 'need' || ownerKind === 'event') return '/app/finance?tab=needs';
+  if (ownerKind === 'need' || ownerKind === 'event') return '/app/finance?tab=direct';
   return `/app/meetings/${ownerId}`;
 }
 /** ميسّر المجموعة المنفِّذة لرحلة (لمسار ميزانية الرحلة) */

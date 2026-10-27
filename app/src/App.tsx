@@ -11,7 +11,6 @@ import TripDetail from './pages/app/trip/TripDetail';
 import FocusPage from './pages/app/Focus';
 import FocusDetail from './pages/app/FocusDetail';
 import IndividualPage from './pages/app/Individual';
-import MyPlan from './pages/app/MyPlan';
 import PlansPage, { PlanOf } from './pages/app/Plans';
 import SurveysPage from './pages/app/Surveys';
 import LibraryPage from './pages/app/Library';
@@ -26,11 +25,12 @@ import FinancePage from './pages/app/Finance';
 import RequestsPage from './pages/app/Requests';
 import MeetingsPage, { MeetingDetail } from './pages/app/Meetings';
 import InsightsPage from './pages/app/Insights';
-import { ContactPage, InboxPage } from './pages/app/Messages';
+import MessagesPage from './pages/app/Messages';
+import ApprovalsPage from './pages/app/Approvals';
+import AuditPage from './pages/app/Audit';
 import TrackingLinkAdmin from './pages/app/TrackingLinkAdmin';
 import SiteEditor from './pages/app/SiteEditor';
 import SettingsPage from './pages/app/Settings';
-import UsersPage from './pages/app/Users';
 import ProfilePage from './pages/app/Profile';
 
 export default function App() {
@@ -50,7 +50,7 @@ export default function App() {
           <Route path="focus" element={<FocusPage />} />
           <Route path="focus/:id" element={<FocusDetail />} />
           <Route path="individual" element={<IndividualPage />} />
-          <Route path="plan" element={<MyPlan />} />
+          <Route path="plan" element={<Navigate to="/app/plans" replace />} />
           <Route path="plans" element={<PlansPage />} />
           <Route path="plans/:id" element={<PlanOf />} />
           <Route path="surveys" element={<SurveysPage />} />
@@ -70,12 +70,15 @@ export default function App() {
           <Route path="meetings/:id" element={<MeetingDetail />} />
           <Route path="insights" element={<InsightsPage />} />
           <Route path="more" element={<MorePage />} />
-          <Route path="contact" element={<ContactPage />} />
-          <Route path="inbox" element={<InboxPage />} />
+          <Route path="messages" element={<MessagesPage />} />
+          <Route path="contact" element={<Navigate to="/app/messages" replace />} />
+          <Route path="inbox" element={<Navigate to="/app/messages" replace />} />
+          <Route path="approvals" element={<ApprovalsPage />} />
+          <Route path="audit" element={<AuditPage />} />
           <Route path="tracking-link" element={<TrackingLinkAdmin />} />
           <Route path="site-editor" element={<SiteEditor />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="users" element={<UsersPage />} />
+          <Route path="users" element={<Navigate to="/app/people" replace />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

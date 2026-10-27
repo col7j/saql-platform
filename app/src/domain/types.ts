@@ -820,7 +820,7 @@ export interface EvaluationItem {
   name: string;
   scope: 'individual' | 'group';
   weight: number; // نسبة داخل نصيبه (الفردي أو الجماعي)
-  mode: 'auto' | 'manual' | 'mixed';
+  mode: 'auto' | 'manual';
   enabled: boolean;
   description?: string;
   subItems?: EvaluationSubItem[];
@@ -945,7 +945,7 @@ export interface NavCatalogItem {
   to: string; // المسار، وقد يحمل ?tab= لتبويب داخل الشاشة
   label: string;
   icon: string;
-  section: string; // المجموعة الافتراضية لما لا يذكره ترتيب الدور
+  section: string; // المجموعة الافتراضية (للعرض فقط، فالقائمة لا تُظهر إلا ما ذكره ترتيب الدور)
 }
 export interface RoleLayout {
   role: LayoutRole;
@@ -958,6 +958,8 @@ export interface RoleLayout {
 export interface UiConfig {
   navCatalog: NavCatalogItem[];
   layouts: RoleLayout[];
+  /** عناصر تظهر لمن يملكها وإن لم يذكرها ترتيب دوره (مثل «متابعة الرحلات» للبديل المؤقت)، في المجموعة المذكورة */
+  extras?: { key: string; section: string }[];
 }
 
 export interface Settings {
@@ -1061,7 +1063,6 @@ export interface DB {
   editRequests: EditRequest[];
   fees: FeeRecord[];
   attendance: Attendance[];
-  manualPoints: PointsEntry[];
   notifications: Notification[];
   comments: Comment[];
   trackingComments: TrackingComment[];

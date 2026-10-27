@@ -149,12 +149,13 @@ export const defaultCapacityRules: CapacityRule[] = [
 
 /** القوائم والرئيسية لكل دور: الكتالوج يعرّف كل عنصر، والترتيب لكل دور يحدد مكانه. من لا يملك صلاحية عنصر لا يظهر له */
 export function defaultUiConfig(): UiConfig {
+  // كل قائمة: «الأساسية» ثم 3 إلى 5 مجموعات، وفي كل مجموعة 5 عناصر أو أقل. مهام الدور فقط
   const B = 'الأساسية';
   const P = 'البرنامج';
-  const A = 'الإدارة';
-  const F = 'المالية';
   const k = (key: string, label?: string) => ({ key, label });
   const basics = { title: B, items: [k('home'), k('calendar'), k('notifications'), k('profile')] };
+  const view = { title: 'البرنامج (عرض)', items: [k('trips'), k('focus'), k('meetings')] };
+  const fin = (key: string, label: string, icon: string) => ({ key: `finance_${key}`, to: `/app/finance?tab=${key}`, label, icon, section: 'المالية' });
   return {
     navCatalog: [
       { key: 'home', to: '/app', label: 'الرئيسية', icon: 'home', section: B },
@@ -164,86 +165,112 @@ export function defaultUiConfig(): UiConfig {
       { key: 'trips', to: '/app/trips', label: 'الرحلات', icon: 'map', section: P },
       { key: 'focus', to: '/app/focus', label: 'لقاءات التركيز', icon: 'target', section: P },
       { key: 'meetings', to: '/app/meetings', label: 'الاجتماعات', icon: 'meeting', section: P },
-      { key: 'plan', to: '/app/plan', label: 'خطتي', icon: 'compass', section: P },
+      { key: 'plan', to: '/app/plans', label: 'خطتي', icon: 'compass', section: P },
       { key: 'individual', to: '/app/individual', label: 'اللقاءات الفردية', icon: 'users', section: P },
       { key: 'plans', to: '/app/plans', label: 'الخطط الشخصية', icon: 'compass', section: P },
       { key: 'library', to: '/app/library', label: 'المكتبة', icon: 'book', section: P },
       { key: 'surveys', to: '/app/surveys', label: 'الاستبيانات', icon: 'clipboard', section: P },
       { key: 'groups', to: '/app/groups', label: 'المجموعات', icon: 'grid', section: P },
       { key: 'leaderboard', to: '/app/leaderboard', label: 'الترتيب', icon: 'trophy', section: P },
-      { key: 'tasks', to: '/app/tasks', label: 'المهام', icon: 'check', section: A },
-      { key: 'requests', to: '/app/requests', label: 'طلباتي', icon: 'receipt', section: P },
-      { key: 'contact', to: '/app/contact', label: 'راسل الإدارة', icon: 'message', section: P },
-      { key: 'tracker', to: '/app/tracker', label: 'متابعة الرحلات', icon: 'radar', section: P },
-      { key: 'committees', to: '/app/committees', label: 'اللجان', icon: 'layers', section: A },
-      { key: 'people', to: '/app/people', label: 'الأشخاص', icon: 'contact', section: A },
-      { key: 'insights', to: '/app/insights', label: 'المؤشرات', icon: 'chart', section: A },
-      { key: 'inbox', to: '/app/inbox', label: 'رسائل المشاركين', icon: 'message', section: A },
-      { key: 'tracking_link', to: '/app/tracking-link', label: 'رابط المتابعة', icon: 'link', section: A },
-      { key: 'site_editor', to: '/app/site-editor', label: 'تحرير الموقع', icon: 'globe', section: A },
-      { key: 'users', to: '/app/users', label: 'المستخدمون', icon: 'key', section: A },
-      { key: 'settings', to: '/app/settings', label: 'الإعدادات', icon: 'settings', section: A },
-      { key: 'finance', to: '/app/finance', label: 'المالية', icon: 'wallet', section: A },
-      { key: 'finance_budget', to: '/app/finance?tab=budget', label: 'الموازنة', icon: 'wallet', section: F },
-      { key: 'finance_custody', to: '/app/finance?tab=custody', label: 'العهد والإغلاق', icon: 'receipt', section: F },
-      { key: 'finance_wallet', to: '/app/finance?tab=wallet', label: 'المحفظة', icon: 'wallet', section: F },
-      { key: 'finance_direct', to: '/app/finance?tab=direct', label: 'الصرف المباشر', icon: 'receipt', section: F },
-      { key: 'finance_requests', to: '/app/finance?tab=requests', label: 'طلبات الميزانية', icon: 'check', section: F },
-      { key: 'finance_needs', to: '/app/finance?tab=needs', label: 'احتياجات البرنامج والعقود', icon: 'layers', section: F },
-      { key: 'finance_edits', to: '/app/finance?tab=edits', label: 'طلبات التعديل', icon: 'check', section: F },
-      { key: 'finance_settings', to: '/app/finance?tab=settings', label: 'الإعدادات المالية', icon: 'settings', section: F },
-      { key: 'finance_invoices', to: '/app/finance?tab=invoices', label: 'الفواتير', icon: 'clipboard', section: F },
-      { key: 'finance_analysis', to: '/app/finance?tab=analysis', label: 'التحليلات', icon: 'chart', section: F },
-      { key: 'finance_fees', to: '/app/finance?tab=fees', label: 'الرسوم', icon: 'contact', section: F },
-      { key: 'finance_categories', to: '/app/finance?tab=categories', label: 'التصنيفات', icon: 'layers', section: F },
-      { key: 'finance_team', to: '/app/finance?tab=team', label: 'الفريق والصلاحيات', icon: 'users', section: F },
-      { key: 'finance_audit', to: '/app/finance?tab=audit', label: 'سجل التدقيق', icon: 'link', section: F },
+      { key: 'tasks', to: '/app/tasks', label: 'المهام', icon: 'check', section: 'المتابعة' },
+      { key: 'requests', to: '/app/requests', label: 'طلباتي', icon: 'receipt', section: 'المتابعة' },
+      { key: 'contact', to: '/app/messages', label: 'راسل الإدارة', icon: 'message', section: P },
+      { key: 'tracker', to: '/app/tracker', label: 'متابعة الرحلات', icon: 'radar', section: 'المتابعة' },
+      { key: 'committees', to: '/app/committees', label: 'اللجان', icon: 'layers', section: 'المتابعة' },
+      { key: 'my_committee', to: '/app/committees', label: 'لجنتي', icon: 'layers', section: 'المتابعة' },
+      { key: 'people', to: '/app/people', label: 'الأشخاص', icon: 'contact', section: 'الأشخاص' },
+      { key: 'insights', to: '/app/insights', label: 'المؤشرات', icon: 'chart', section: 'المتابعة' },
+      { key: 'approvals', to: '/app/approvals', label: 'بانتظار اعتمادي', icon: 'stamp', section: 'المتابعة' },
+      { key: 'inbox', to: '/app/messages', label: 'رسائل المشاركين', icon: 'message', section: 'المحتوى' },
+      { key: 'tracking_link', to: '/app/tracking-link', label: 'رابط الداعم', icon: 'link', section: 'المحتوى' },
+      { key: 'site_editor', to: '/app/site-editor', label: 'تحرير الموقع', icon: 'globe', section: 'المحتوى' },
+      { key: 'audit', to: '/app/audit', label: 'سجل التدقيق', icon: 'history', section: 'المتابعة' },
+      { key: 'settings', to: '/app/settings', label: 'الإعدادات', icon: 'settings', section: 'التقييم' },
+      { key: 'finance', to: '/app/finance', label: 'المالية', icon: 'wallet', section: 'المتابعة' },
+      fin('overview', 'نظرة عامة', 'chart'),
+      fin('requests', 'الطلبات والعهد', 'receipt'),
+      fin('invoices', 'مراجعة الفواتير', 'clipboard'),
+      fin('direct', 'الصرف المباشر والاحتياجات', 'layers'),
+      fin('wallet', 'المحفظة والموازنة', 'wallet'),
+      fin('fees', 'الرسوم', 'contact'),
+      fin('reports', 'التقارير', 'history'),
+      fin('settings', 'إعدادات المالية', 'settings'),
     ],
     layouts: [
       {
         role: 'finance_head', priority: 1, tail: ['leaderboard'], home: ['actions', 'upcoming'],
         sections: [
-          { title: F, items: [k('finance_budget'), k('finance_wallet'), k('finance_custody'), k('finance_direct'), k('finance_invoices'), k('finance_requests'), k('finance_analysis'), k('finance_needs'), k('finance_edits'), k('finance_fees'), k('finance_categories'), k('finance_team'), k('finance_settings'), k('finance_audit')] },
           basics,
+          { title: 'المالية', items: [k('finance_overview'), k('finance_requests'), k('finance_invoices'), k('finance_direct'), k('finance_wallet')] },
+          { title: 'الإدارة المالية', items: [k('finance_fees'), k('finance_reports'), k('finance_settings')] },
         ],
       },
       {
         role: 'tech_head', priority: 2, tail: ['leaderboard'], home: ['actions', 'upcoming'],
-        sections: [{ title: 'أدوات اللجنة التقنية', items: [k('users'), k('settings'), k('committees', 'لجاني')] }, basics],
+        sections: [basics, { title: 'أدوات اللجنة التقنية', items: [k('people', 'الأشخاص والحسابات'), k('settings', 'إعدادات النظام'), k('audit'), k('my_committee')] }, view],
       },
       {
         role: 'media_head', priority: 3, tail: ['leaderboard'], home: ['actions', 'upcoming'],
-        sections: [{ title: 'أدوات اللجنة الإعلامية', items: [k('committees', 'لجاني'), k('tracking_link'), k('site_editor'), k('library'), k('trips')] }, basics],
+        sections: [basics, { title: 'أدوات اللجنة الإعلامية', items: [k('my_committee'), k('tracking_link'), k('site_editor'), k('library'), k('trips')] }, view],
       },
       {
         role: 'leader', priority: 4, home: ['actions', 'upcoming', 'competition'],
         sections: [
           basics,
-          { title: P, items: [k('trips'), k('groups'), k('meetings'), k('insights'), k('focus'), k('plans'), k('library'), k('surveys'), k('leaderboard')] },
-          { title: A, items: [k('finance'), k('tasks'), k('committees'), k('people'), k('settings'), k('inbox'), k('tracking_link'), k('site_editor')] },
+          { title: P, items: [k('trips'), k('groups'), k('focus'), k('meetings'), k('leaderboard')] },
+          { title: 'المتابعة', items: [k('insights'), k('tasks'), k('approvals'), k('finance', 'المالية (مراقبة)')] },
+          { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص والصلاحيات')] },
+          { title: 'التقييم', items: [k('settings', 'الإعدادات والتقييم'), k('surveys'), k('plans')] },
+          { title: 'المحتوى', items: [k('tracking_link'), k('site_editor'), k('library'), k('inbox')] },
         ],
       },
       {
         role: 'facilitator', priority: 5, home: ['actions', 'upcoming', 'competition'],
-        sections: [basics, { title: P, items: [k('focus', 'اللقاءات'), k('groups', 'مجموعتي'), k('individual'), k('requests'), k('plans'), k('trips'), k('meetings')] }],
+        sections: [
+          basics,
+          { title: 'مجموعتي', items: [k('groups', 'مجموعتي'), k('focus', 'اللقاءات'), k('individual'), k('plans')] },
+          { title: P, items: [k('trips'), k('meetings'), k('surveys'), k('library')] },
+          { title: 'المتابعة', items: [k('requests'), k('tasks'), k('my_committee')] },
+        ],
       },
-      { role: 'tracker', priority: 6, home: ['actions', 'upcoming', 'competition'], sections: [basics, { title: P, items: [k('tracker')] }] },
-      { role: 'group_leader', priority: 7, home: ['contact_notice', 'competition', 'actions', 'upcoming'], sections: [basics, { title: P, items: [k('trips', 'رحلتي'), k('requests')] }] },
+      {
+        role: 'tracker', priority: 6, home: ['actions', 'upcoming', 'competition'],
+        sections: [
+          basics,
+          { title: 'الرحلات', items: [k('tracker'), k('trips'), k('tasks')] },
+          { title: P, items: [k('focus'), k('meetings'), k('groups'), k('leaderboard')] },
+          { title: 'الفريق', items: [k('committees'), k('people'), k('insights')] },
+          { title: 'المحتوى', items: [k('library'), k('surveys'), k('tracking_link')] },
+        ],
+      },
+      {
+        role: 'group_leader', priority: 7, home: ['contact_notice', 'competition', 'actions', 'upcoming'],
+        sections: [
+          basics,
+          { title: 'رحلتي ومجموعتي', items: [k('trips', 'رحلتي'), k('requests'), k('meetings'), k('groups'), k('leaderboard')] },
+          { title: 'لقاءاتي', items: [k('focus'), k('individual', 'لقائي مع الميسّر'), k('plan')] },
+          { title: 'المهام والمحتوى', items: [k('tasks', 'مهامي'), k('library'), k('surveys'), k('my_committee'), k('contact')] },
+        ],
+      },
       {
         role: 'staff', priority: 8, home: ['actions', 'upcoming', 'competition'],
         sections: [
           basics,
-          { title: P, items: [k('trips'), k('focus'), k('meetings'), k('library'), k('surveys'), k('groups'), k('leaderboard')] },
-          { title: A, items: [k('finance'), k('tasks'), k('committees'), k('people'), k('insights'), k('tracking_link')] },
+          { title: P, items: [k('trips'), k('focus'), k('meetings'), k('groups'), k('leaderboard')] },
+          { title: 'المتابعة', items: [k('tasks'), k('committees'), k('insights'), k('requests'), k('finance')] },
+          { title: 'الموارد', items: [k('library'), k('surveys'), k('people'), k('tracking_link')] },
         ],
       },
       {
         role: 'participant', priority: 9, home: ['contact_notice', 'competition', 'actions', 'upcoming'],
         sections: [
           basics,
-          { title: P, items: [k('trips'), k('contact'), k('focus'), k('plan'), k('library'), k('individual', 'لقائي مع الميسّر'), k('tasks', 'مهامي'), k('committees', 'لجنتي'), k('surveys'), k('groups'), k('leaderboard')] },
+          { title: P, items: [k('trips'), k('focus'), k('groups'), k('leaderboard')] },
+          { title: 'نموّي', items: [k('plan'), k('individual', 'لقائي مع الميسّر'), k('library')] },
+          { title: 'المشاركة', items: [k('tasks', 'مهامي'), k('surveys'), k('my_committee'), k('contact')] },
         ],
       },
     ],
+    extras: [{ key: 'tracker', section: 'المتابعة' }],
   };
 }

@@ -65,7 +65,7 @@ export default function Dashboard() {
       {home.includes('contact_notice') && me.isParticipant && !groupsPublished(db) && (
         <div className="rounded-2xl border border-accent-200 bg-accent-50 p-4 text-sm">
           لم تُشكَّل المجموعات بعد. شارك في فعاليات فريق العمل، وراسل الإدارة إن احتجت شيئاً.
-          <LinkButton to="/app/contact" variant="accent" size="sm" className="ms-2">راسل الإدارة</LinkButton>
+          <LinkButton to="/app/messages" variant="accent" size="sm" className="ms-2">راسل الإدارة</LinkButton>
         </div>
       )}
 

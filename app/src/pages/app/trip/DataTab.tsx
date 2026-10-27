@@ -10,6 +10,7 @@ import type { Material, MaterialType, Trip } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, Select, Tabs, Toggle, cx } from '@/ui';
 import { PlaceholderImage } from '@/ui/domain';
+import { MaterialUploadModal } from '../MaterialUpload';
 
 export default function DataTab({ trip }: { trip: Trip }) {
   const db = useDB();
@@ -151,7 +152,7 @@ function MaterialLine({ m }: { m: Material }) {
       {m.mandatory != null && m.origin === 'pre_trip' && <Badge tone={m.mandatory ? 'orange' : 'gray'}>{m.mandatory ? 'إلزامية' : 'اختيارية'}</Badge>}
       {!revealed && <Badge tone="gray" icon={<Icons.EyeOff className="h-3 w-3" />}>{m.revealMode === 'manual' ? 'مخفية حتى يفتحها الرافع' : `تظهر ${fmtDateTime(m.revealAt)}`}</Badge>}
       {own && m.revealMode === 'manual' && <Button size="sm" variant="secondary" onClick={() => repos.materials.setRevealed(m.id, !m.revealed)}>{m.revealed ? 'إخفاء' : 'إظهار الآن'}</Button>}
-      {me.isParticipant && revealed && (state === 'viewed' ? <Badge tone="green">شاهدتها</Badge> : <Button size="sm" variant="secondary" onClick={() => repos.materials.mark(m.id, 'viewed')}>علّم كمشاهَدة</Button>)}
+      {me.isParticipant && revealed && state === 'viewed' && <Badge tone="green">شاهدتها</Badge>}
     </div>
   );
 }
@@ -181,7 +182,7 @@ function SessionsCard({ trip }: { trip: Trip }) {
           );
         })}
       </div>
-      {up && <UploadModal trip={trip} sessionId={up} onClose={() => setUp(null)} />}
+      {up && <MaterialUploadModal context={{ kind: 'session', trip, sessionId: up }} onClose={() => setUp(null)} />}
     </Card>
   );
 }
@@ -195,35 +196,8 @@ function PreMaterials({ trip }: { trip: Trip }) {
   return (
     <Card title="المواد القبلية" action={canUp && <Button size="sm" variant="secondary" onClick={() => setUp(true)} icon={<Icons.Plus className="h-3.5 w-3.5" />}>أضف</Button>}>
       <div className="space-y-1.5">{mats.length === 0 ? <p className="text-sm text-ink-400">لا مواد قبلية</p> : mats.map((m) => <MaterialLine key={m.id} m={m} />)}</div>
-      {up && <UploadModal trip={trip} onClose={() => setUp(false)} preTrip />}
+      {up && <MaterialUploadModal context={{ kind: 'pre_trip', trip }} onClose={() => setUp(false)} />}
     </Card>
-  );
-}
-
-function UploadModal({ trip, sessionId, onClose, preTrip }: { trip: Trip; sessionId?: string; onClose: () => void; preTrip?: boolean }) {
-  const session = trip.sessions.find((s) => s.id === sessionId);
-  const [f, setF] = useState({ title: '', type: 'pdf' as MaterialType, url: '', revealMode: 'auto' as 'auto' | 'manual', mandatory: true, points: false });
-  const revealAt = session ? dateTime(session.date, session.end).toISOString() : undefined;
-  return (
-    <Modal open onClose={onClose} title={preTrip ? 'مادة قبلية' : `مادة للقاء: ${session?.title}`}
-      footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={!f.title} onClick={() => act(() => {
-        repos.materials.add({ title: f.title, type: f.type, url: f.url || 'https://example.com', origin: preTrip ? 'pre_trip' : 'session', tripId: trip.id, sessionId, revealMode: preTrip ? 'auto' : f.revealMode, revealAt: preTrip ? undefined : revealAt, revealed: preTrip || f.revealMode === 'auto', audience: { kind: 'all' }, mandatory: preTrip ? f.mandatory : undefined, pointsRequested: preTrip && f.points });
-        onClose();
-      }, 'رُفعت المادة')}>ارفع</Button></>}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="العنوان" className="sm:col-span-2"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
-        <Field label="النوع"><Select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as MaterialType })} options={Object.entries(materialTypeLabel).map(([value, label]) => ({ value, label }))} /></Field>
-        <Field label="الرابط أو الملف"><Input dir="ltr" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} placeholder="https://" /></Field>
-        {!preTrip && (
-          <Field label="الظهور" className="sm:col-span-2">
-            <Select value={f.revealMode} onChange={(e) => setF({ ...f, revealMode: e.target.value as 'auto' | 'manual' })} options={[{ value: 'auto', label: `تلقائياً بعد انتهاء اللقاء (${session ? fmtTime(session.end) : ''})` }, { value: 'manual', label: 'مخفية حتى أفتحها' }]} />
-          </Field>
-        )}
-        {preTrip && <Toggle checked={f.mandatory} onChange={(v) => setF({ ...f, mandatory: v })} label="إلزامية" />}
-        {preTrip && <Toggle checked={f.points} onChange={(v) => setF({ ...f, points: v })} label="بنقاط (يعتمدها القائد العام)" />}
-      </div>
-      <Notice>ستظهر المادة أيضاً في المكتبة بوسم "{preTrip ? 'مادة قبلية' : `مخصصة للقاء ${session?.title}`}".</Notice>
-    </Modal>
   );
 }
 

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { addDays, fmtDate, fmtTime, todayISO } from '@/domain/dates';
-import { focusStatusLabel, focusStatusTone } from '@/domain/labels';
+import { PRESENTER_OPTIONS, focusStatusLabel, focusStatusTone } from '@/domain/labels';
 import { facilitatorTargetProgress, focusDone } from '@/domain/workflow';
 import type { FocusMeeting } from '@/domain/types';
 import { focusCounter, perItem } from '@/domain/finance';
@@ -58,7 +58,7 @@ export default function FocusPage() {
 
 function FocusCard({ f }: { f: FocusMeeting }) {
   const db = useDB();
-  const presenters = f.presenterMode === 'guest' ? f.guestName : f.presenterMode === 'facilitator' ? 'الميسّر' : f.presenterMode === 'none' ? 'بدون مقدّم' : f.presenterIds.map((p) => personName(db, p)).join('، ');
+  const presenters = f.presenterMode === 'guest' ? f.guestName : f.presenterMode === 'facilitator' ? 'فريق العمل' : f.presenterMode === 'none' ? 'بدون مقدّم' : f.presenterIds.map((p) => personName(db, p)).join('، ');
   return (
     <Link to={`/app/focus/${f.id}`} className={cx('flex flex-col rounded-2xl border bg-white p-4 shadow-card transition hover:-translate-y-0.5', f.isUmrah ? 'border-emerald-200' : 'border-ink-100')}>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -125,14 +125,13 @@ function CreateFocusModal({ onClose }: { onClose: () => void }) {
           title: 'المقدّم', valid: f.presenterMode !== 'members' || f.presenterIds.length > 0, hint: 'اختر مقدّماً واحداً على الأقل',
           content: (
             <div className="space-y-3">
-              <Select value={f.presenterMode} onChange={(e) => set({ presenterMode: e.target.value as FocusMeeting['presenterMode'] })} options={[{ value: 'members', label: 'عضو أو أكثر من المجموعة' }, { value: 'guest', label: 'ضيف' }, { value: 'facilitator', label: 'أنا (الميسّر)' }, { value: 'none', label: 'بلا مقدّم' }]} aria-label="نوع المقدّم" />
+              <Select value={f.presenterMode} onChange={(e) => set({ presenterMode: e.target.value as FocusMeeting['presenterMode'] })} options={PRESENTER_OPTIONS} aria-label="نوع المقدّم" />
               {f.presenterMode === 'guest' && <Field label="اسم الضيف"><Input value={f.guestName} onChange={(e) => set({ guestName: e.target.value })} /></Field>}
               {f.presenterMode === 'members' && group.memberIds.map((m) => {
                 const on = f.presenterIds.includes(m);
                 return (
                   <div key={m} className="flex flex-wrap items-center gap-2">
                     <button type="button" onClick={() => set({ presenterIds: on ? f.presenterIds.filter((x) => x !== m) : [...f.presenterIds, m] })} className={cx('chip min-h-[40px] border px-3', on ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-500')}>{on && <Icons.Check className="h-3 w-3" />}{personName(db, m)}</button>
-                    <span className="text-xs text-ink-400">قدّم {db.focusMeetings.filter((x) => x.presenterIds.includes(m)).length} مرة</span>
                     {on && <Input className="flex-1" placeholder="المحور" value={f.axes[m] ?? ''} onChange={(e) => set({ axes: { ...f.axes, [m]: e.target.value } })} />}
                   </div>
                 );

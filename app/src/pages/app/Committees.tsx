@@ -14,20 +14,31 @@ import { TaskModal, TaskRow } from './TaskParts';
 const kindLabel: Record<CommitteeKind, string> = { finance: 'مالية', media: 'إعلامية', tech: 'تقنية', general: 'إدارة عامة', other: 'أخرى' };
 
 export default function CommitteesPage() {
+  const me = useMe();
+  return (
+    <div>
+      <PageHeader title={me.isLeader ? 'اللجان' : 'لجنتي'} subtitle="لكل لجنة مساحة خاصة لا يراها إلا أعضاؤها" />
+      <CommitteesList />
+    </div>
+  );
+}
+
+/** قائمة اللجان (تُستخدم في شاشتها وفي تبويب «اللجان» داخل الأشخاص والصلاحيات) */
+export function CommitteesList() {
   const db = useDB();
   const me = useMe();
   const [creating, setCreating] = useState(false);
   const list = db.committees.filter((c) => canSeeCommittee(db, me.person.id, c.id));
   return (
     <div>
-      <PageHeader title="اللجان" subtitle="لكل لجنة مساحة خاصة لا يراها إلا أعضاؤها" actions={me.isLeader && <Button onClick={() => setCreating(true)} icon={<Icons.Plus className="h-4 w-4" />}>أنشئ لجنة</Button>} />
+      {me.isLeader && <div className="mb-4"><Button onClick={() => setCreating(true)} icon={<Icons.Plus className="h-4 w-4" />}>أنشئ لجنة</Button></div>}
       {list.length === 0 ? <Empty title="لست عضواً في أي لجنة" /> : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {list.map((c) => {
             const members = db.memberships.filter((m) => m.committeeId === c.id);
             const tasks = db.tasks.filter((t) => t.committeeId === c.id);
             return (
-              <Link key={c.id} to={`/app/committees/${c.id}`} className="rounded-2xl border border-ink-100 bg-white p-4 shadow-card hover:border-brand-200">
+              <Link key={c.id} to={`/app/committees/${c.id}`} className="rounded-2xl border border-ink-100 bg-white p-5 shadow-card transition hover:border-brand-200 hover:shadow-lift">
                 <div className="flex items-center justify-between"><h3 className="font-bold">{c.name}</h3><Badge>{kindLabel[c.kind]}</Badge></div>
                 <p className="mt-1 text-xs text-ink-500">{c.description}</p>
                 <div className="mt-3 flex -space-x-2 space-x-reverse">{members.slice(0, 6).map((m) => <Avatar key={m.id} name={personName(db, m.personId)} size={26} />)}</div>
@@ -71,7 +82,7 @@ export function CommitteeDetail() {
 
   return (
     <div>
-      <PageHeader back="/app/committees" title={c.name} subtitle={c.description} actions={manage && tab === 'tasks' && <Button onClick={() => setTaskOpen(true)} icon={<Icons.Plus className="h-4 w-4" />}>أضف مهمة</Button>} />
+      <PageHeader back={me.isLeader ? "/app/people?tab=committees" : "/app/committees"} title={c.name} subtitle={c.description} actions={manage && tab === 'tasks' && <Button onClick={() => setTaskOpen(true)} icon={<Icons.Plus className="h-4 w-4" />}>أضف مهمة</Button>} />
       <Tabs value={tab} onChange={setTab} tabs={[{ key: 'tasks', label: `المهام (${tasks.length})` }, { key: 'kpis', label: 'المؤشرات' }, { key: 'proofs', label: `الإثباتات (${proofs.length})` }, { key: 'members', label: `الأعضاء (${members.length})` }]} />
       {tab === 'tasks' && <div className="space-y-2">{tasks.length === 0 ? <Empty title="لا مهام" /> : tasks.map((t) => <TaskRow key={t.id} task={t} />)}</div>}
       {tab === 'kpis' && <Kpis committeeId={c.id} manage={me.isLeader} />}

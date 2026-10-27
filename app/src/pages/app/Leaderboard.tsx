@@ -12,7 +12,6 @@ export default function LeaderboardPage() {
   const me = useMe();
   const scores = useScores();
   const [tab, setTab] = useState<'ranking' | 'groups' | 'log' | 'staff'>('ranking');
-  const [award, setAward] = useState(false);
   const groups = [...scores.groups].sort((a, b) => a.rank - b.rank);
   const persons = [...scores.persons].sort((a, b) => a.rank - b.rank);
   const mine = scores.persons.find((p) => p.personId === me.person.id);
@@ -22,8 +21,7 @@ export default function LeaderboardPage() {
 
   return (
     <div>
-      <PageHeader title="الترتيب والتقييم" subtitle={`${s.split.individual}% فردي و${s.split.group}% جماعي · النقاط كسب فقط، لا خصم أبداً · معظم البنود تُحسب حياً من نشاط المنصة`}
-        actions={me.isLeader && <Button variant="secondary" onClick={() => setAward(true)} icon={<Icons.Plus className="h-4 w-4" />}>سجّل نقاطاً يدوية</Button>} />
+      <PageHeader title="الترتيب والتقييم" subtitle={`${s.split.individual}% فردي و${s.split.group}% جماعي · النقاط كسب فقط، لا خصم أبداً · معظم البنود تُحسب حياً من نشاط المنصة`} />
       <Notice icon={<Icons.Info className="h-4 w-4" />}>بعد نشر التشكيل يظهر ترتيب المجموعات والأفراد بالأسماء في المنصة والموقع العام ورابط الداعم، أما النقاط وتفصيلها فداخل المنصة فقط. تقييم المقدّمين يُضاف بعد نهاية البرنامج.</Notice>
       <div className="mt-4"><Tabs value={tab} onChange={setTab} tabs={[{ key: 'ranking', label: 'الترتيب' }, { key: 'groups', label: 'تفصيل المجموعات' }, { key: 'log', label: 'سجل النقاط' }, ...(me.isStaff ? [{ key: 'staff' as const, label: 'نقاط الإدارة' }] : [])]} /></div>
 
@@ -107,7 +105,7 @@ export default function LeaderboardPage() {
       )}
 
       {tab === 'log' && (
-        <Card pad={false} title="سجل النقاط" subtitle="المصدر، والشخص أو المجموعة، وتلقائية أو يدوية">
+        <Card pad={false} title="سجل النقاط" subtitle="المصدر، والشخص أو المجموعة">
           <Table>
             <thead><tr><th>لمن</th><th>المصدر</th><th>النوع</th><th>النقاط</th></tr></thead>
             <tbody>
@@ -132,21 +130,6 @@ export default function LeaderboardPage() {
           </Table>
         </Card>
       )}
-      {award && <AwardModal onClose={() => setAward(false)} />}
     </div>
-  );
-}
-
-function AwardModal({ onClose }: { onClose: () => void }) {
-  const db = useDB();
-  const [f, setF] = useState({ personId: db.persons.find((p) => p.kind === 'participant')!.id, points: 1, source: '' });
-  return (
-    <Modal open onClose={onClose} title="نقاط يدوية (في أضيق الحدود)" footer={<Button disabled={!f.source} onClick={() => act(() => { repos.points.addManual({ personId: f.personId, points: f.points, source: f.source, itemKey: 'manual', scope: 'individual' }); onClose(); }, 'سُجّلت النقاط')}>سجّل</Button>}>
-      <div className="grid gap-3">
-        <Field label="المشارك"><Select value={f.personId} onChange={(e) => setF({ ...f, personId: e.target.value })} options={db.persons.filter((p) => p.kind === 'participant').map((p) => ({ value: p.id, label: personName(db, p.id) }))} /></Field>
-        <Field label="النقاط" hint="كسب فقط، لا يمكن إدخال قيمة سالبة"><Input type="number" min={0} value={f.points} onChange={(e) => setF({ ...f, points: Math.max(0, +e.target.value) })} /></Field>
-        <Field label="المصدر/السبب"><Input value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} /></Field>
-      </div>
-    </Modal>
   );
 }

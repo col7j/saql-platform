@@ -1,17 +1,50 @@
-// الخطط الشخصية: الميسّر يرى مجموعته فقط، والقائد العام يرى الكل ويتابع بها أداء الميسّرين
+// الخطط الشخصية: شاشة واحدة بصلاحيات. المشارك يرى خطته ويعدّلها، والميسّر يرى مجموعته، والقائد العام يرى الكل ويتابع بها أداء الميسّرين
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ASPECT_KEYS, aspectColor, aspectLabel } from '@/domain/labels';
 import { canSeePersonalPlan } from '@/domain/permissions';
-import { isPlanUnlocked, planProgress } from '@/domain/workflow';
+import { fmtDate, fmtDateTime } from '@/domain/dates';
+import { isPlanUnlocked, personalPlanTrip, planProgress, planUnlockAt } from '@/domain/workflow';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import type { Attachment } from '@/domain/types';
-import { Badge, Button, Card, Empty, Icons, PageHeader, Progress, Textarea } from '@/ui';
+import { Badge, Button, Card, Empty, Icons, LinkButton, PageHeader, Progress, Textarea } from '@/ui';
 import { AttachmentInput, AttachmentView } from '@/ui/attachments';
 import { GroupBadge, PersonChip } from '@/ui/domain';
 import { PlanView } from './PlanView';
 
 export default function PlansPage() {
+  const me = useMe();
+  return me.isParticipant ? <OwnPlan /> : <PlansList />;
+}
+
+/** خطة المشارك نفسه: يعدّلها بعد فتحها، ويرى ملفه الختامي */
+function OwnPlan() {
+  const db = useDB();
+  const me = useMe();
+  const unlocked = isPlanUnlocked(db, me.person.id);
+  const trip = personalPlanTrip(db);
+  const at = planUnlockAt(db);
+  return (
+    <div>
+      <PageHeader title="خطتي الشخصية" subtitle="عجلة حياة من ستة جوانب (نموذج صقل)، ولكل جانب رؤية وخطوات عملية. الخطة خاصة بك ويطّلع عليها ميسّرك والقائد العام." />
+      <FinalFileCard participantId={me.person.id} />
+      {unlocked ? <PlanView participantId={me.person.id} editable /> : (
+        <Card>
+          <div className="flex flex-col items-center gap-3 py-12 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-ink-50"><Icons.Lock className="h-8 w-8 text-ink-300" /></div>
+            <h2 className="text-lg font-bold">القسم مقفل</h2>
+            <p className="max-w-md text-sm text-ink-500">
+              يُفتح قسم الخطة الشخصية داخل رحلة الخطة الشخصية{trip ? ` (${trip.title} · ${fmtDate(trip.startDate)})` : ''}{at ? `، عند ${fmtDateTime(at.toISOString())}` : ''}. وبعدها تأتي اللقاءات الفردية مع ميسّرك لمناقشتها.
+            </p>
+            {trip && <LinkButton to={`/app/trips/${trip.id}`}>تفاصيل اللقاء</LinkButton>}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function PlansList() {
   const db = useDB();
   const me = useMe();
   const groups = me.isLeader ? db.groups : me.facilitatorOf;
@@ -41,7 +74,7 @@ export default function PlansPage() {
                         <div className="min-w-[140px] flex-1"><Progress value={pr.ratio * 100} tone="green" label /></div>
                         <span className="text-xs text-ink-500">{pr.done}/{pr.total} خطوة</span>
                         {help > 0 && <Badge tone="red" icon={<Icons.LifeBuoy className="h-3 w-3" />}>يحتاج مساعدة ({help})</Badge>}
-                        <Link to={`/app/plans/${pid}`} className="text-sm text-brand-600">عرض</Link>
+                        <LinkButton to={`/app/plans/${pid}`} variant="text" size="sm">عرض</LinkButton>
                       </>
                     ) : (
                       <>
@@ -64,6 +97,7 @@ export function PlanOf() {
   const { id } = useParams();
   const db = useDB();
   const me = useMe();
+  if (id === me.person.id) return <OwnPlan />;
   if (!id || !canSeePersonalPlan(db, me.person.id, id)) return <Empty title="لا تملك صلاحية رؤية هذه الخطة" text="الخطط الشخصية خاصة بأصحابها، ويراها ميسّر المجموعة والقائد العام فقط." />;
   return (
     <div>
@@ -83,8 +117,9 @@ function FinalFileCard({ participantId }: { participantId: string }) {
   const [advice, setAdvice] = useState(f?.advice ?? '');
   const [att, setAtt] = useState<Attachment | undefined>(f?.attachment);
   if (!f && !isFac) return null;
+  const own = participantId === me.person.id;
   return (
-    <Card title="الملف الختامي" subtitle="نصائح وبيانات يحمّلها المشارك ويستفيد منها" className="mb-4">
+    <Card title={own ? 'ملفك الختامي' : 'الملف الختامي'} subtitle={own && f ? `رفعه ميسّرك ${fmtDateTime(f.at)} · جزء من خطتك الشخصية` : 'نصائح وبيانات يحمّلها المشارك ويستفيد منها'} className="mb-6">
       {isFac ? (
         <div className="grid gap-3">
           <Textarea rows={3} placeholder="نصائح ختامية للمشارك" value={advice} onChange={(e) => setAdvice(e.target.value)} />

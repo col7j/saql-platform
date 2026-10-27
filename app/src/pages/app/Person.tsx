@@ -8,6 +8,12 @@ import type { Attachment } from '@/domain/types';
 import { Avatar, Badge, Button, Card, Empty, Field, Input, KeyVal, PageHeader, Progress, Textarea, askConfirm } from '@/ui';
 import { AttachmentInput } from '@/ui/attachments';
 import { GroupBadge } from '@/ui/domain';
+import { distinctLabels } from './People';
+import { focusDone } from '@/domain/workflow';
+import type { DB } from '@/domain/types';
+
+/** عدد مرات التقديم: لقاءات التركيز المنعقدة التي كان فيها مقدّماً (تلقائي من بيانات اللقاءات) */
+const presentations = (db: DB, pid: string) => db.focusMeetings.filter((f) => focusDone(f) && f.presenterIds.includes(pid)).length;
 
 export default function PersonPage() {
   const { id } = useParams();
@@ -28,7 +34,7 @@ export default function PersonPage() {
 
   return (
     <div>
-      <PageHeader back={me.isStaff ? '/app/people' : '/app'} title={<span className="flex items-center gap-3"><Avatar name={p.name} size={44} color={g?.color} />{p.name}</span>} subtitle={caps.labels.join(' · ')} />
+      <PageHeader back={me.isStaff ? '/app/people' : '/app'} title={<span className="flex items-center gap-3"><Avatar name={p.name} size={44} color={g?.color} />{p.name}</span>} subtitle={distinctLabels(caps.labels).join(' · ') || (p.kind === 'participant' ? 'مشارك' : 'عضو إدارة')} />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           {p.kind === 'participant' && canSeeFacilitatorNotes(db, me.person.id) && (
@@ -67,6 +73,7 @@ export default function PersonPage() {
             {p.major && <KeyVal k="التخصص" v={p.major} />}
             {g && <KeyVal k="المجموعة" v={<GroupBadge id={g.id} />} />}
             {p.kind === 'participant' && <KeyVal k="الحضور" v={`${att.filter((a) => a.present).length} / ${att.length}`} />}
+            {p.kind === 'participant' && <KeyVal k="مرات التقديم" v={<span className="num">{presentations(db, p.id)}</span>} />}
             {fee && canSeeFinance(db, me.person.id) && <KeyVal k="الرسوم" v={<Badge tone={fee.status === 'paid' ? 'green' : fee.status === 'partial' ? 'orange' : 'red'}>{{ paid: 'مسددة', partial: `جزئي ${fee.paidAmount}`, unpaid: 'غير مسددة' }[fee.status]}{fee.exemption ? ` (${fee.exemption})` : ''}</Badge>} />}
             {p.kind === 'participant' && canSeePersonalPlan(db, me.person.id, p.id) && <Link to={`/app/plans/${p.id}`} className="mt-2 block text-sm text-brand-600">عرض الخطة الشخصية</Link>}
           </Card>

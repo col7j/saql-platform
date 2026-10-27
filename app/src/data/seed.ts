@@ -10,7 +10,7 @@ import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, de
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
-export const DB_VERSION = 11;
+export const DB_VERSION = 12;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -448,7 +448,7 @@ export function buildSeed(): DB {
   task({ title: 'مراجعة قائمة الضيوف للرحلات الخارجية', scope: 'general', assigneeId: 's3', createdBy: LEADER_ID, dueDate: addDays(T, 20) });
   task({ title: 'تصميم بطاقات المجموعات', scope: 'committee', committeeId: 'c_media', assigneeId: 'u9', createdBy: 's2', dueDate: addDays(T, 6), proofType: 'link', status: 'in_progress' });
   task({ title: 'رابط مجلد صور رحلة قُباء على Google Drive', scope: 'committee', committeeId: 'c_media', tripId: 't4', assigneeId: 's4', createdBy: 's2', dueDate: addDays(T, 1), proofType: 'link', tag: 'photos' });
-  task({ title: 'تحديث سجل الرسوم', scope: 'committee', committeeId: 'c_fin', assigneeId: 's3', createdBy: 's1', dueDate: addDays(T, -2), status: 'in_progress' });
+  task({ title: 'تحديث سجل الرسوم', scope: 'committee', committeeId: 'c_fin', assigneeId: 's3', createdBy: 's5', dueDate: addDays(T, -2), status: 'in_progress' });
   // مشارك لمشارك في مجموعته
   task({ title: 'تجهيز عرض لقاء التركيز القادم', scope: 'group', groupId: 'g1', assigneeId: 'u6', createdBy: 'u1', dueDate: addDays(T, 3), proofType: 'file' });
 
@@ -458,12 +458,12 @@ export function buildSeed(): DB {
     notifications.push({ id: id('nt'), toId, type, title, link, at: new Date(nowDate.getTime() - hoursAgo * 3600000).toISOString(), read });
   [...ids, ...persons.filter((p) => p.kind === 'staff').map((p) => p.id)].forEach((pid) => notify(pid, 'schedule_started', 'بدأ جدول رحلة قُباء الداخلية', '/app/trips/t4', 3));
   ids.forEach((pid) => notify(pid, 'trip_published', 'نُشرت رحلة سَلع الداخلية', '/app/trips/t5', 26, true));
-  notify(LEADER_ID, 'budget_request', 'ميزانية رحلة العُلا تتجاوز المرصود وتنتظر قرارك', '/app/finance', 5);
+  notify(LEADER_ID, 'budget_request', 'ميزانية رحلة العُلا تتجاوز المرصود وتنتظر قرارك', '/app/approvals', 5);
   notify(LEADER_ID, 'committee_member_request', 'طلب إضافة "زياد العتيبي" للجنة الإعلامية', '/app/committees/c_media', 20);
   notify(LEADER_ID, 'deadline_passed', 'فات موعد رفع الخطة المبسطة لرحلة العقيق الخارجية', '/app/trips/t10', 30);
   notify('s1', 'approval_submitted', 'رفع قائد أُحُد الخطة التفصيلية لرحلة العُلا', '/app/trips/t7', 22);
-  notify('s5', 'budget_request', 'طلب ميزانية رحلة العقيق الداخلية (ضمن المرصود)', '/app/finance', 25);
-  notify(LEADER_ID, 'budget_request', 'طلب ميزانية لقاء العمرة لسَلع يتجاوز المرصود', '/app/finance', 20);
+  notify('s5', 'budget_request', 'طلب ميزانية رحلة العقيق الداخلية (ضمن المرصود)', '/app/finance?tab=requests', 25);
+  notify(LEADER_ID, 'budget_request', 'طلب ميزانية لقاء العمرة لسَلع يتجاوز المرصود', '/app/approvals', 20);
   notify('s5', 'general', 'أعدّ ميزانية البرنامج لتبدأ استقبال الطلبات', '/app/finance', 2);
   notify('s2', 'leader_absent_focus', 'قائد مجموعة قُباء لم يؤكد حضوره للقاء التركيز', '/app/focus/f_g2_3', 140, true);
   notify('u7', 'approval_rejected', 'أعاد الميسّر الخطة المبسطة لرحلة الطائف: العناوين عامة جداً', '/app/trips/t8', 24);
@@ -472,7 +472,7 @@ export function buildSeed(): DB {
   notify('u19', 'deadline_passed', 'فات موعد رفع الخطة المبسطة لرحلة تبوك', '/app/trips/t10', 30);
   notify('u6', 'focus_created_presenter', 'كُلّفت بالتقديم في لقاء تركيز قادم', '/app/focus/f_g1_4', 48);
   notify('u2', 'individual_booked', 'تم حجز لقائك الفردي مع الميسّر', '/app/individual', 30, true);
-  notify('u3', 'plan_step_due', 'حان موعد خطوة "المشي 30 دقيقة يومياً": وش صار؟', '/app/plan', 6);
+  notify('u3', 'plan_step_due', 'حان موعد خطوة "المشي 30 دقيقة يومياً": وش صار؟', '/app/plans', 6);
   notify('u14', 'task_assigned', 'أُسندت لك مهمة: حجز الموقع وتصريح الدخول', '/app/tasks', 50, true);
 
   const comments = [
@@ -539,7 +539,6 @@ export function buildSeed(): DB {
     editRequests,
     fees,
     attendance,
-    manualPoints: [],
     notifications,
     comments,
     trackingComments: [

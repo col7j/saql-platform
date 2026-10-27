@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fmtDate, fmtTime, todayISO } from '@/domain/dates';
-import { focusStatusLabel, focusStatusTone, materialTypeLabel } from '@/domain/labels';
+import { PRESENTER_OPTIONS, focusStatusLabel, focusStatusTone, materialTypeLabel } from '@/domain/labels';
+import { focusDone, focusIsPast } from '@/domain/workflow';
 import { canManageFocus, canTakeFocusAttendance } from '@/domain/permissions';
 import { focusIndex } from '@/domain/finance';
 
 import type { FocusMeeting } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
-import { Badge, Button, Card, Empty, Field, Icons, Input, KeyVal, Notice, PageHeader, Select, Stars, Steps, cx } from '@/ui';
+import { Badge, Button, Card, Empty, Field, Icons, Input, KeyVal, Modal, Notice, PageHeader, Select, Stars, Steps, cx } from '@/ui';
 import { GroupBadge, PersonChip } from '@/ui/domain';
 import { RequestPanel } from './RequestPanel';
+import { MaterialUploadModal } from './MaterialUpload';
 
 export default function FocusDetail() {
   const { id } = useParams();
   const db = useDB();
   const me = useMe();
   const f = db.focusMeetings.find((x) => x.id === id);
+  const [editing, setEditing] = useState(false);
   if (!f) return <Empty title="اللقاء غير موجود" />;
   const g = db.groups.find((x) => x.id === f.groupId)!;
   const isFac = canManageFocus(db, me.person.id, f);
@@ -44,14 +47,41 @@ export default function FocusDetail() {
             <KeyVal k="التاريخ" v={f.date ? fmtDate(f.date, { hijri: db.settings.showHijri }) : f.dateOptions.length ? f.dateOptions.map((d) => fmtDate(d)).join(' / ') : 'بحرية المقدّم'} />
             <KeyVal k="الوقت" v={`${fmtTime(f.start)} – ${fmtTime(f.end)}`} />
             <KeyVal k="المكان" v={f.location || '—'} />
-            <KeyVal k="المقدّم" v={f.presenterMode === 'guest' ? f.guestName : f.presenterMode === 'facilitator' ? personName(db, g.facilitatorId) : f.presenterMode === 'none' ? 'لا أحد' : <div className="space-y-1">{f.presenterIds.map((p) => <PersonChip key={p} id={p} size={22} sub={f.presenterAxes[p]} />)}</div>} />
+            <KeyVal k="المقدّم" v={f.presenterMode === 'guest' ? f.guestName : f.presenterMode === 'facilitator' ? `فريق العمل (${personName(db, g.facilitatorId)})` : f.presenterMode === 'none' ? 'لا أحد' : <div className="space-y-1">{f.presenterIds.map((p) => <PersonChip key={p} id={p} size={22} sub={f.presenterAxes[p]} />)}</div>} />
             <KeyVal k="الميسّر" v={<PersonChip id={g.facilitatorId} size={22} />} />
+            {isFac && !focusDone(f) && !focusIsPast(f) && <Button className="mt-2" size="sm" variant="secondary" onClick={() => setEditing(true)} icon={<Icons.Pencil className="h-4 w-4" />}>عدّل المقدّم والموضوع</Button>}
             <KeyVal k="المحضّر" v={<PersonChip id={f.attendanceTakerId ?? g.leaderId} size={22} sub={f.attendanceTakerId ? 'نائب لهذا اللقاء' : 'قائد المجموعة'} />} />
           </Card>
           <RequestPanel ownerKind="focus" ownerId={f.id} title={f.isUmrah ? 'ميزانية لقاء العمرة' : 'ميزانية اللقاء'} />
         </div>
       </div>
+      {editing && <PresenterModal f={f} onClose={() => setEditing(false)} />}
     </div>
+  );
+}
+
+/** تعديل المقدّم والموضوع قبل اللقاء: عضو أو أكثر من المجموعة، أو ضيف، أو فريق العمل، أو لا أحد */
+function PresenterModal({ f, onClose }: { f: FocusMeeting; onClose: () => void }) {
+  const db = useDB();
+  const g = db.groups.find((x) => x.id === f.groupId)!;
+  const [v, setV] = useState({ presenterMode: f.presenterMode, presenterIds: f.presenterIds, presenterAxes: f.presenterAxes, guestName: f.guestName ?? '', topic: f.topic ?? '' });
+  return (
+    <Modal open onClose={onClose} title="المقدّم والموضوع"
+      footer={<Button onClick={() => act(() => { repos.focus.setPresenter(f.id, { ...v, topic: f.topicMode === 'fixed' ? v.topic : f.topic }); onClose(); }, 'حُفظ المقدّم')}>احفظ</Button>}>
+      <div className="space-y-4">
+        {f.topicMode === 'fixed' && <Field label="الموضوع"><Input value={v.topic} onChange={(e) => setV({ ...v, topic: e.target.value })} /></Field>}
+        <Field label="المقدّم"><Select value={v.presenterMode} onChange={(e) => setV({ ...v, presenterMode: e.target.value as FocusMeeting['presenterMode'] })} options={PRESENTER_OPTIONS} /></Field>
+        {v.presenterMode === 'guest' && <Field label="اسم الضيف"><Input value={v.guestName} onChange={(e) => setV({ ...v, guestName: e.target.value })} /></Field>}
+        {v.presenterMode === 'members' && (
+          <div className="flex flex-wrap gap-2">
+            {g.memberIds.map((m) => {
+              const on = v.presenterIds.includes(m);
+              return <button key={m} type="button" onClick={() => setV({ ...v, presenterIds: on ? v.presenterIds.filter((x) => x !== m) : [...v.presenterIds, m] })} className={cx('chip min-h-[44px] border px-3', on ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-600')}>{on && <Icons.Check className="h-3 w-3" />}{personName(db, m)}</button>;
+            })}
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -149,7 +179,7 @@ function EvaluationCard({ f, isFac }: { f: FocusMeeting; isFac: boolean }) {
 
 function FilesCard({ f, canUpload }: { f: FocusMeeting; canUpload: boolean }) {
   const db = useDB();
-  const [title, setTitle] = useState('');
+  const [up, setUp] = useState(false);
   const files = db.materials.filter((m) => m.focusMeetingId === f.id);
   return (
     <Card title="الملفات المعرفية" subtitle="اختياري: يرفعها المقدّم بعد اللقاء">
@@ -157,12 +187,8 @@ function FilesCard({ f, canUpload }: { f: FocusMeeting; canUpload: boolean }) {
       <div className="space-y-1.5">
         {files.map((m) => <div key={m.id} className="flex items-center gap-2 rounded-xl border border-ink-100 px-3 py-2 text-sm"><Icons.FileText className="h-4 w-4 text-brand-600" />{m.title}<Badge className="ms-auto">{materialTypeLabel[m.type]}</Badge></div>)}
       </div>
-      {canUpload && (
-        <div className="mt-3 flex gap-2">
-          <Input placeholder="عنوان الملف" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <Button variant="secondary" disabled={!title} onClick={() => act(() => { repos.materials.add({ title, type: 'pdf', url: 'https://example.com', origin: 'focus', focusMeetingId: f.id, revealMode: 'auto', revealed: true, audience: { kind: 'group', groupId: f.groupId } }); setTitle(''); }, 'رُفع الملف')}>ارفع</Button>
-        </div>
-      )}
+      {canUpload && <Button className="mt-3" variant="secondary" size="sm" onClick={() => setUp(true)} icon={<Icons.Upload className="h-4 w-4" />}>ارفع ملفاً</Button>}
+      {up && <MaterialUploadModal context={{ kind: 'focus', focus: f }} onClose={() => setUp(false)} />}
     </Card>
   );
 }

@@ -9,12 +9,13 @@ const keysOf = (pid: string) => navFor(db, pid).all.map((i) => i.key);
 
 describe('الرفض عند كتابة العنوان يدوياً', () => {
   it('المشارك: شاشات الإدارة والمالية والإعدادات', () => {
-    for (const path of ['/app/finance', '/app/settings', '/app/people', '/app/users', '/app/insights', '/app/inbox', '/app/site-editor', '/app/plans'])
+    for (const path of ['/app/finance', '/app/settings', '/app/people', '/app/users', '/app/insights', '/app/inbox', '/app/site-editor', '/app/plans/u3', '/app/approvals', '/app/audit'])
       expect(routeAccess(db, 'u2', path), path).toBe(false);
     expect(routeAccess(db, 'u2', '/app/trips')).toBe(true);
   });
-  it('عضو فريق العمل بلا صفة: المستخدمون والمالية والإعدادات', () => {
-    expect(routeAccess(db, 's4', '/app/users')).toBe(false);
+  it('عضو فريق العمل بلا صفة: الاعتمادات والسجل والمالية والإعدادات', () => {
+    expect(routeAccess(db, 's4', '/app/approvals')).toBe(false);
+    expect(routeAccess(db, 's4', '/app/audit')).toBe(false);
     expect(routeAccess(db, 's4', '/app/finance')).toBe(false);
     expect(routeAccess(db, 's4', '/app/settings')).toBe(false);
     expect(routeAccess(db, 's6', '/app/users')).toBe(true);
@@ -82,16 +83,17 @@ describe('القوائم ما يملكه الشخص فقط', () => {
 });
 
 describe('الواجهة حسب الدور (بيانات)', () => {
-  it('مسؤول المالية: المالية أولاً والترتيب آخراً، ولا منافسة في الرئيسية', () => {
+  it('مسؤول المالية: الأساسية ثم المالية والترتيب آخراً، ولا منافسة في الرئيسية', () => {
     const nav = navFor(db, 's5');
-    expect(nav.sections[0].title).toBe('المالية');
-    expect(nav.all[0].key).toBe('finance_budget');
+    expect(nav.sections[0].title).toBe('الأساسية');
+    expect(nav.sections[1].items[0].key).toBe('finance_overview');
     expect(nav.all[nav.all.length - 1].key).toBe('leaderboard');
     expect(homeFor(db, 's5')).not.toContain('competition');
   });
-  it('مسؤول التقنية والإعلامية: أدواته أولاً والترتيب آخراً', () => {
+  it('مسؤول التقنية والإعلامية: أدواته بعد الأساسية والترتيب آخراً', () => {
     const nav = navFor(db, 's6');
-    expect(nav.all[0].key).toBe('users');
+    expect(nav.sections[1].items[0].key).toBe('people');
+    expect(nav.sections[1].items[0].label).toBe('الأشخاص والحسابات');
     expect(nav.all.map((i) => i.key)).toContain('tracking_link');
     expect(nav.all[nav.all.length - 1].key).toBe('leaderboard');
     expect(homeFor(db, 's6')).not.toContain('competition');
@@ -103,7 +105,7 @@ describe('الواجهة حسب الدور (بيانات)', () => {
   it('الترتيب يُقرأ من الإعدادات: تغييره يغيّر القائمة دون كود', () => {
     const d = buildSeed();
     const fin = d.settings.ui.layouts.find((l) => l.role === 'finance_head')!;
-    fin.sections[0].items.reverse();
-    expect(navFor(d, 's5').all[0].key).toBe('finance_audit');
+    fin.sections[1].items.reverse();
+    expect(navFor(d, 's5').sections[1].items[0].key).toBe('finance_wallet');
   });
 });

@@ -6,6 +6,7 @@ import { canSeeMaterial, canUploadMaterial, isMaterialRevealed } from '@/domain/
 import { materialState } from '@/domain/workflow';
 import type { Audience, Material, MaterialType } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
+import { MaterialUploadModal } from './MaterialUpload';
 import { Badge, Button, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Select, Tabs, Toggle, cx } from '@/ui';
 
 const typeIcon = { file: Icons.File, pdf: Icons.FileText, video: Icons.PlayCircle, link: Icons.Link2 } as const;
@@ -52,7 +53,7 @@ export default function LibraryPage() {
           {filtered.map((m) => <MaterialCard key={m.id} m={m} />)}
         </div>
       )}
-      {uploading && <UploadGeneral onClose={() => setUploading(false)} />}
+      {uploading && <MaterialUploadModal context={{ kind: 'general' }} onClose={() => setUploading(false)} />}
     </div>
   );
 }
@@ -90,32 +91,5 @@ function MaterialCard({ m }: { m: Material }) {
         )}
       </div>
     </div>
-  );
-}
-
-function UploadGeneral({ onClose }: { onClose: () => void }) {
-  const db = useDB();
-  const me = useMe();
-  const [f, setF] = useState({ title: '', description: '', type: 'pdf' as MaterialType, url: '', audience: 'all', points: false });
-  const audienceOpts = [
-    { value: 'all', label: 'للكل' },
-    ...(me.isLeader ? db.groups : me.facilitatorOf).map((g) => ({ value: `g:${g.id}`, label: `مجموعة: ${g.name}` })),
-    ...(me.isLeader ? db.persons.filter((p) => p.kind === 'participant') : me.facilitatorOf.flatMap((g) => g.memberIds).map((id) => db.persons.find((p) => p.id === id)!)).map((p) => ({ value: `p:${p.id}`, label: `شخص: ${p.name}` })),
-  ];
-  const audience: Audience = f.audience === 'all' ? { kind: 'all' } : f.audience.startsWith('g:') ? { kind: 'group', groupId: f.audience.slice(2) } : { kind: 'person', personId: f.audience.slice(2) };
-  const attached = f.audience !== 'all' && (me.isLeader || me.facilitatorOf.length > 0);
-  return (
-    <Modal open onClose={onClose} title="رفع مادة"
-      footer={<><Button variant="secondary" onClick={onClose}>إلغاء</Button><Button disabled={!f.title} onClick={() => act(() => { repos.materials.add({ title: f.title, description: f.description, type: f.type, url: f.url || 'https://example.com', origin: attached ? 'attached' : 'general', revealMode: 'auto', revealed: true, audience, pointsRequested: f.points && f.audience === 'all' }); onClose(); }, 'رُفعت المادة')}>ارفع</Button></>}>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="العنوان" className="sm:col-span-2"><Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} /></Field>
-        <Field label="وصف" className="sm:col-span-2"><Input value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} /></Field>
-        <Field label="النوع"><Select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value as MaterialType })} options={Object.entries(materialTypeLabel).map(([value, label]) => ({ value, label }))} /></Field>
-        <Field label="الرابط/الملف"><Input dir="ltr" value={f.url} onChange={(e) => setF({ ...f, url: e.target.value })} /></Field>
-        {(me.isLeader || me.facilitatorOf.length > 0) && <Field label="الجمهور" className="sm:col-span-2"><Select value={f.audience} onChange={(e) => setF({ ...f, audience: e.target.value })} options={audienceOpts} /></Field>}
-        {me.isStaff && <div className="sm:col-span-2"><Toggle checked={f.points} disabled={f.audience !== 'all'} onChange={(v) => setF({ ...f, points: v })} label="طلب نقاط على هذه المادة الإثرائية" /></div>}
-      </div>
-      {me.isStaff && <Notice>تُكسب النقاط على المادة الإثرائية بشرطين: أن تكون عامة (لا تخص شخصاً أو جهة)، وأن يوافق القائد العام.</Notice>}
-    </Modal>
   );
 }

@@ -64,7 +64,7 @@ export function eventsFor(db: DB, personId: ID): CalEvent[] {
   // مواعيد خطوات الخطة الشخصية
   if (c.isParticipant && isPlanUnlocked(db, personId)) {
     db.personalPlans.find((p) => p.participantId === personId)?.aspects.forEach((a) =>
-      a.steps.forEach((s) => out.push({ id: `st_${s.id}`, date: s.startDate, title: `بدء خطوة: ${s.title}`, kind: 'step', scope: 'personal', link: '/app/plan' })),
+      a.steps.forEach((s) => out.push({ id: `st_${s.id}`, date: s.startDate, title: `بدء خطوة: ${s.title}`, kind: 'step', scope: 'personal', link: '/app/plans' })),
     );
   }
   // المواعيد النهائية للفريق المنفذ والإدارة

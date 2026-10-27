@@ -83,7 +83,6 @@ function Formation() {
               <Button onClick={() => act(() => repos.groups.publishNow(), 'نُشرت المجموعات ووصلت التنبيهات')}>انشر الآن</Button>
             </>
           )}
-          {published && <Button variant="ghost" size="sm" onClick={() => act(() => repos.groups.unpublish(), 'عاد التشكيل مسودة (للنموذج فقط)')}>إرجاع لمسودة (لتجربة مرحلة ما قبل التشكيل)</Button>}
         </div>
         <div className="mt-3">
           {published ? <Notice tone="orange">بعد النشر: تغيير مجموعة المشارك يُعد <b>نقلاً</b> ويُسجَّل، والميسّر الجديد يرى سجله القديم وملاحظات الميسّر السابق.</Notice> : <Notice>قبل النشر: عدّل بحرية على التشكيل، ولا يُعد ذلك نقلاً.</Notice>}

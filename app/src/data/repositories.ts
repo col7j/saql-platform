@@ -3,7 +3,7 @@
 // لتحويل النموذج إلى منصة حقيقية: نكتب تنفيذاً آخر لنفس الواجهة يتصل بالخادم.
 import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
-import { canManageCommittee, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
+import { canManageCommittee, canManageFocus, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
@@ -11,7 +11,7 @@ import { hasTempGrant, tempPermissionLabel } from '@/domain/grants';
 import { findSupporterByPassword, supporterLocked } from '@/domain/supporter';
 import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, evaluationSettingsError, isEvaluationKey, settingsKeyBlockReason, type EvaluationKey, type EvaluationSettings } from '@/domain/settings';
 import { hashPassword, tempPassword } from '@/domain/crypto';
-import { applyDocAction, canPublish, docFor, tasksFromTemplates, tripCloseBlock, type DocAction } from '@/domain/workflow';
+import { applyDocAction, canPublish, docFor, focusDone, focusIsPast, tasksFromTemplates, tripCloseBlock, type DocAction } from '@/domain/workflow';
 import type {
   AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
   LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ProgramEvent, SchedulePlan, Settings,
@@ -170,8 +170,8 @@ function submitRequestIn(d: DB, pid: ID, input: { ownerKind: BudgetRequest['owne
   const t = ownerTitle(d, r.ownerKind, r.ownerId);
   const over = amount > allocated ? ` — يتجاوز المرصود (${allocated} ر.س)` : '';
   if (status === 'pending_facilitator') pushNotification(d, [tripBudgetFacilitatorId(d, r.ownerId)!], 'budget_request', `ميزانية رحلة بانتظار اعتمادك: ${t} (${amount} ر.س)`, ownerLink(r.ownerKind, r.ownerId));
-  else if (status === 'pending_finance') pushNotification(d, financeIdsWith(d, 'approve_within').filter((x) => x !== pid), 'budget_request', `طلب ميزانية ضمن المرصود: ${t} (${amount} ر.س)`, '/app/finance');
-  else pushNotification(d, [leaderId(d)], 'budget_request', `طلب ميزانية بانتظار قرارك: ${t} (${amount} ر.س)${over}`, '/app/finance');
+  else if (status === 'pending_finance') pushNotification(d, financeIdsWith(d, 'approve_within').filter((x) => x !== pid), 'budget_request', `طلب ميزانية ضمن المرصود: ${t} (${amount} ر.س)`, '/app/finance?tab=requests');
+  else pushNotification(d, [leaderId(d)], 'budget_request', `طلب ميزانية بانتظار قرارك: ${t} (${amount} ر.س)${over}`, '/app/approvals');
 }
 /** شروط رفع نماذج الرحلة: تخطيط رحلات المجموعات بعد نشر التشكيل، والوثيقة أول ما يُرفع */
 function tripFormBlock(d: DB, trip: Trip, kind: TripDoc['kind'] | 'budget'): string | null {
@@ -263,7 +263,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           d.accounts.push({ personId: id, username: suggestUsername(d, input.email), mustChangePassword: true, disabled: false, updatedAt: nowISO(), updatedBy: me() });
           audit(d, me(), input.kind === 'staff' ? 'إضافة عضو فريق عمل' : 'تسجيل مشارك', input.name, 'roles');
           const tech = d.memberships.find((m) => m.role === 'leader' && d.committees.find((c) => c.id === m.committeeId)?.kind === 'tech')?.personId;
-          if (tech) pushNotification(d, [tech], 'general', `حساب جديد بلا كلمة مرور: ${input.name}`, '/app/users');
+          if (tech) pushNotification(d, [tech], 'general', `حساب جديد بلا كلمة مرور: ${input.name}`, '/app/people');
         });
         return id;
       },
@@ -395,14 +395,14 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
       send(text: string) {
         mutate((d) => {
           d.adminMessages.push({ id: uid('am'), fromId: me(), text, at: nowISO() });
-          pushNotification(d, [leaderId(d)], 'general', 'رسالة جديدة من مشارك', '/app/inbox');
+          pushNotification(d, [leaderId(d)], 'general', 'رسالة جديدة من مشارك', '/app/messages');
         });
       },
       reply(id: ID, text: string) {
         mutate((d) => {
           const m = d.adminMessages.find((x) => x.id === id)!;
           m.reply = { byId: me(), text, at: nowISO() };
-          pushNotification(d, [m.fromId], 'general', 'ردّت الإدارة على رسالتك', '/app/contact');
+          pushNotification(d, [m.fromId], 'general', 'ردّت الإدارة على رسالتك', '/app/messages');
         });
       },
     },
@@ -775,6 +775,20 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
       update(id: ID, patch: Partial<FocusMeeting>) {
         mutate((d) => Object.assign(d.focusMeetings.find((f) => f.id === id)!, patch));
       },
+      /** المقدّم والموضوع: يحددهما الميسّر عند الإنشاء ويعدّلهما قبل اللقاء فقط. المقدّمون من أعضاء المجموعة */
+      setPresenter(id: ID, p: Pick<FocusMeeting, 'presenterMode' | 'presenterIds' | 'presenterAxes' | 'guestName' | 'topic'>) {
+        mutate((d) => {
+          const f = d.focusMeetings.find((x) => x.id === id);
+          if (!f || !canManageFocus(d, me(), f)) throw new Error('يعدّل المقدّم ميسّر المجموعة فقط');
+          if (focusDone(f) || focusIsPast(f)) throw new Error('لا يُعدَّل المقدّم بعد موعد اللقاء');
+          const g = d.groups.find((x) => x.id === f.groupId)!;
+          if (p.presenterMode === 'members' && (!p.presenterIds.length || p.presenterIds.some((x) => !g.memberIds.includes(x)))) throw new Error('اختر مقدّماً أو أكثر من المجموعة');
+          if (p.presenterMode === 'guest' && !p.guestName?.trim()) throw new Error('اكتب اسم الضيف');
+          const added = p.presenterMode === 'members' ? p.presenterIds.filter((x) => !f.presenterIds.includes(x)) : [];
+          Object.assign(f, { ...p, presenterIds: p.presenterMode === 'members' ? p.presenterIds : [], guestName: p.presenterMode === 'guest' ? p.guestName : undefined });
+          if (added.length) pushNotification(d, added, 'focus_created_presenter', `أنت مقدّم في "${f.title}"`, `/app/focus/${id}`);
+        });
+      },
       publish(id: ID) {
         mutate((d) => {
           const f = d.focusMeetings.find((x) => x.id === id)!;
@@ -1052,7 +1066,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           r.status = approve ? 'pending_leader' : 'rejected';
           r.history.push({ at: nowISO(), byId: me(), action: approve ? 'facilitator_approve' : 'facilitator_reject', note: reason });
           const t = ownerTitle(d, r.ownerKind, r.ownerId);
-          if (approve) pushNotification(d, [leaderId(d)], 'budget_request', `ميزانية ${t} بانتظار اعتمادك (${r.amount} ر.س)${r.amount > r.allocated ? ` — تتجاوز المرصود ${r.allocated} ر.س` : ''}`, '/app/finance');
+          if (approve) pushNotification(d, [leaderId(d)], 'budget_request', `ميزانية ${t} بانتظار اعتمادك (${r.amount} ر.س)${r.amount > r.allocated ? ` — تتجاوز المرصود ${r.allocated} ر.س` : ''}`, '/app/approvals');
           else pushNotification(d, [r.requestedBy], 'approval_rejected', `أعاد الميسّر ميزانية ${t}: ${reason}`, ownerLink(r.ownerKind, r.ownerId));
         });
       },
@@ -1083,7 +1097,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           const t = ownerTitle(d, r.ownerKind, r.ownerId);
           if (decision === 'approve') {
             pushNotification(d, [r.requestedBy], 'approval_approved', `اعتمد القائد العام ميزانية ${t}`, ownerLink(r.ownerKind, r.ownerId));
-            pushNotification(d, financeIdsWith(d, 'disburse'), 'custody_issued', `اعتُمدت ميزانية ${t}: حوّل العهدة`, '/app/finance');
+            pushNotification(d, financeIdsWith(d, 'disburse'), 'custody_issued', `اعتُمدت ميزانية ${t}: حوّل العهدة`, '/app/finance?tab=requests');
           } else pushNotification(d, [r.requestedBy], 'approval_rejected', decision === 'reject' ? `رفض القائد العام ميزانية ${t}: ${reason}` : `طلب القائد العام موازنة تفصيلية لـ ${t}: ${reason}`, ownerLink(r.ownerKind, r.ownerId));
         });
       },
@@ -1259,7 +1273,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (c.recipientId !== me()) throw new Error('طلب الإغلاق لصاحب العهدة');
           if (c.status !== 'active') throw new Error('العهدة ليست مفعّلة');
           Object.assign(c, { status: 'closing', closeRequestedAt: nowISO() });
-          pushNotification(d, financeIdsWith(d, 'close_custody'), 'general', `طلب إغلاق عهدة: ${ownerTitle(d, c.ownerKind, c.ownerId)}`, '/app/finance?tab=custody');
+          pushNotification(d, financeIdsWith(d, 'close_custody'), 'general', `طلب إغلاق عهدة: ${ownerTitle(d, c.ownerKind, c.ownerId)}`, '/app/finance?tab=requests');
         });
       },
       /** الفائض: يحوّله صاحب العهدة لحساب مسؤول المالية ويرفع الإيصال */
@@ -1270,7 +1284,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           const err = attachmentError(attachment, 'إيصال تحويل الفائض');
           if (err) throw new Error(err);
           c.surplusReturn = { attachment, at: nowISO() };
-          pushNotification(d, financeIdsWith(d, 'close_custody'), 'general', `رُفع إيصال فائض عهدة ${ownerTitle(d, c.ownerKind, c.ownerId)}`, '/app/finance?tab=custody');
+          pushNotification(d, financeIdsWith(d, 'close_custody'), 'general', `رُفع إيصال فائض عهدة ${ownerTitle(d, c.ownerKind, c.ownerId)}`, '/app/finance?tab=requests');
         });
       },
       /** تسوية الإغلاق: تأكيد استلام الفائض، أو العجز بتحويله للشخص من الرصيد أو بتسوية خارجية يتحمّلها المسؤول أو صاحب العهدة */
@@ -1343,7 +1357,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (d.editRequests.some((e) => e.status === 'pending' && JSON.stringify(e.target) === JSON.stringify(t))) throw new Error('يوجد طلب تعديل قائم لهذا السجل');
           d.editRequests.push({ id: uid('er'), ...input, requestedBy: me(), at: nowISO(), status: 'pending' });
           audit(d, me(), 'طلب تعديل سجل معتمد', `${input.summary} — ${input.reason}`);
-          pushNotification(d, [leaderId(d)], 'general', `طلب تعديل سجل مالي معتمد: ${input.summary}`, '/app/finance?tab=edits');
+          pushNotification(d, [leaderId(d)], 'general', `طلب تعديل سجل مالي معتمد: ${input.summary}`, '/app/approvals');
         });
       },
       decideEdit(id: ID, approve: boolean, note?: string) {
@@ -1355,7 +1369,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (approve) applyEditIn(d, er);
           Object.assign(er, { status: approve ? 'approved' : 'rejected', decidedBy: me(), decidedAt: nowISO(), decisionNote: note });
           audit(d, me(), approve ? 'موافقة على تعديل سجل معتمد' : 'رفض تعديل سجل معتمد', `${er.summary}${note ? ` — ${note}` : ''}`);
-          pushNotification(d, [er.requestedBy], approve ? 'approval_approved' : 'approval_rejected', `${approve ? 'وافق' : 'رفض'} القائد العام طلب التعديل: ${er.summary}`, '/app/finance?tab=edits');
+          pushNotification(d, [er.requestedBy], approve ? 'approval_approved' : 'approval_rejected', `${approve ? 'وافق' : 'رفض'} القائد العام طلب التعديل: ${er.summary}`, '/app/approvals');
         });
       },
     },
@@ -1488,14 +1502,6 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
       },
       markAllRead() {
         mutate((d) => d.notifications.forEach((n) => n.toId === me() && (n.read = true)));
-      },
-    },
-
-    // ───────────── النقاط اليدوية ─────────────
-    points: {
-      addManual(entry: Omit<PointsEntry, 'id' | 'at' | 'auto'>) {
-        if (entry.points < 0) throw new Error('النقاط كسب فقط، لا خصم');
-        mutate((d) => d.manualPoints.push({ ...entry, id: uid('pm'), at: nowISO(), auto: false }));
       },
     },
 
@@ -1647,7 +1653,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (!advice.trim()) throw new Error('اكتب النصائح');
           d.finalFiles = d.finalFiles.filter((f) => f.participantId !== participantId);
           d.finalFiles.push({ participantId, advice: advice.trim(), attachment, uploadedBy: me(), at: nowISO() });
-          pushNotification(d, [participantId], 'general', 'رفع ميسّرك ملفك الختامي', '/app/plan');
+          pushNotification(d, [participantId], 'general', 'رفع ميسّرك ملفك الختامي', '/app/plans');
         });
       },
     },

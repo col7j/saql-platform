@@ -11,7 +11,7 @@ const iconMap: Record<string, L.LucideIcon> = {
   home: L.Home, calendar: L.CalendarDays, bell: L.Bell, map: L.MapPinned, target: L.Target, users: L.UsersRound, compass: L.Compass,
   clipboard: L.ClipboardList, book: L.LibraryBig, grid: L.LayoutGrid, trophy: L.Trophy, radar: L.Radar, message: L.MessagesSquare,
   check: L.ListChecks, layers: L.Layers, contact: L.Contact, wallet: L.Wallet, receipt: L.Receipt, link: L.Link2, globe: L.Globe,
-  settings: L.Settings2, key: L.KeyRound, meeting: L.Presentation, chart: L.ChartNoAxesColumn, more: L.LayoutGrid,
+  settings: L.Settings2, key: L.KeyRound, meeting: L.Presentation, chart: L.ChartNoAxesColumn, more: L.LayoutGrid, stamp: L.Stamp, history: L.History,
 };
 export function NavIcon({ name, className }: { name: string; className?: string }) {
   const I = iconMap[name] ?? L.Circle;

@@ -8,7 +8,7 @@ export const TECH_LEAD_ID = 's6';
 export const DEMO_PASSWORD = 'saql2026';
 
 const staffRaw: [string, string, string][] = [
-  ['s1', 'خالد العمري', 'ميسّر مجموعة أُحُد · عضو اللجنة المالية'],
+  ['s1', 'خالد العمري', 'ميسّر مجموعة أُحُد'],
   ['s2', 'فيصل الجهني', 'ميسّر مجموعة قُباء · عضو اللجنة الإعلامية'],
   ['s3', 'أنس المطيري', 'ميسّر مجموعة سَلع · عضو اللجنة المالية'],
   ['s4', 'سلمان الأحمدي', 'ميسّر مجموعة العقيق · عضو اللجنة الإعلامية'],
@@ -81,7 +81,6 @@ export function buildCommittees(): { committees: Committee[]; memberships: Commi
   const memberships: CommitteeMembership[] = [
     // مسؤول المالية بلا أي صفة ثانية (قواعد التعارض في defaults.ts)
     { ...m('c_fin', 's5', 'leader', true), financePerms: ['view_budget', 'manage_categories', 'approve_within', 'disburse', 'review_invoices', 'close_custody'] },
-    { ...m('c_fin', 's1', 'member', true), financePerms: ['view_budget', 'approve_within', 'review_invoices'] },
     { ...m('c_fin', 's3', 'member', false), financePerms: [] }, // بلا صلاحيات مفوّضة: لا يرى أزرار الصرف
     m('c_media', 's6', 'leader', false),
     m('c_media', 's2', 'member', false),

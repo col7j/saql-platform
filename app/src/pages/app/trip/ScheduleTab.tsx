@@ -1,4 +1,4 @@
-// محرر الجدول الزمني (الخطط أ وب وما بعدها) + تحليل التصنيفات + المخطط مقابل الفعلي
+// محرر الجدول الزمني (الخطط أ وب وما بعدها) + المخطط مقابل الفعلي
 import { useEffect, useState } from 'react';
 import { fmtDate, fmtTime, minutesOf, nowISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
@@ -91,7 +91,6 @@ export default function ScheduleTab({ trip }: { trip: Trip }) {
         )}
       </Card>
 
-      <Analysis trip={trip} />
 
       {editing && (
         <ItemModal item={editing} trip={trip} onClose={() => setEditing(null)}
@@ -129,34 +128,5 @@ function ItemModal({ item, trip, onClose, onSave }: { item: ScheduleItem; trip: 
       </div>
       {minutesOf(i.end) <= minutesOf(i.start) && <p className="mt-2 text-xs text-red-600">وقت النهاية يجب أن يكون بعد البداية</p>}
     </Modal>
-  );
-}
-
-function Analysis({ trip }: { trip: Trip }) {
-  const db = useDB();
-  const cats = db.settings.scheduleCategories;
-  const planned = categoryBreakdown(trip.schedule.plans[0]?.items ?? []);
-  const rows = actualItems(db, trip);
-  const actual = categoryBreakdown(rows.filter((r) => r.actual).map((r) => r.actual!));
-  const hasActual = actual.sum > 0;
-  return (
-    <Card title="تحليل التصنيفات" subtitle={hasActual ? 'نسبة كل تصنيف من وقت الرحلة: المخطط مقابل الفعلي' : 'نسبة كل تصنيف من وقت الرحلة (المخطط)'}>
-      {planned.sum === 0 ? <p className="text-sm text-ink-400">أضف بنوداً لرؤية التحليل</p> : (
-        <div className="space-y-2.5">
-          {cats.filter((c) => planned.totals[c.id] || actual.totals[c.id]).map((c) => {
-            const p = ((planned.totals[c.id] ?? 0) / planned.sum) * 100;
-            const a = hasActual ? ((actual.totals[c.id] ?? 0) / actual.sum) * 100 : 0;
-            return (
-              <div key={c.id}>
-                <div className="mb-1 flex justify-between text-xs"><span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: c.color }} />{c.name}</span><span className="num text-ink-500">{Math.round(p)}%{hasActual && ` ← فعلي ${Math.round(a)}%`}</span></div>
-                <div className="h-2 overflow-hidden rounded-full bg-ink-100"><div className="h-full rounded-full" style={{ width: `${p}%`, background: c.color }} /></div>
-                {hasActual && <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-ink-100"><div className="h-full rounded-full opacity-50" style={{ width: `${a}%`, background: c.color }} /></div>}
-              </div>
-            );
-          })}
-          <p className="pt-1 text-xs text-ink-400">إجمالي المخطط: {Math.round(planned.sum / 60)} ساعة{hasActual && ` · الموثّق فعلياً: ${Math.round(actual.sum / 60)} ساعة`}</p>
-        </div>
-      )}
-    </Card>
   );
 }

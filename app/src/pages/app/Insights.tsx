@@ -152,10 +152,10 @@ function FinancePanel() {
   const spent = budgetOverview(db).spent;
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-      <Stat label="عهد مفتوحة" value={open.length} icon={<Icons.Wallet className="h-5 w-5" />} to="/app/finance?tab=custody" />
+      <Stat label="عهد مفتوحة" value={open.length} icon={<Icons.Wallet className="h-5 w-5" />} to="/app/finance?tab=requests" />
       <Stat label="بنود صرف معلقة" value={pending.length} hint={SAR(pending.reduce((s, l) => s + l.amount, 0))} icon={<Icons.Receipt className="h-5 w-5" />} tone="accent" to="/app/finance?tab=invoices" />
       <Stat label="رسوم غير مسددة أو جزئية" value={unpaid.length} icon={<Icons.BadgeAlert className="h-5 w-5" />} tone="red" to="/app/finance?tab=fees" />
-      <Stat label="إجمالي المصروف المعتمد" value={SAR(spent)} icon={<Icons.ChartPie className="h-5 w-5" />} tone="green" to="/app/finance?tab=analysis" />
+      <Stat label="إجمالي المصروف المعتمد" value={SAR(spent)} icon={<Icons.ChartPie className="h-5 w-5" />} tone="green" to="/app/finance?tab=reports" />
     </div>
   );
 }

@@ -78,7 +78,6 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
   if (isSiteEditor && !isLeader) labels.push('محرّر الموقع (مؤقت)');
   if (canRegisterParticipants && !isLeader) labels.push('تسجيل المشاركين (مؤقت)');
   if (staffTripsLed.length) labels.push('قائد فريق رحلة');
-  if (presenterIn.length && isParticipant) labels.push('مقدّم');
 
   return {
     person, isLeader, isStaff, isParticipant, facilitatorOf, leaderOf, group, committees,

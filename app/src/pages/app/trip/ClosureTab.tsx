@@ -39,7 +39,6 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
           {(isLead || me.isLeader) && isApproved(db, trip.id, 'final_report') && (
             <div className="mt-3 flex flex-wrap gap-2">
               <Button onClick={() => act(() => repos.trips.updateClosure(trip.id, { publicReport: forms.publicReport }), 'صُدّر التقرير العام')} icon={<Icons.Megaphone className="h-4 w-4" />}>صدّر التقرير العام</Button>
-              <Button variant="secondary" onClick={() => act(() => repos.trips.updateClosure(trip.id, { photos: [...trip.closure.photos, `ph_${Date.now()}`] }), 'أُضيفت صورة')} icon={<Icons.ImagePlus className="h-4 w-4" />}>أضف صورة عامة ({trip.closure.photos.length})</Button>
             </div>
           )}
         </Card>

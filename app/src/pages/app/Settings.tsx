@@ -10,7 +10,7 @@ import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Notice, PageHeader, ReasonModal, Select, Table, Tabs, Toggle } from '@/ui';
 import { PersonChip } from '@/ui/domain';
 
-type Tab = 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'roles' | 'tracker' | 'audit' | 'open';
+type Tab = 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications';
 
 export default function SettingsPage() {
   const me = useMe();
@@ -23,27 +23,19 @@ export default function SettingsPage() {
     ...(me.canManageScheduleCategories ? [{ key: 'categories' as const, label: 'تصنيفات الجدول' }] : []),
     ...(leader ? [{ key: 'templates' as const, label: 'قالب المهام التلقائية' }] : []),
     ...(tech ? [{ key: 'notifications' as const, label: 'الإشعارات' }] : []),
-    ...(leader || tech ? [{ key: 'roles' as const, label: 'قواعد التعارض' }] : []),
-    ...(leader ? [{ key: 'tracker' as const, label: 'متابع الرحلات' }] : []),
-    ...(leader || tech ? [{ key: 'audit' as const, label: 'سجل التدقيق' }] : []),
-    ...(leader ? [{ key: 'open' as const, label: 'النقاط المفتوحة' }] : []),
   ];
   const [picked, setTab] = useState<Tab>(tabs[0]?.key ?? 'evaluation');
   const tab = tabs.some((t) => t.key === picked) ? picked : tabs[0]?.key;
   if (!tabs.length) return <Empty title="الإعدادات للقائد العام ومسؤول اللجنة التقنية" />;
   return (
     <div>
-      <PageHeader title="الإعدادات" subtitle="كل القيم القابلة للضبط مخزّنة في البيانات، ويعدّل كل إعداد صاحبه" />
+      <PageHeader title={leader ? 'الإعدادات والتقييم' : tech ? 'إعدادات النظام' : 'الإعدادات'} subtitle="كل القيم القابلة للضبط مخزّنة في البيانات، ويعدّل كل إعداد صاحبه. قواعد التعارض ومتابع الرحلات في «الأشخاص»، وسجل التدقيق في شاشته" />
       <Tabs value={tab!} onChange={setTab} tabs={tabs} />
       {tab === 'evaluation' && <Evaluation />}
       {tab === 'targets' && <Targets />}
       {tab === 'categories' && <Categories />}
       {tab === 'templates' && <Templates />}
       {tab === 'notifications' && <Notifications />}
-      {tab === 'roles' && <Roles />}
-      {tab === 'tracker' && <Tracker />}
-      {tab === 'audit' && <Audit />}
-      {tab === 'open' && <OpenPoints />}
     </div>
   );
 }
@@ -72,7 +64,7 @@ function Evaluation() {
               <div className="grid items-end gap-2 sm:grid-cols-[1fr_90px_120px_auto_auto]">
                 <Field label="البند"><Input value={i.name} onChange={(e) => updItem(i.key, { name: e.target.value })} /></Field>
                 <Field label="الوزن"><Input type="number" value={i.weight} disabled={i.key === 'enrichment'} onChange={(e) => updItem(i.key, { weight: num(e.target.value) })} /></Field>
-                <Field label="الطريقة"><Select value={i.mode} onChange={(e) => updItem(i.key, { mode: e.target.value as EvaluationItem['mode'] })} options={[{ value: 'auto', label: 'تلقائي' }, { value: 'manual', label: 'يدوي' }, { value: 'mixed', label: 'مختلط' }]} /></Field>
+                <Field label="الطريقة"><Select value={i.mode} onChange={(e) => updItem(i.key, { mode: e.target.value as EvaluationItem['mode'] })} options={[{ value: 'auto', label: 'تلقائي' }, { value: 'manual', label: 'يدوي' }]} /></Field>
                 <div className="pb-2"><Toggle checked={i.enabled} onChange={(v) => updItem(i.key, { enabled: v })} label="مفعّل" /></div>
                 <button className="pb-2.5 text-ink-300 hover:text-red-600" onClick={() => setS({ ...s, evaluationItems: s.evaluationItems.filter((x) => x.key !== i.key) })}><Icons.Trash2 className="h-4 w-4" /></button>
               </div>
@@ -214,7 +206,14 @@ function Targets() {
           <Field label="نهاية البرنامج"><Input type="date" value={s.program.endDate} onChange={(e) => setS({ ...s, program: { ...s.program, endDate: e.target.value } })} /></Field>
         </div>
       </Card>
-      <div className="lg:col-span-2"><Button onClick={() => act(() => repos.settings.update({ targets: s.targets, programCounts: s.programCounts, scheduleRevealHours: s.scheduleRevealHours, program: s.program }), 'حُفظت الإعدادات')}>احفظ</Button></div>
+      <Card title="عام" subtitle="التاريخ الهجري ورسوم البرنامج">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Toggle checked={s.showHijri} onChange={(v) => setS({ ...s, showHijri: v })} label="عرض التاريخ الهجري مع الميلادي" />
+          <Toggle checked={s.feesInPlatform} onChange={(v) => setS({ ...s, feesInPlatform: v })} label="دفع الرسوم داخل المنصة (وإلا تُسجَّل فقط)" />
+          <Field label="قيمة رسوم البرنامج (ر.س)"><Input type="number" value={s.feeAmount} onChange={(e) => setS({ ...s, feeAmount: num(e.target.value) })} /></Field>
+        </div>
+      </Card>
+      <div className="lg:col-span-2"><Button onClick={() => act(() => repos.settings.update({ targets: s.targets, programCounts: s.programCounts, scheduleRevealHours: s.scheduleRevealHours, program: s.program, showHijri: s.showHijri, feesInPlatform: s.feesInPlatform, feeAmount: s.feeAmount }), 'حُفظت الإعدادات')}>احفظ</Button></div>
     </div>
   );
 }
@@ -292,7 +291,8 @@ function Notifications() {
   );
 }
 
-function Tracker() {
+/** متابع الرحلات الدائم (يُعرض في شاشة الأشخاص والصلاحيات) */
+export function Tracker() {
   const db = useDB();
   const staff = db.persons.filter((p) => p.kind === 'staff' && !p.isGeneralLeader);
   return (
@@ -303,35 +303,8 @@ function Tracker() {
   );
 }
 
-function OpenPoints() {
-  const db = useDB();
-  const s = db.settings;
-  const row = (label: string, ref: string, checked: boolean, k: keyof Settings) => (
-    <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-3">
-      <div><div className="text-sm font-medium">{label}</div><div className="text-xs text-ink-400">النقطة المفتوحة {ref}</div></div>
-      <Toggle checked={checked} onChange={(v) => repos.settings.update({ [k]: v } as Partial<Settings>)} />
-    </div>
-  );
-  return (
-    <Card title="النقاط المفتوحة (القسم 20)" subtitle="مبنية قابلة للتعديل حتى تُحسم">
-      <div className="grid gap-2 md:grid-cols-2">
-        {row('تعليقات رابط المتابعة تحتاج مراجعة قبل الظهور', '20.8', s.trackingCommentsNeedReview, 'trackingCommentsNeedReview')}
-        {row('عرض التاريخ الهجري مع الميلادي', '20.11', s.showHijri, 'showHijri')}
-        {row('دفع الرسوم داخل المنصة (وإلا تُسجَّل فقط)', '20.12', s.feesInPlatform, 'feesInPlatform')}
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-3">
-          <div><div className="text-sm font-medium">قيمة رسوم البرنامج</div><div className="text-xs text-ink-400">ر.س</div></div>
-          <Input type="number" className="w-28" value={s.feeAmount} onChange={(e) => repos.settings.update({ feeAmount: num(e.target.value) })} />
-        </div>
-        <div className="rounded-xl border border-ink-100 px-3 py-3 text-sm">
-          <div className="font-medium">الإبداع والابتكار</div>
-          <div className="text-xs text-ink-400">أحد بنود تقييم القائد العام الفردي (تبويب التقييم والأوزان).</div>
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function Roles() {
+/** قواعد تعارض الصفات (تُعرض في شاشة الأشخاص) */
+export function Roles() {
   const db = useDB();
   return (
     <Card title="قواعد تعارض الصفات" subtitle="مخزّنة كبيانات، وتُطبَّق عند إضافة أي صفة: الميسّر، اللجان، المتابع الدائم، فرق رحلات فريق العمل، المتابع البديل. القائد العام مستثنى">
@@ -344,22 +317,6 @@ function Roles() {
         </tbody>
       </Table>
       <p className="mt-3 text-xs text-ink-400">عضو أي لجنة يجوز أن يكون ميسّراً. مسؤول اللجنة التقنية يجوز أن يكون مسؤول الإعلامية، وبديلاً مؤقتاً لمتابع الرحلات.</p>
-    </Card>
-  );
-}
-
-function Audit() {
-  const db = useDB();
-  const list = db.audit.filter((a) => a.area && a.area !== 'finance');
-  const areaLabel = { roles: 'الأدوار والصفات', accounts: 'الحسابات', settings: 'الإعدادات', finance: 'المالية' } as const;
-  return (
-    <Card pad={false} title="سجل التدقيق" subtitle="الأدوار والحسابات والإعدادات. لا يُحذف. (سجل المالية في قسم المالية)">
-      {list.length === 0 ? <div className="p-5"><Empty title="لا سجلات بعد" /></div> : (
-        <Table>
-          <thead><tr><th>الوقت</th><th>من</th><th>المجال</th><th>الإجراء</th><th>التفاصيل</th></tr></thead>
-          <tbody>{list.map((a) => <tr key={a.id}><td className="whitespace-nowrap text-xs">{fmtDateTime(a.at)}</td><td><PersonChip id={a.byId} size={22} /></td><td><Badge>{areaLabel[a.area!]}</Badge></td><td className="font-medium">{a.action}</td><td className="text-xs text-ink-600">{a.detail}</td></tr>)}</tbody>
-        </Table>
-      )}
     </Card>
   );
 }

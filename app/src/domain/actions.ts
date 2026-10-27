@@ -32,9 +32,9 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
     add({ id: 'setup', title: 'أعدّ ميزانية البرنامج', hint: 'لا تُقبل طلبات الميزانية حتى تُحدَّد مبالغ المرصود', cta: 'ابدأ إعداد الميزانية', link: '/app/finance', tone: 'red', group: 'المالية' });
   db.budgetRequests.forEach((r) => {
     const t = ownerTitle(db, r.ownerKind, r.ownerId);
-    if (canFinanceDecide(db, personId, r)) add({ id: `rf_${r.id}`, title: `طلب ميزانية: ${t}`, hint: `${SAR(r.amount)} ضمن المرصود (${SAR(r.allocated)})`, cta: 'راجع الطلب', link: `/app/finance?req=${r.id}`, tone: 'orange', group: 'المالية' });
-    if (canLeaderDecide(db, personId, r)) add({ id: `rl_${r.id}`, title: r.amount > r.allocated ? `ميزانية تتجاوز المرصود: ${t}` : `ميزانية بانتظار اعتمادك: ${t}`, hint: `مطلوب ${SAR(r.amount)} والمرصود ${SAR(r.allocated)}`, cta: 'اتخذ القرار', link: `/app/finance?req=${r.id}`, tone: 'orange', group: 'الاعتمادات' });
-    if (canDisburse(db, personId, r)) add({ id: `rd_${r.id}`, title: `اصرف عهدة: ${t}`, hint: `${SAR(r.amount)} معتمدة`, cta: 'اصرف العهدة', link: `/app/finance?req=${r.id}`, tone: 'orange', group: 'المالية' });
+    if (canFinanceDecide(db, personId, r)) add({ id: `rf_${r.id}`, title: `طلب ميزانية: ${t}`, hint: `${SAR(r.amount)} ضمن المرصود (${SAR(r.allocated)})`, cta: 'راجع الطلب', link: `/app/finance?tab=requests&req=${r.id}`, tone: 'orange', group: 'المالية' });
+    if (canLeaderDecide(db, personId, r)) add({ id: `rl_${r.id}`, title: r.amount > r.allocated ? `ميزانية تتجاوز المرصود: ${t}` : `ميزانية بانتظار اعتمادك: ${t}`, hint: `مطلوب ${SAR(r.amount)} والمرصود ${SAR(r.allocated)}`, cta: 'اتخذ القرار', link: '/app/approvals', tone: 'orange', group: 'الاعتمادات' });
+    if (canDisburse(db, personId, r)) add({ id: `rd_${r.id}`, title: `اصرف عهدة: ${t}`, hint: `${SAR(r.amount)} معتمدة`, cta: 'اصرف العهدة', link: `/app/finance?tab=requests&req=${r.id}`, tone: 'orange', group: 'المالية' });
     if (r.requestedBy === personId && r.status === 'rejected') add({ id: `rr_${r.id}`, title: `أُعيد طلب ميزانية ${t}`, hint: r.history[r.history.length - 1]?.note, cta: 'عدّل وأعد الإرسال', link: ownerLink(r.ownerKind, r.ownerId), tone: 'red', group: 'طلباتي' });
     if (r.requestedBy === personId && r.status === 'needs_detail') add({ id: `rn_${r.id}`, title: `القائد العام يطلب موازنة تفصيلية: ${t}`, hint: r.history[r.history.length - 1]?.note, cta: 'عبّئ الموازنة التفصيلية', link: ownerLink(r.ownerKind, r.ownerId), tone: 'red', group: 'طلباتي' });
   });
@@ -43,9 +43,9 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
     if (n) add({ id: 'inv', title: `${n} بنود صرف بانتظار المراجعة`, cta: 'راجع البنود', link: '/app/finance?tab=invoices', tone: 'orange', group: 'المالية' });
   }
   if (hasFinancePerm(db, personId, 'disburse'))
-    db.custodies.filter((x) => x.status === 'active' && custodyFigures(db, x).toTransfer > 0).forEach((x) => add({ id: `tr_${x.id}`, title: `دفعة مؤجّلة ${custodyFigures(db, x).toTransfer} ر.س`, hint: ownerTitle(db, x.ownerKind, x.ownerId), cta: 'حوّل الدفعة', link: '/app/finance?tab=custody', tone: 'orange', group: 'المالية' }));
+    db.custodies.filter((x) => x.status === 'active' && custodyFigures(db, x).toTransfer > 0).forEach((x) => add({ id: `tr_${x.id}`, title: `دفعة مؤجّلة ${custodyFigures(db, x).toTransfer} ر.س`, hint: ownerTitle(db, x.ownerKind, x.ownerId), cta: 'حوّل الدفعة', link: '/app/finance?tab=requests', tone: 'orange', group: 'المالية' }));
   if (hasFinancePerm(db, personId, 'close_custody'))
-    db.custodies.filter((x) => x.status === 'closing').forEach((x) => add({ id: `cl_${x.id}`, title: `طلب إغلاق عهدة: ${ownerTitle(db, x.ownerKind, x.ownerId)}`, cta: 'راجع الإغلاق', link: '/app/finance?tab=custody', tone: 'blue', group: 'المالية' }));
+    db.custodies.filter((x) => x.status === 'closing').forEach((x) => add({ id: `cl_${x.id}`, title: `طلب إغلاق عهدة: ${ownerTitle(db, x.ownerKind, x.ownerId)}`, cta: 'راجع الإغلاق', link: '/app/finance?tab=requests', tone: 'blue', group: 'المالية' }));
   db.custodies.filter((x) => x.recipientId === personId && x.status !== 'closed').forEach((x) => {
     const t = ownerTitle(db, x.ownerKind, x.ownerId);
     const f = custodyFigures(db, x);
@@ -53,7 +53,7 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
     if (x.status === 'closing' && f.surplus > 0.009 && !x.surplusReturn) add({ id: `sr_${x.id}`, title: `حوّل فائض عهدة ${t} (${f.surplus} ر.س) وارفع الإيصال`, cta: 'ارفع الإيصال', link: '/app/requests', tone: 'orange', group: 'العهدة' });
   });
   db.budgetRequests.filter((r) => canFacilitatorDecide(db, personId, r)).forEach((r) => add({ id: `rfa_${r.id}`, title: `ميزانية رحلة بانتظار اعتمادك: ${ownerTitle(db, r.ownerKind, r.ownerId)}`, hint: SAR(r.amount), cta: 'راجع الميزانية', link: ownerLink(r.ownerKind, r.ownerId), tone: 'orange', group: 'الاعتمادات' }));
-  if (c.isLeader) db.editRequests.filter((e) => e.status === 'pending').forEach((e) => add({ id: `er_${e.id}`, title: `طلب تعديل سجل مالي معتمد`, hint: e.summary, cta: 'وافق أو ارفض', link: '/app/finance?tab=edits', tone: 'orange', group: 'الاعتمادات' }));
+  if (c.isLeader) db.editRequests.filter((e) => e.status === 'pending').forEach((e) => add({ id: `er_${e.id}`, title: `طلب تعديل سجل مالي معتمد`, hint: e.summary, cta: 'وافق أو ارفض', link: '/app/approvals', tone: 'orange', group: 'الاعتمادات' }));
 
   // ── المشارك ──
   if (c.isParticipant) {
@@ -64,7 +64,7 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
       .filter((m) => m.origin === 'pre_trip' && m.mandatory && materialState(db, personId, m.id) === 'new')
       .forEach((m) => add({ id: `mt_${m.id}`, title: m.title, hint: 'مادة قبلية إلزامية', cta: 'شاهد المادة', link: '/app/library', tone: 'orange', group: 'المكتبة' }));
     if (isPlanUnlocked(db, personId))
-      dueSteps(db.personalPlans.find((p) => p.participantId === personId)).forEach((s) => add({ id: `st_${s.stepId}`, title: `وش صار في خطوة "${s.title}"؟`, cta: 'سجّل المتابعة', link: '/app/plan', tone: 'orange', group: 'الخطة الشخصية' }));
+      dueSteps(db.personalPlans.find((p) => p.participantId === personId)).forEach((s) => add({ id: `st_${s.stepId}`, title: `وش صار في خطوة "${s.title}"؟`, cta: 'سجّل المتابعة', link: '/app/plans', tone: 'orange', group: 'الخطة الشخصية' }));
     db.slots.filter((s) => s.invite === personId && !s.bookedBy && s.date >= today).forEach((s) => add({ id: `sl_${s.id}`, title: 'طلب منك الميسّر حجز لقاء فردي', cta: 'احجز موعداً', link: '/app/individual', tone: 'blue', group: 'اللقاءات الفردية' }));
     c.presenterIn.filter((f) => f.status === 'draft' || f.status === 'published').forEach((f) => add({ id: `pr_${f.id}`, title: `أنت مقدّم في "${f.title}"`, cta: 'جهّز تقديمك', link: `/app/focus/${f.id}`, tone: 'blue', group: 'لقاءات التركيز' }));
   }

@@ -118,3 +118,11 @@ export const materialOriginLabel = {
 } as const;
 
 export const SAR = (n: number) => `${(Math.round(n * 100) / 100).toLocaleString('en-US', { maximumFractionDigits: 2 })} ر.س`;
+
+/** المقدّم في لقاء التركيز: عضو أو أكثر من المجموعة، أو ضيف، أو فريق العمل، أو لا أحد */
+export const PRESENTER_OPTIONS = [
+  { value: 'members', label: 'عضو أو أكثر من المجموعة' },
+  { value: 'guest', label: 'ضيف' },
+  { value: 'facilitator', label: 'فريق العمل' },
+  { value: 'none', label: 'لا أحد' },
+];

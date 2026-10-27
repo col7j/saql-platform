@@ -24,7 +24,6 @@ export interface PersonScore {
   individual: ItemScore[];
   individualTotal: number;
   groupShare: number;
-  manualBonus: number;
   total: number;
   rank: number;
 }
@@ -248,11 +247,9 @@ export function computeScores(db: DB): ScoresResult {
     });
     const individualTotal = r2(individual.reduce((a, i) => a + i.points, 0));
     const groupShare = group ? groups.find((x) => x.groupId === group.id)!.total : 0; // يُوزَّع بالتساوي
-    const manualBonus = r2(db.manualPoints.filter((m) => m.personId === p.id).reduce((a, m) => a + Math.max(0, m.points), 0));
-    return { personId: p.id, groupId: group?.id, individual, individualTotal, groupShare, manualBonus, total: r2(individualTotal + groupShare + manualBonus), rank: 0 };
+    return { personId: p.id, groupId: group?.id, individual, individualTotal, groupShare, total: r2(individualTotal + groupShare), rank: 0 };
   });
   [...persons].sort((a, b) => b.total - a.total).forEach((p, i) => (p.rank = i + 1));
-  db.manualPoints.forEach((m) => log.push(m));
 
   // ── نقاط المواد الإثرائية لأعضاء الإدارة (خارج ترتيب المشاركين) ──
   const enrichmentEnabled = s.evaluationItems.find((i) => i.key === 'enrichment')?.enabled ?? false;

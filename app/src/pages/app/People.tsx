@@ -1,48 +1,117 @@
+// الأشخاص والصلاحيات: شاشة واحدة لإدارة الشخص. القائد العام: الأشخاص وفريق العمل واللجان والصلاحيات المؤقتة والمتابع الدائم وقواعد التعارض.
+// مسؤول التقنية: الحساب واسم الدخول وإعادة تعيين الكلمة في بطاقة الشخص نفسها، وقواعد التعارض
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { accountOf, canManageAccounts } from '@/domain/accounts';
 import { getCapabilities, groupOf } from '@/domain/permissions';
-import { act, repos, useDB, useMe } from '@/state/store';
+import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { addDays, fmtDate, todayISO } from '@/domain/dates';
 import { isGrantActive, tempPermissionLabel } from '@/domain/grants';
-import type { PersonKind, TempPermission } from '@/domain/types';
-import { Badge, Button, Card, Field, Icons, Input, Modal, PageHeader, Select, Table, Tabs } from '@/ui';
+import type { Account, Person, PersonKind, TempPermission } from '@/domain/types';
+import { Badge, Button, Card, DataTable, Empty, Field, FilterPills, Icons, Input, Modal, Notice, PageHeader, Select, Tabs, Toggle, type Column } from '@/ui';
 import { GroupBadge, PersonChip } from '@/ui/domain';
+import { CommitteesList } from './Committees';
+import { Roles, Tracker } from './Settings';
+
+type Tab = 'participant' | 'staff' | 'committees' | 'grants' | 'tracker' | 'roles';
+
+/** الصفات التي تميّز الشخص فقط: لا «مشارك» ولا «عضو إدارة» (النوع الأساسي) */
+const BASE_LABELS = ['مشارك', 'عضو إدارة'];
+export const distinctLabels = (labels: string[]) => labels.filter((l) => !BASE_LABELS.includes(l));
 
 export default function PeoplePage() {
   const db = useDB();
   const me = useMe();
-  const [tab, setTab] = useState<'participant' | 'staff'>('participant');
-  const [q, setQ] = useState('');
+  const accounts = canManageAccounts(db, me.person.id);
+  const [params, setParams] = useSearchParams();
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'participant', label: 'الأشخاص' },
+    { key: 'staff', label: 'فريق العمل' },
+    ...(me.isLeader ? [{ key: 'committees' as const, label: 'اللجان' }, { key: 'grants' as const, label: 'الصلاحيات المؤقتة' }, { key: 'tracker' as const, label: 'متابع الرحلات الدائم' }] : []),
+    ...(me.isLeader || me.isTechLead ? [{ key: 'roles' as const, label: 'قواعد التعارض' }] : []),
+  ];
+  const tab = (tabs.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'participant') as Tab;
   const [adding, setAdding] = useState(false);
-  const list = db.persons.filter((p) => p.kind === tab && (!q || p.name.includes(q)));
+  const canAdd = me.isLeader || me.canRegisterParticipants;
+  const title = me.isLeader ? 'الأشخاص والصلاحيات' : accounts ? 'الأشخاص والحسابات' : 'الأشخاص';
   return (
     <div>
-      <PageHeader title="الأشخاص" subtitle="لكل شخص نوع أساسي وصفات إضافية تجتمع عليه بلا تعارض، وتُحسب صلاحياته من مجموعها"
-        actions={(me.isLeader || me.canRegisterParticipants) && <Button onClick={() => setAdding(true)} icon={<Icons.UserPlus className="h-4 w-4" />}>أضف شخصاً</Button>} />
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <Tabs value={tab} onChange={setTab} tabs={[{ key: 'participant', label: 'المشاركون' }, { key: 'staff', label: 'فريق العمل' }]} />
-        <Input className="mb-4 w-56" placeholder="بحث بالاسم" value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
-      <Card pad={false}>
-        <Table>
-          <thead><tr><th>الاسم</th>{tab === 'participant' && <th>المجموعة</th>}<th>الصفات</th></tr></thead>
-          <tbody>
-            {list.map((p) => {
-              const c = getCapabilities(db, p.id);
-              return (
-                <tr key={p.id}>
-                  <td><Link to={`/app/people/${p.id}`}><PersonChip id={p.id} sub={p.university ?? p.title} /></Link></td>
-                  {tab === 'participant' && <td><GroupBadge id={groupOf(db, p.id)?.id} /></td>}
-                  <td><div className="flex flex-wrap gap-1">{c.labels.map((l) => <Badge key={l}>{l}</Badge>)}</div></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </Table>
-      </Card>
-      {me.isLeader && <Grants />}
-      {adding && <AddPerson onClose={() => setAdding(false)} defaultKind={me.isLeader ? tab : 'participant'} staffAllowed={me.isLeader} />}
+      <PageHeader title={title} subtitle={accounts ? 'بطاقة لكل شخص: صفاته، واسم دخوله، وإعادة تعيين كلمة مروره' : 'لكل شخص نوع أساسي وصفات إضافية تجتمع عليه بلا تعارض، وتُحسب صلاحياته من مجموعها'}
+        actions={canAdd && (tab === 'participant' || tab === 'staff') && <Button onClick={() => setAdding(true)} icon={<Icons.UserPlus className="h-4 w-4" />}>أضف شخصاً</Button>} />
+      <Tabs value={tab} onChange={(t) => setParams({ tab: t })} tabs={tabs} />
+      {(tab === 'participant' || tab === 'staff') && <PeopleList kind={tab} accounts={accounts} />}
+      {tab === 'committees' && <CommitteesList />}
+      {tab === 'grants' && <Grants />}
+      {tab === 'tracker' && <Tracker />}
+      {tab === 'roles' && <Roles />}
+      {adding && <AddPerson onClose={() => setAdding(false)} defaultKind={me.isLeader ? (tab === 'staff' ? 'staff' : 'participant') : 'participant'} staffAllowed={me.isLeader} />}
     </div>
+  );
+}
+
+function accountStatus(a?: Account) {
+  if (!a) return { label: 'بلا حساب', tone: 'gray' as const };
+  if (a.disabled) return { label: 'معطّل', tone: 'red' as const };
+  if (!a.passwordHash) return { label: 'بلا كلمة مرور', tone: 'orange' as const };
+  if (a.mustChangePassword) return { label: 'بانتظار تغيير الكلمة', tone: 'blue' as const };
+  return { label: 'مفعّل', tone: 'green' as const };
+}
+
+/** قائمة الأشخاص: جدول على الشاشة الكبيرة وبطاقة لكل شخص على الجوال. ولمسؤول التقنية أعمدة الحساب */
+function PeopleList({ kind, accounts }: { kind: PersonKind; accounts: boolean }) {
+  const db = useDB();
+  const [q, setQ] = useState('');
+  const [acc, setAcc] = useState<'all' | 'nopass'>('all');
+  const [editing, setEditing] = useState<string | null>(null);
+  const [issued, setIssued] = useState<{ personId: string; password: string } | null>(null);
+  const list = db.persons.filter((p) => p.kind === kind && (!q || p.name.includes(q) || accountOf(db, p.id)?.username.includes(q.toLowerCase())) && (acc === 'all' || !accountOf(db, p.id)?.passwordHash));
+  const waiting = db.persons.filter((p) => !accountOf(db, p.id)?.passwordHash).length;
+  const columns: Column<Person>[] = [
+    { key: 'name', header: 'الاسم', cell: (p) => <Link to={`/app/people/${p.id}`} className="inline-flex min-h-[44px] items-center"><PersonChip id={p.id} sub={p.university ?? p.title} /></Link> },
+    ...(kind === 'participant' ? [{ key: 'group', header: 'المجموعة', cell: (p: Person) => <GroupBadge id={groupOf(db, p.id)?.id} /> }] : []),
+    { key: 'labels', header: 'الصفات', cell: (p) => { const l = distinctLabels(getCapabilities(db, p.id).labels); return l.length ? <div className="flex flex-wrap gap-1">{l.map((x) => <Badge key={x}>{x}</Badge>)}</div> : <span className="text-ink-500">—</span>; } },
+  ];
+  if (accounts)
+    columns.push(
+      { key: 'user', header: 'اسم الدخول', cell: (p) => <span dir="ltr" className="font-mono text-xs">{accountOf(db, p.id)?.username ?? '—'}</span> },
+      { key: 'status', header: 'الحساب', cell: (p) => { const st = accountStatus(accountOf(db, p.id)); return <Badge tone={st.tone}>{st.label}</Badge>; } },
+      { key: 'on', header: 'مفعّل', cell: (p) => { const a = accountOf(db, p.id); return a ? <Toggle checked={!a.disabled} onChange={(v) => act(() => repos.accounts.setDisabled(p.id, !v), v ? 'فُعّل الحساب' : 'عُطّل الحساب')} /> : '—'; } },
+      { key: 'actions', header: '', cell: (p) => accountOf(db, p.id) && (
+        <span className="flex flex-wrap gap-2">
+          <Button size="sm" variant="secondary" onClick={() => setEditing(p.id)}>اسم الدخول</Button>
+          <Button size="sm" variant="secondary" onClick={() => act(() => setIssued({ personId: p.id, password: repos.accounts.resetPassword(p.id) }))}>أعد تعيين الكلمة</Button>
+        </span>
+      ) },
+    );
+  return (
+    <div>
+      {accounts && waiting > 0 && <div className="mb-4"><Notice tone="orange">{waiting} حسابات بلا كلمة مرور بعد: أعد التعيين وسلّم الكلمة المؤقتة لأصحابها.</Notice></div>}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        {accounts ? <FilterPills value={acc} onChange={setAcc} options={[{ key: 'all', label: 'الكل' }, { key: 'nopass', label: 'بلا كلمة مرور' }]} /> : <span />}
+        <Input className="w-full sm:w-64" placeholder={accounts ? 'بحث بالاسم أو اسم الدخول' : 'بحث بالاسم'} value={q} onChange={(e) => setQ(e.target.value)} />
+      </div>
+      <DataTable columns={columns} rows={list} rowKey={(p) => p.id} actionsKey="actions" minWidth={accounts ? 960 : 560} empty={<Empty title="لا نتائج" />} />
+      {editing && <UsernameModal personId={editing} onClose={() => setEditing(null)} />}
+      <Modal open={!!issued} onClose={() => setIssued(null)} title="كلمة مرور مؤقتة" footer={<Button onClick={() => setIssued(null)}>تم</Button>}>
+        {issued && (
+          <div className="space-y-3">
+            <p className="text-sm">سلّمها لـ <b>{personName(db, issued.personId)}</b>. تظهر مرة واحدة، وسيُطلب منه تغييرها أول دخول.</p>
+            <div dir="ltr" className="rounded-xl bg-ink-50 p-3 text-center font-mono text-lg tracking-widest">{issued.password}</div>
+            <p className="text-xs text-ink-500">اسم الدخول: <span dir="ltr" className="font-mono">{accountOf(db, issued.personId)?.username}</span>. الإيميل مؤجّل، فالتسليم يدوي حالياً.</p>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
+
+function UsernameModal({ personId, onClose }: { personId: string; onClose: () => void }) {
+  const db = useDB();
+  const [u, setU] = useState(accountOf(db, personId)?.username ?? '');
+  return (
+    <Modal open onClose={onClose} title={`اسم الدخول: ${personName(db, personId)}`} footer={<Button onClick={() => act(() => { repos.accounts.setUsername(personId, u); onClose(); }, 'حُفظ اسم الدخول')}>احفظ</Button>}>
+      <Field label="اسم الدخول" hint="حروف إنجليزية صغيرة وأرقام و . _ -"><Input dir="ltr" value={u} onChange={(e) => setU(e.target.value)} /></Field>
+    </Modal>
   );
 }
 
@@ -82,18 +151,18 @@ function Grants() {
   const [f, setF] = useState({ personId: staff[0]?.id ?? '', permission: 'register_participants' as TempPermission, expiresAt: addDays(todayISO(), 30) });
   const list = [...db.tempGrants].sort((a, b) => b.at.localeCompare(a.at));
   return (
-    <Card title="الصلاحيات المؤقتة" subtitle="تسجيل المشاركين، تحرير الموقع العام، تصنيفات الجدول. تنتهي تلقائياً في تاريخها" className="mt-6">
-      <div className="grid gap-2 rounded-xl bg-ink-50 p-3 sm:grid-cols-[1fr_1fr_160px_auto]">
-        <Select value={f.personId} onChange={(e) => setF({ ...f, personId: e.target.value })} options={staff.map((p) => ({ value: p.id, label: p.name }))} />
-        <Select value={f.permission} onChange={(e) => setF({ ...f, permission: e.target.value as TempPermission })} options={(Object.keys(tempPermissionLabel) as TempPermission[]).map((k) => ({ value: k, label: tempPermissionLabel[k] }))} />
-        <Input type="date" value={f.expiresAt} onChange={(e) => setF({ ...f, expiresAt: e.target.value })} title="آخر يوم صالح" />
+    <Card title="الصلاحيات المؤقتة" subtitle="تسجيل المشاركين، تحرير الموقع العام، تصنيفات الجدول. تنتهي تلقائياً في تاريخها">
+      <div className="grid gap-3 rounded-2xl bg-ink-50 p-4 sm:grid-cols-[1fr_1fr_170px_auto]">
+        <Select value={f.personId} onChange={(e) => setF({ ...f, personId: e.target.value })} options={staff.map((p) => ({ value: p.id, label: p.name }))} aria-label="الشخص" />
+        <Select value={f.permission} onChange={(e) => setF({ ...f, permission: e.target.value as TempPermission })} options={(Object.keys(tempPermissionLabel) as TempPermission[]).map((k) => ({ value: k, label: tempPermissionLabel[k] }))} aria-label="الصلاحية" />
+        <Input type="date" value={f.expiresAt} onChange={(e) => setF({ ...f, expiresAt: e.target.value })} title="آخر يوم صالح" aria-label="آخر يوم صالح" />
         <Button disabled={!f.personId} onClick={() => act(() => repos.grants.grant(f.personId, f.permission, f.expiresAt), 'مُنحت الصلاحية')}>امنح</Button>
       </div>
-      <ul className="mt-3 space-y-2">
+      <ul className="mt-4 space-y-2">
         {list.map((g) => {
           const active = isGrantActive(g);
           return (
-            <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-2">
+            <li key={g.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-100 px-4 py-3">
               <PersonChip id={g.personId} sub={`${tempPermissionLabel[g.permission]} · حتى ${fmtDate(g.expiresAt)}`} />
               <span className="flex items-center gap-2">
                 <Badge tone={active ? 'green' : 'gray'}>{g.revokedAt ? 'مسحوبة' : active ? 'سارية' : 'منتهية'}</Badge>
@@ -102,7 +171,7 @@ function Grants() {
             </li>
           );
         })}
-        {list.length === 0 && <li className="text-sm text-ink-400">لا صلاحيات مؤقتة</li>}
+        {list.length === 0 && <li className="text-sm text-ink-500">لا صلاحيات مؤقتة</li>}
       </ul>
     </Card>
   );
