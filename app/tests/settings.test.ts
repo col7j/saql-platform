@@ -7,8 +7,8 @@ describe('قفل إعدادات التقييم', () => {
   it('البيانات التجريبية مقفلة، ولا يعدّلها القائد العام وهي مقفلة', () => {
     const h = harness('p_lead');
     expect(h.db.settings.evaluationLock.locked).toBe(true);
-    expect(() => h.repos.settings.saveEvaluation({ lateFactor: 0.3 })).toThrow(/مقفلة/);
-    expect(() => h.repos.settings.update({ lateFactor: 0.3 })).toThrow(/تُقفل/);
+    expect(() => h.repos.settings.saveEvaluation({ deadlineFinalCredit: 0.3 })).toThrow(/مقفلة/);
+    expect(() => h.repos.settings.update({ deadlineFinalCredit: 0.3 })).toThrow(/تُقفل/);
   });
   it('مسؤول التقنية وحده يفتح القفل، والحفظ يعيد القفل', () => {
     const h = harness('p_lead');
@@ -27,7 +27,7 @@ describe('قفل إعدادات التقييم', () => {
     const h = harness('s6');
     h.repos.settings.unlockEvaluation('اختبار');
     h.as('s1');
-    expect(() => h.repos.settings.saveEvaluation({ lateFactor: 0.2 })).toThrow(/القائد العام/);
+    expect(() => h.repos.settings.saveEvaluation({ deadlineFinalCredit: 0.2 })).toThrow(/القائد العام/);
   });
 });
 

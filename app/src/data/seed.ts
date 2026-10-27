@@ -1,7 +1,7 @@
 // البيانات التجريبية الكاملة. التواريخ نسبية لتاريخ اليوم حتى تبقى الحالات منطقية.
 import { addDays, dateTime, todayISO } from '@/domain/dates';
 import { hashPassword, sha256Hex } from '@/domain/crypto';
-import { tasksFromTemplates } from '@/domain/workflow';
+import { closureChecks, tasksFromTemplates } from '@/domain/workflow';
 import type {
   Attachment, Attendance, AuditEntry, BudgetRequest, Contract, Custody, DirectSpend, EditRequest, FeeRecord, Meeting, DB, FocusMeeting, IndividualMeeting, AvailabilitySlot, LifeAspect, Material, Notification, ProgramNeed, SpendForm, SpendLine, WalletEntry,
   PersonalPlan, Survey, Task,
@@ -10,7 +10,7 @@ import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, de
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
-export const DB_VERSION = 10;
+export const DB_VERSION = 11;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -482,7 +482,7 @@ export function buildSeed(): DB {
     { id: id('cm'), target: { kind: 'task' as const, id: tasks.find((t) => t.title === 'تجهيز تقرير منتصف البرنامج')!.id }, authorId: LEADER_ID, text: 'أضف مقارنة القبلي بالبعدي لكل رحلة.', kind: 'comment' as const, at: iso(addDays(T, -2)) },
   ];
 
-  return {
+  const db: DB = {
     version: DB_VERSION,
     seededAt: new Date().toISOString(),
     persons,
@@ -554,4 +554,7 @@ export function buildSeed(): DB {
     finalFiles: [],
     settings,
   };
+  // الرحلات التي اكتملت متطلباتها في البيانات التجريبية تُغلق بعد نهايتها بثلاثة أيام
+  db.trips.filter((t) => closureChecks(db, t).every((c) => c.ok)).forEach((t) => Object.assign(t, { closedAt: iso(addDays(t.endDate, 3)), closedBy: LEADER_ID }));
+  return db;
 }

@@ -4,10 +4,10 @@ import { canManageAccounts } from './accounts';
 import { hasTempGrant } from './grants';
 import type { DB, ID, Settings } from './types';
 
-/** إعدادات التقييم: الأوزان والبنود وشروط المواعيد وأوزان الحضور. تُقفل بعد الحفظ */
+/** إعدادات التقييم: الأوزان والبنود وشروط المواعيد وأوزان الحضور ونصاب تقييم الرحلة. يملكها القائد العام وتُقفل بعد الحفظ */
 export const EVALUATION_KEYS = [
   'split', 'groupTripSplit', 'evaluationItems', 'presentationCriteria', 'presentingExtraBonus', 'presentingRevealAfterEnd', 'leaderEvalItems',
-  'lateFactor', 'enrichmentPointsPerMaterial', 'deadlineDefaults', 'attendanceWeights', 'tripAttendanceStates',
+  'deadlineFinalCredit', 'enrichmentPointsPerMaterial', 'deadlineDefaults', 'attendanceWeights', 'attendanceLateCredit', 'tripRatingQuorum',
 ] as const satisfies readonly (keyof Settings)[];
 export type EvaluationKey = (typeof EVALUATION_KEYS)[number];
 export type EvaluationSettings = Pick<Settings, EvaluationKey>;
@@ -15,8 +15,8 @@ export type EvaluationSettings = Pick<Settings, EvaluationKey>;
 export const evaluationKeyLabel: Record<EvaluationKey, string> = {
   split: 'التوزيع الفردي والجماعي', groupTripSplit: 'نصيب الرحلات الداخلية والخارجية', evaluationItems: 'البنود والأوزان',
   presentationCriteria: 'معايير تقييم المقدّم', presentingExtraBonus: 'تميّز التقديم المتكرر', presentingRevealAfterEnd: 'إظهار تقييم المقدّمين', leaderEvalItems: 'بنود تقييم القائد العام',
-  lateFactor: 'ما يُكسب عند التأخر', enrichmentPointsPerMaterial: 'نقاط المادة الإثرائية', deadlineDefaults: 'شروط المواعيد',
-  attendanceWeights: 'أوزان الحضور', tripAttendanceStates: 'حالات حضور الرحلة',
+  deadlineFinalCredit: 'ما يُكسب في الموعد النهائي', enrichmentPointsPerMaterial: 'نقاط المادة الإثرائية', deadlineDefaults: 'شروط المواعيد',
+  attendanceWeights: 'أوزان الحضور', attendanceLateCredit: 'درجة المتأخر', tripRatingQuorum: 'نصاب تقييم الرحلة',
 };
 
 export function isEvaluationKey(k: string): k is EvaluationKey {
@@ -42,4 +42,17 @@ export function settingsKeyBlockReason(db: DB, pid: ID, key: keyof Settings): st
   if (key === 'ui') return canManageAccounts(db, pid) ? null : 'قوائم الأدوار ورئيسياتها لمسؤول اللجنة التقنية';
   if (key === 'importantNotifications') return canManageAccounts(db, pid) ? null : 'إعدادات الإشعارات لمسؤول اللجنة التقنية';
   return isLeader(db, pid) ? null : 'هذا الإعداد للقائد العام';
+}
+
+/** تحقق قيم التقييم قبل الحفظ: موعد التبكير أسبق من النهائي، والنسب بين 0 و1 */
+export function evaluationSettingsError(s: Settings): string | null {
+  const dd = s.deadlineDefaults;
+  const pairs: [string, number, number][] = [['وثيقة الرحلة', dd.documentEarlyDaysBefore, dd.documentDaysBefore], ['الجدول الزمني', dd.scheduleEarlyDaysBefore, dd.scheduleDaysBefore], ['الميزانية', dd.budgetEarlyDaysBefore, dd.budgetDaysBefore]];
+  const bad = pairs.find(([, early, final]) => early < final);
+  if (bad) return `موعد التبكير في «${bad[0]}» يجب أن يسبق الموعد النهائي (أيام أكثر قبل الرحلة)`;
+  if (!(s.deadlineFinalCredit >= 0 && s.deadlineFinalCredit <= 1)) return 'ما يُكسب في الموعد النهائي بين 0 و1';
+  if (!(s.attendanceLateCredit >= 0 && s.attendanceLateCredit <= 1)) return 'درجة المتأخر بين 0 و1';
+  if (!(s.tripRatingQuorum > 0 && s.tripRatingQuorum <= 1)) return 'نصاب تقييم الرحلة أكبر من 0 وحتى 1';
+  if (!(s.presentingExtraBonus >= 0)) return 'نقاط التميّز لا تكون سالبة';
+  return null;
 }

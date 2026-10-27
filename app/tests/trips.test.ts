@@ -70,7 +70,7 @@ describe('حالات الحضور', () => {
     expect(h.db.attendance.find((a) => a.eventId === 't4' && a.personId === 'u20' && a.eventKind === 'trip')).toMatchObject({ status: 'late', present: true });
     expect(() => h.repos.trips.setAttendance('trip_session', 't4', 'u20', 'late', 'x')).toThrow(/حاضر أو غائب/);
   });
-  it('قيمة الحالة من الإعدادات: المتأخر يكسب أقل من الحاضر في الوقت', () => {
+  it('قيمة المتأخر من الإعدادات: يكسب أقل من الحاضر في الوقت', () => {
     const h = harness('p_lead');
     const a = h.db.attendance.filter((x) => x.eventKind === 'trip' && x.eventId === 't3');
     a.forEach((x) => Object.assign(x, { status: 'on_time', present: true }));
@@ -94,7 +94,8 @@ describe('محرك النقاط', () => {
     h.db.focusMeetings.forEach((f) => { delete f.presenterEvaluations.u2; f.presenterIds = f.presenterIds.filter((x) => x !== 'u2'); });
     fms[0].presenterIds.push('u2'); fms[0].presenterEvaluations.u2 = full;
     fms[1].presenterIds.push('u2'); fms[1].presenterEvaluations.u2 = half;
-    expect(pres('u2').ratio).toBe(0.75 + h.db.settings.presentingExtraBonus); // (1 + 0.5) / 2 + تميّز مرة
+    expect(pres('u2').ratio).toBe(0.75); // (1 + 0.5) / 2
+    expect(pres('u2').extra).toBe(h.db.settings.presentingExtraBonus); // تميّز مرة بنقاط ثابتة
   });
   it('تقييم القائد العام مرة واحدة ويدخل في الفردي', () => {
     const h = harness('p_lead');
@@ -120,11 +121,6 @@ describe('محرك النقاط', () => {
     const before = computeScores(h.db).groups.map((g) => g.total);
     h.db.attendance.filter((a) => a.eventKind === 'trip').forEach((a) => Object.assign(a, { status: 'absent', present: false }));
     expect(computeScores(h.db).groups.map((g) => g.total)).toEqual(before);
-  });
-  it('الالتزام: الحضور في الوقت والمهام في موعدها', () => {
-    const h = harness('p_lead');
-    const c = computeScores(h.db).persons.find((p) => p.personId === 'u1')!.individual.find((i) => i.key === 'commitment')!;
-    expect(c.detail).toMatch(/في الوقت/);
   });
 });
 

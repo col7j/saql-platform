@@ -143,14 +143,14 @@ function Overview({ tripId, onTab }: { tripId: string; onTab: (t: TabKey) => voi
         )}
         {trip.published && <Notice tone="green" icon={<Icons.CheckCircle2 className="h-4 w-4" />}>نُشرت الرحلة {fmtDateTime(trip.publishedAt)}. {trip.scheduleVisibility === 'hidden' ? 'الجدول لم يُعرض للمشاركين بعد.' : 'الجدول معروض للمشاركين.'}</Notice>}
 
-        <Card title="المواعيد النهائية" subtitle="التأخر يقلّل النقاط التي تكسبها المجموعة (لا خصم)">
+        <Card title="المواعيد النهائية" subtitle="التسليم المبكر يكسب وزن البند كاملاً، وفي الموعد النهائي جزءاً، وبعده لا شيء (لا خصم)">
           <div className="divide-y divide-ink-100">
             {tripDeadlines(db, trip).map((d) => (
               <div key={d.kind} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm">
                 <span>{d.label}</span>
                 <span className="flex items-center gap-2">
-                  <span className="text-ink-500">{fmtDate(d.date)}</span>
-                  {d.done ? <Badge tone={d.onTime ? 'green' : 'orange'}>{d.onTime ? 'رُفعت في وقتها' : 'رُفعت متأخرة'}</Badge> : d.late ? <Badge tone="red">متأخر</Badge> : <Badge>{relativeDays(d.date)}</Badge>}
+                  <span className="text-ink-500">مبكر حتى {fmtDate(d.early)} · نهائي {fmtDate(d.date)}</span>
+                  {d.done ? <Badge tone={d.wasEarly ? 'green' : d.onTime ? 'blue' : 'orange'}>{d.wasEarly ? 'رُفعت مبكراً' : d.onTime ? 'رُفعت في الموعد النهائي' : 'رُفعت متأخرة'}</Badge> : d.late ? <Badge tone="red">متأخر</Badge> : <Badge>{relativeDays(d.date)}</Badge>}
                 </span>
               </div>
             ))}

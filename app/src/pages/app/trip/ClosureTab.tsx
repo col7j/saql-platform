@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { isFinanceOwner } from '@/domain/finance';
 import { tripTeamLeaderId } from '@/domain/permissions';
-import { closureChecks, isApproved, staffRatingCount, tripHasEnded } from '@/domain/workflow';
+import { fmtDateTime } from '@/domain/dates';
+import { closeDeadline, closureChecks, isApproved, staffRatingCount, tripCloseBlock, tripHasEnded } from '@/domain/workflow';
 import type { Trip } from '@/domain/types';
 import { act, repos, useDB, useMe, useScores } from '@/state/store';
 import { Badge, Button, Card, Checklist, Field, Icons, Input, Notice, Stars, Textarea } from '@/ui';
@@ -44,7 +45,7 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
         </Card>
 
         <MediaCard trip={trip} />
-        <Card title="تقييم الرحلة" subtitle={`يقيّمها كل فريق العمل (من 10) ويدخل المتوسط في نقاطها · ${count.rated} من ${count.staff}`}>
+        <Card title="تقييم الرحلة" subtitle={`يقيّمها كل فريق العمل (من 10) ويُجمع المتوسط مع النقاط التلقائية ونقاط المالية · ${count.rated} من ${count.staff}، والإغلاق بعد ${count.needed} على الأقل`}>
           {me.isStaff && (mine ? (
             <p className="rounded-xl bg-emerald-50 p-3 text-sm">قيّمتها <b className="num">{mine.score}</b> من 10{mine.note ? ` · ${mine.note}` : ''}</p>
           ) : !tripHasEnded(trip) ? <Notice>يُفتح التقييم بعد انتهاء الرحلة.</Notice> : (
@@ -74,7 +75,15 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
       </div>
 
       <div className="space-y-6">
-        <Card title="متطلبات الإغلاق"><Checklist items={closureChecks(db, trip)} /></Card>
+        <Card title="متطلبات الإغلاق" subtitle={`أقصى موعد للإغلاق ${fmtDateTime(closeDeadline(db, trip, 'trip'))}، وبعده تخسر المجموعة نقاط البند`}>
+          <Checklist items={closureChecks(db, trip)} />
+          {trip.closedAt ? <div className="mt-3"><Notice tone="green">أُغلقت الرحلة {fmtDateTime(trip.closedAt)}.</Notice></div> : (isLead || me.isLeader) && (
+            <div className="mt-3">
+              <Button className="w-full" disabled={!!tripCloseBlock(db, trip)} onClick={() => act(() => repos.trips.close(trip.id), 'أُغلقت الرحلة')}>أغلق الرحلة</Button>
+              {tripCloseBlock(db, trip) && <p className="mt-1 text-[11px] text-ink-400">{tripCloseBlock(db, trip)}</p>}
+            </div>
+          )}
+        </Card>
         {tripScore && (
           <Card title="نتيجة الرحلة للمجموعة" subtitle="تُحسب حياً من نشاط المنصة">
             <div className="space-y-2">

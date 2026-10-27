@@ -5,14 +5,15 @@
 import { todayISO } from './dates';
 import { requestFor } from './finance';
 import { isTripTeam } from './permissions';
-import { docFor, docOnTime, focusDone, isApproved, planProgress, scheduleAdherence, tripEndDT, tripHasStarted } from './workflow';
+import { closeDeadline, deadlineCredit, docFor, earlyDeadline, focusDone, isApproved, planProgress, scheduleAdherence, tripEndDT, tripHasStarted } from './workflow';
 import type { DB, EvaluationItem, ID, PointsEntry, Trip, TripType } from './types';
 
 export interface ItemScore {
   key: string;
   name: string;
   maxPoints: number;
-  ratio: number; // 0..1 (التقديم قد يتجاوز 1 بنقاط التميّز)
+  ratio: number; // 0..1
+  extra?: number; // نقاط ثابتة فوق سقف البند (تميّز التقديم المتكرر)
   points: number;
   mode: EvaluationItem['mode'];
   detail: string;
@@ -76,14 +77,8 @@ function subWeighted(item: EvaluationItem, values: Record<string, number | null>
   return weighted((item.subItems ?? []).map((s) => ({ weight: s.weight, value: values[s.key] ?? null })), skipNull);
 }
 
-/** في الوقت = 1، متأخر = معامل التأخر، لم يُرفع = 0 */
-function onTimeValue(v: boolean | null, lateFactor: number) {
-  if (v === null) return 0;
-  return v ? 1 : lateFactor;
-}
-
 // ───────────── الفردي ─────────────
-/** الحضور بأوزان كل نوع (القائد العام) وقيمة كل حالة لحضور الرحلة */
+/** الحضور بأوزان كل نوع (القائد العام). الالتزام بالوقت جزء منه: المتأخر يأخذ درجة جزئية */
 function attendanceRatio(db: DB, personId: ID): { ratio: number; detail: string } {
   const s = db.settings;
   const groupId = db.groups.find((g) => g.memberIds.includes(personId))?.id;
@@ -91,12 +86,11 @@ function attendanceRatio(db: DB, personId: ID): { ratio: number; detail: string 
   const heldFocus = db.focusMeetings.filter((f) => f.groupId === groupId && focusDone(f));
   const focusAtt = heldFocus.filter((f) => rec('focus', f.id)?.present).length;
   const heldTrips = db.trips.filter((t) => t.published && tripHasStarted(t));
+  // المبكر والوقت درجة كاملة (لا زيادة للمبكر)، والمتأخر جزء يحدده القائد العام، والغائب صفر
   const stateValue = (t: Trip) => {
     const a = rec('trip', t.id);
     if (!a || !a.present) return 0;
-    if (a.status === 'early') return s.tripAttendanceStates.early;
-    if (a.status === 'late') return s.tripAttendanceStates.late;
-    return s.tripAttendanceStates.on_time;
+    return a.status === 'late' ? s.attendanceLateCredit : 1;
   };
   const tripValue = heldTrips.reduce((sum, t) => sum + stateValue(t), 0);
   // لقاءات الرحلة: بنود التصنيفات التي يلزمها تحضير
@@ -113,17 +107,6 @@ function attendanceRatio(db: DB, personId: ID): { ratio: number; detail: string 
   return { ratio, detail: `التركيز ${focusAtt}/${heldFocus.length} · الرحلات ${r2(tripValue)}/${heldTrips.length} · لقاءات الرحلة ${sessAtt}/${sessions.length}` };
 }
 
-/** الالتزام (س9): الحضور في الوقت + تسليم المهام في موعدها، بأوزان فرعية يضبطها القائد العام */
-function commitmentRatio(db: DB, personId: ID, item: EvaluationItem): { ratio: number; detail: string } {
-  const attended = db.attendance.filter((a) => a.eventKind === 'trip' && a.personId === personId && a.present);
-  const onTime = attended.filter((a) => a.status === 'early' || a.status === 'on_time').length;
-  const today = todayISO();
-  const due = db.tasks.filter((t) => t.assigneeId === personId && t.dueDate < today);
-  const tasksOnTime = due.filter((t) => t.status === 'done' && (t.doneAt ?? '').slice(0, 10) <= t.dueDate).length;
-  const ratio = subWeighted(item, { on_time_attendance: attended.length ? onTime / attended.length : null, tasks_on_time: due.length ? tasksOnTime / due.length : null });
-  return { ratio, detail: `في الوقت ${onTime}/${attended.length} رحلة · مهام في موعدها ${tasksOnTime}/${due.length}` };
-}
-
 function personalPlanRatio(db: DB, personId: ID, item: EvaluationItem) {
   const target = db.settings.targets.individualMeetingsPerParticipant || 1;
   const done = db.individualMeetings.filter((m) => m.participantId === personId && m.status === 'done').length;
@@ -136,20 +119,20 @@ export function presentingRevealed(db: DB) {
   return !db.settings.presentingRevealAfterEnd || todayISO() > db.settings.program.endDate;
 }
 
-/** التقديم (س10): متوسط تقييمات مرات التقديم لا مجموعها، ونقاط تميّز عن كل مرة بعد الأولى. يظهر بعد نهاية البرنامج */
-function presentingRatio(db: DB, personId: ID): { ratio: number; detail: string; hidden?: boolean } {
+/** التقديم (س10): متوسط مرات التقديم لكل معيار فرعي (لا المجموع) ضمن سقف البند، ونقاط تميّز ثابتة عن كل مرة بعد الأولى.
+ *  يظهر بعد نهاية البرنامج */
+function presentingRatio(db: DB, personId: ID): { ratio: number; detail: string; extra?: number } {
   const crit = db.settings.presentationCriteria;
-  const evals = db.focusMeetings
-    .filter((f) => f.presenterIds.includes(personId) && f.presenterEvaluations[personId])
-    .map((f) => {
-      const e = f.presenterEvaluations[personId];
-      return crit.reduce((s, c) => s + (e[c.key] ?? 0), 0) / (crit.length * 5);
-    });
+  const evals = db.focusMeetings.filter((f) => f.presenterIds.includes(personId) && f.presenterEvaluations[personId]).map((f) => f.presenterEvaluations[personId]);
   if (!evals.length) return { ratio: 0, detail: 'لم يقدّم بعد (لا خصم)' };
-  if (!presentingRevealed(db)) return { ratio: 0, detail: `قدّم ${evals.length} مرة · تظهر النتيجة بعد نهاية البرنامج`, hidden: true };
-  const avg = evals.reduce((s, v) => s + v, 0) / evals.length;
-  const bonus = (evals.length - 1) * db.settings.presentingExtraBonus;
-  return { ratio: avg + bonus, detail: `قدّم ${evals.length} مرة · المتوسط ${Math.round(avg * 100)}%${bonus ? ` + تميّز ${Math.round(bonus * 100)}%` : ''}` };
+  if (!presentingRevealed(db)) return { ratio: 0, detail: `قدّم ${evals.length} مرة · تظهر النتيجة بعد نهاية البرنامج` };
+  const perCrit = crit.map((c) => {
+    const vals = evals.map((e) => e[c.key]).filter((v): v is number => typeof v === 'number');
+    return vals.length ? vals.reduce((a, v) => a + v, 0) / vals.length / 5 : 0;
+  });
+  const avg = perCrit.length ? perCrit.reduce((a, v) => a + v, 0) / perCrit.length : 0;
+  const extra = (evals.length - 1) * db.settings.presentingExtraBonus;
+  return { ratio: clamp01(avg), extra, detail: `قدّم ${evals.length} مرة · متوسط المعايير ${Math.round(avg * 100)}%${extra ? ` + تميّز ${r2(extra)} نقطة` : ''}` };
 }
 
 /** تقييم القائد العام: مرة واحدة ببنود مجموع أقصاها 100 */
@@ -163,28 +146,35 @@ function leaderEvalRatio(db: DB, personId: ID) {
 }
 
 // ───────────── الجماعي (الرحلات فقط) ─────────────
+/** خلال المهلة = 1، بعدها = 0 (يخسر البند)، ولم يحن بعد = لا شيء */
+function withinDeadline(doneAt: string | undefined, deadline: string): number | null {
+  if (doneAt) return doneAt <= deadline ? 1 : 0;
+  return new Date().toISOString() > deadline ? 0 : null;
+}
 function financeClosedOnTime(db: DB, trip: Trip): number | null {
   const custodies = db.custodies.filter((c) => c.ownerKind === 'trip' && c.ownerId === trip.id);
   if (!custodies.length) return null;
-  const deadline = new Date(tripEndDT(trip).getTime() + db.settings.deadlineDefaults.financeCloseDaysAfter * 86400000).toISOString();
-  if (custodies.some((c) => c.status !== 'closed')) return new Date().toISOString() > deadline ? 0 : null;
-  return custodies.every((c) => (c.closedAt ?? '') <= deadline) ? 1 : db.settings.lateFactor;
+  const deadline = closeDeadline(db, trip, 'finance');
+  const open = custodies.some((c) => c.status !== 'closed');
+  const last = open ? undefined : custodies.map((c) => c.closedAt ?? '').sort().reverse()[0];
+  return withinDeadline(last, deadline);
 }
 
 function groupTripItem(db: DB, trip: Trip, item: EvaluationItem): { ratio: number; detail: string } {
-  const lf = db.settings.lateFactor;
   switch (item.key) {
     case 'trip_auto': {
       const budget = requestFor(db, 'trip', trip.id);
       const adh = scheduleAdherence(db, trip);
       const report = docFor(db, trip.id, 'final_report');
       const reportDeadline = new Date(tripEndDT(trip).getTime() + db.settings.deadlineDefaults.finalReportDaysAfter * 86400000).toISOString().slice(0, 10);
+      const form = (kind: 'document' | 'schedule' | 'budget', at?: string) => deadlineCredit(db, at, earlyDeadline(db, trip, kind), trip.deadlines[kind]);
       const vals: Record<string, number | null> = {
-        document_on_time: onTimeValue(docOnTime(docFor(db, trip.id, 'document'), trip.deadlines.document), lf),
-        schedule_on_time: onTimeValue(docOnTime(docFor(db, trip.id, 'schedule'), trip.deadlines.schedule), lf),
-        budget_on_time: onTimeValue(budget?.submittedAt ? budget.submittedAt.slice(0, 10) <= trip.deadlines.budget : null, lf),
+        document_on_time: form('document', docFor(db, trip.id, 'document')?.submittedAt),
+        schedule_on_time: form('schedule', docFor(db, trip.id, 'schedule')?.submittedAt),
+        budget_on_time: form('budget', budget?.submittedAt),
+        trip_closed: withinDeadline(trip.closedAt, closeDeadline(db, trip, 'trip')),
         finance_closed: financeClosedOnTime(db, trip),
-        report_on_time: report?.submittedAt ? onTimeValue(docOnTime(report, reportDeadline), lf) : null,
+        report_on_time: report?.submittedAt ? (report.submittedAt.slice(0, 10) <= reportDeadline ? 1 : 0) : null,
         schedule_adherence: adh,
       };
       const done = Object.values(vals).filter((v) => v != null).length;
@@ -245,16 +235,16 @@ export function computeScores(db: DB): ScoresResult {
     const group = db.groups.find((g) => g.memberIds.includes(p.id));
     const individual: ItemScore[] = indivItems.map(({ item, share }) => {
       const maxPoints = s.split.individual * share;
-      let res: { ratio: number; detail: string } = { ratio: 0, detail: '' };
+      let res: { ratio: number; detail: string; extra?: number } = { ratio: 0, detail: '' };
       if (item.key === 'attendance') res = attendanceRatio(db, p.id);
-      else if (item.key === 'commitment') res = commitmentRatio(db, p.id, item);
       else if (item.key === 'personal_plan') res = personalPlanRatio(db, p.id, item);
       else if (item.key === 'presenting') res = presentingRatio(db, p.id);
       else if (item.key === 'leader_eval') res = leaderEvalRatio(db, p.id);
       const ratio = Math.max(0, res.ratio); // كسب فقط
-      const points = r2(maxPoints * ratio);
+      const extra = Math.max(0, res.extra ?? 0);
+      const points = r2(maxPoints * ratio + extra);
       if (points > 0) log.push({ id: `pi_${p.id}_${item.key}`, personId: p.id, itemKey: item.key, points, source: item.name, auto: item.mode === 'auto', at, scope: 'individual' });
-      return { key: item.key, name: item.name, maxPoints: r2(maxPoints), ratio: r2(ratio), points, mode: item.mode, detail: res.detail };
+      return { key: item.key, name: item.name, maxPoints: r2(maxPoints), ratio: r2(ratio), ...(extra ? { extra: r2(extra) } : {}), points, mode: item.mode, detail: res.detail };
     });
     const individualTotal = r2(individual.reduce((a, i) => a + i.points, 0));
     const groupShare = group ? groups.find((x) => x.groupId === group.id)!.total : 0; // يُوزَّع بالتساوي

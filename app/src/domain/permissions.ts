@@ -275,3 +275,9 @@ export function canCreateTaskFor(db: DB, creatorId: ID, assigneeId: ID): boolean
   // مشارك لمشارك آخر في مجموعته
   return !!c.group && c.group.memberIds.includes(assigneeId);
 }
+
+/** إنشاء الاجتماعات لفريق العمل. قائد المجموعة والمشارك يستقبلان طلبات الاجتماعات فقط. null = مسموح */
+export function meetingCreateBlock(db: DB, pid: ID): string | null {
+  const p = db.persons.find((x) => x.id === pid);
+  return p?.kind === 'staff' ? null : 'إنشاء الاجتماعات لفريق العمل فقط. قائد المجموعة يستقبل دعوات الاجتماعات';
+}

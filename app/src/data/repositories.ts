@@ -3,15 +3,15 @@
 // لتحويل النموذج إلى منصة حقيقية: نكتب تنفيذاً آخر لنفس الواجهة يتصل بالخادم.
 import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
-import { canManageCommittee, canSeeCommittee, groupOf, groupsPublished, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
+import { canManageCommittee, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
 import { hasTempGrant, tempPermissionLabel } from '@/domain/grants';
 import { findSupporterByPassword, supporterLocked } from '@/domain/supporter';
-import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, isEvaluationKey, settingsKeyBlockReason, type EvaluationKey, type EvaluationSettings } from '@/domain/settings';
+import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, evaluationSettingsError, isEvaluationKey, settingsKeyBlockReason, type EvaluationKey, type EvaluationSettings } from '@/domain/settings';
 import { hashPassword, tempPassword } from '@/domain/crypto';
-import { applyDocAction, canPublish, docFor, tasksFromTemplates, type DocAction } from '@/domain/workflow';
+import { applyDocAction, canPublish, docFor, tasksFromTemplates, tripCloseBlock, type DocAction } from '@/domain/workflow';
 import type {
   AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
   LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ProgramEvent, SchedulePlan, Settings,
@@ -19,7 +19,7 @@ import type {
 } from '@/domain/types';
 import { docKindLabel } from '@/domain/labels';
 import {
-  allocatedFor, DIRECT_CUSTODY_KINDS, FINANCE_PERMS, financePermsOf, firstStatusFor, hasFinancePerm, isFinanceOwner, isLeaderId, linesTotal, ownerLink, ownerTitle,
+  allocatedFor, DIRECT_CUSTODY_KINDS, FINANCE_PERMS, financePermsOf, firstStatusFor, hasFinancePerm, isFinanceOwner, isLeaderId, linesTotal, meetingBudgetReady, ownerLink, ownerTitle,
   spendKindLabel, spendKindOf, submitterOf, tripBudgetFacilitatorId,
 } from '@/domain/finance';
 import { attachmentError, custodyCloseChecks, custodyFigures, formDuplicateWarnings, insufficientFunds, openCustodyConflict, splitWarning } from '@/domain/ledger';
@@ -613,6 +613,17 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (!(score >= 0 && score <= 10)) throw new Error('التقييم من 0 إلى 10');
           if (t.evaluation.staffRatings[me()]) throw new Error('قيّمت هذه الرحلة من قبل');
           t.evaluation.staffRatings[me()] = { score, note, at: nowISO() };
+        });
+      },
+      /** إغلاق الرحلة: لقائد فريقها أو القائد العام، ولا يتم قبل اكتمال المتطلبات ونصاب تقييمات فريق العمل */
+      close(tripId: ID) {
+        mutate((d) => {
+          const t = findTrip(d, tripId);
+          if (tripTeamLeaderId(d, t) !== me() && !d.persons.find((p) => p.id === me())?.isGeneralLeader) throw new Error('إغلاق الرحلة لقائد فريقها أو القائد العام');
+          const block = tripCloseBlock(d, t);
+          if (block) throw new Error(block);
+          Object.assign(t, { closedAt: nowISO(), closedBy: me() });
+          pushNotification(d, tripTeamIds(d, t).filter((x) => x !== me()), 'general', `أُغلقت الرحلة: ${t.title}`, `/app/trips/${t.id}`);
         });
       },
       /** بنود المالية (مثل الترشيد): يقيّم بها مسؤول المالية وحده (من 5) */
@@ -1306,11 +1317,13 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
       },
 
       // ── الرسوم ──
+      /** متابعة فقط بلا مرفق إثبات: مسدد أو جزئي أو غير مسدد. الاستثناء سبب بنص حر ويُعتبر المشارك مسدداً */
       setFee(personId: ID, input: { status: FeeStatus; paidAmount?: number; exemption?: string; note?: string }) {
         mutate((d) => {
           ownerOnly(d, me());
           let f = d.fees.find((x) => x.personId === personId);
           if (!f) d.fees.push((f = { personId, amount: d.settings.feeAmount, status: 'unpaid', paidAmount: 0 }));
+          if (input.exemption?.trim()) input = { ...input, status: 'paid' };
           const paidAmount = input.status === 'paid' ? f.amount : input.status === 'unpaid' ? 0 : input.paidAmount ?? f.paidAmount;
           if (input.status === 'partial' && !(paidAmount > 0 && paidAmount < f.amount)) throw new Error(`السداد الجزئي بين صفر و${f.amount}`);
           Object.assign(f, { status: input.status, paidAmount, exemption: input.exemption?.trim() || undefined, note: input.note, updatedAt: nowISO() });
@@ -1349,14 +1362,18 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
 
     // ───────────── الاجتماعات ─────────────
     meetings: {
-      create(input: Omit<Meeting, 'id' | 'createdBy' | 'status' | 'attendeeIds' | 'decisions' | 'outputs' | 'createdAt'>): ID {
+      /** ينشئه أي عضو في فريق العمل، ومعه طلب الميزانية إن طلبه مسؤول الاجتماع. قائد المجموعة والمشارك يستقبلان الدعوات فقط */
+      create(input: Omit<Meeting, 'id' | 'createdBy' | 'status' | 'attendeeIds' | 'decisions' | 'outputs' | 'createdAt'>, budget?: { amount: number; note?: string }): ID {
         const id = uid('mt');
         mutate((d) => {
-          const c = d.persons.find((p) => p.id === me());
-          const isLeaderOfGroup = d.groups.some((g) => g.leaderId === me());
-          if (c?.kind !== 'staff' && !isLeaderOfGroup) throw new Error('إنشاء الاجتماعات لأعضاء الإدارة وقادة المجموعات');
+          const block = meetingCreateBlock(d, me());
+          if (block) throw new Error(block);
           d.meetings.push({ ...input, id, createdBy: me(), status: 'planned', attendeeIds: [], decisions: [], outputs: [], createdAt: nowISO() });
           pushNotification(d, input.inviteeIds.filter((x) => x !== me()), 'meeting', `دعوة لاجتماع: ${input.title}`, `/app/meetings/${id}`);
+          if (budget) {
+            if (!meetingBudgetReady(d)) throw new Error('ميزانية الاجتماعات غير معتمدة في الموازنة العامة');
+            submitRequestIn(d, me(), { ownerKind: 'meeting', ownerId: id, amount: budget.amount, note: budget.note, lines: [], detailed: false });
+          }
         });
         return id;
       },
@@ -1502,6 +1519,8 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           for (const k of Object.keys(patch)) if (!isEvaluationKey(k)) throw new Error(`«${k}» ليس من إعدادات التقييم`);
           const changed = (Object.keys(patch) as EvaluationKey[]).filter((k) => JSON.stringify(patch[k]) !== JSON.stringify(d.settings[k]));
           Object.assign(d.settings, patch);
+          const err = evaluationSettingsError(d.settings);
+          if (err) throw new Error(err);
           d.settings.evaluationLock = { locked: true, at: nowISO(), by: me() };
           audit(d, me(), 'حفظ إعدادات التقييم وقفلها', changed.length ? `تغيّر: ${changed.map((k) => evaluationKeyLabel[k]).join('، ')}` : 'بلا تغيير في القيم', 'settings');
         });

@@ -108,6 +108,11 @@ export function focusCounter(db: DB, groupId: ID) {
   return { withBudget: Math.min(n, max), total: n, min, max, overflow: Math.max(0, n - max) };
 }
 
+/** ميزانية الاجتماعات معتمدة: الموازنة العامة محفوظة ولها مرصود للاجتماع. عندها فقط يظهر الطلب في نموذج الإنشاء */
+export function meetingBudgetReady(db: DB) {
+  return db.programBudget.setupDone && db.programBudget.meetingDefault > 0;
+}
+
 export function allocatedFor(db: DB, ownerKind: BudgetOwnerKind, ownerId: ID): number {
   const b = db.programBudget;
   if (ownerKind === 'focus') {

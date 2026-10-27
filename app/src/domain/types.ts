@@ -309,6 +309,9 @@ export interface Trip {
   attendanceTakerId?: ID;
   trackerSubstitute?: { candidateId: ID; reason?: string; status: 'pending' | 'approved' | 'rejected' };
   closure: { teamEvalForm?: string; experienceForm?: string; publicReport?: string; photos: string[]; driveLink?: string; tweets?: string[] };
+  /** إغلاق الرحلة: بعد اكتمال المتطلبات ونصاب تقييم فريق العمل. موعده يدخل في نقاط المجموعة */
+  closedAt?: ISODateTime;
+  closedBy?: ID;
   /** رحلة الخطة الشخصية: من يخطط الرحلة يحدد بند الجدول أو توقيت فتح الخطة */
   planUnlock?: { mode: 'item'; itemId: ID } | { mode: 'time'; at: ISODateTime };
   evaluation: TripEvaluation;
@@ -963,21 +966,28 @@ export interface Settings {
   groupTripSplit: { internal: number; external: number };
   evaluationItems: EvaluationItem[];
   presentationCriteria: { key: string; name: string }[];
-  /** التقديم المتكرر: يُحسب متوسط مرات التقديم، ويُضاف تميّز عن كل مرة بعد الأولى (نسبة من نقاط البند) */
+  /** التقديم المتكرر: يُحسب متوسط مرات التقديم لكل معيار، ويُضاف تميّز عن كل مرة بعد الأولى (نقاط ثابتة لا نسبة) */
   presentingExtraBonus: number;
   /** نتائج تقييم المقدّمين تظهر بعد نهاية البرنامج */
   presentingRevealAfterEnd: boolean;
   /** بنود تقييم القائد العام الفردي (مرة واحدة لكل مشارك) ومجموع أقصاها 100 */
   leaderEvalItems: { key: string; name: string; max: number }[];
-  lateFactor: number; // ما يُكسب من النقطة عند التأخر عن الموعد النهائي
+  /** نماذج الرحلة: ما يُكسب من وزن البند عند التسليم بعد موعد التبكير وقبل الموعد النهائي (0..1). المبكر كامل، وبعد النهائي صفر */
+  deadlineFinalCredit: number;
   enrichmentPointsPerMaterial: number;
   targets: { focusMeetingsPerGroup: number; individualMeetingsPerParticipant: number };
   programCounts: { staffInternal: number; groupInternal: number; groupExternal: number; staffExternal: number };
-  deadlineDefaults: { documentDaysBefore: number; scheduleDaysBefore: number; budgetDaysBefore: number; finalReportDaysAfter: number; financeCloseDaysAfter: number; reminderDaysBefore: number };
+  /** مواعيد الرحلة بالأيام: لكل نموذج موعد تبكير وموعد نهائي قبل الرحلة، ومهلة الإغلاق والإغلاق المالي بعدها */
+  deadlineDefaults: {
+    documentEarlyDaysBefore: number; documentDaysBefore: number;
+    scheduleEarlyDaysBefore: number; scheduleDaysBefore: number;
+    budgetEarlyDaysBefore: number; budgetDaysBefore: number;
+    finalReportDaysAfter: number; tripCloseDaysAfter: number; financeCloseDaysAfter: number; reminderDaysBefore: number;
+  };
   /** وزن كل نوع حضور في التقييم الفردي (لقاءات التركيز، الرحلة، لقاءات الرحلة) */
   attendanceWeights: { focus: number; trip: number; tripSession: number };
-  /** ما يُكسب من نقطة حضور الرحلة لكل حالة (0..1). الغياب صفر دائماً: لا خصم */
-  tripAttendanceStates: { early: number; on_time: number; late: number };
+  /** ما يُكسب من نقطة حضور الرحلة عند التأخر (0..1). المبكر والوقت كاملة بلا زيادة، والغياب صفر: لا خصم */
+  attendanceLateCredit: number;
   /** قفل إعدادات التقييم: يُقفل عند الحفظ، ولا يفتحه إلا مسؤول اللجنة التقنية */
   evaluationLock: { locked: boolean; at?: ISODateTime; by?: ID };
   scheduleCategories: ScheduleCategory[];

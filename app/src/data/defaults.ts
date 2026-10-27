@@ -8,15 +8,7 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     groupTripSplit: { internal: 40, external: 60 },
     // القالب الافتراضي للتقييم (وثيقة القرارات + س9 وس10). يضبطه القائد العام ثم يُقفل
     evaluationItems: [
-      { key: 'attendance', name: 'الحضور', scope: 'individual', weight: 30, mode: 'auto', enabled: true, description: 'تلقائي بأوزان كل نوع (لقاءات التركيز، الرحلة، لقاءات الرحلة) وقيمة كل حالة لحضور الرحلة.' },
-      {
-        key: 'commitment', name: 'الالتزام', scope: 'individual', weight: 15, mode: 'auto', enabled: true,
-        description: 'تلقائي: الحضور في الوقت (مبكر أو في الوقت) وتسليم المهام في موعدها.',
-        subItems: [
-          { key: 'on_time_attendance', name: 'الحضور في الوقت', weight: 60 },
-          { key: 'tasks_on_time', name: 'المهام في موعدها', weight: 40 },
-        ],
-      },
+      { key: 'attendance', name: 'الحضور', scope: 'individual', weight: 45, mode: 'auto', enabled: true, description: 'تلقائي بأوزان كل نوع (لقاءات التركيز، الرحلة، لقاءات الرحلة). المبكر والوقت درجة كاملة، والمتأخر درجة جزئية، والغائب صفر.' },
       { key: 'presenting', name: 'تقديم المحتوى', scope: 'individual', weight: 20, mode: 'manual', enabled: true, description: 'يقيّمه الميسّر بعد كل لقاء تركيز. متوسط مرات التقديم مع تميّز عن كل مرة بعد الأولى، ويظهر بعد نهاية البرنامج.' },
       { key: 'leader_eval', name: 'تقييم القائد العام', scope: 'individual', weight: 25, mode: 'manual', enabled: true, description: 'مرة واحدة لكل مشارك ببنود يحددها القائد العام (ومنها الإبداع والابتكار).' },
       {
@@ -31,13 +23,14 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
 
       {
         key: 'trip_auto', name: 'البنود التلقائية للرحلة', scope: 'group', weight: 50, mode: 'auto', enabled: true,
-        description: 'من نشاط المنصة: تسليم النماذج مبكراً، والإغلاق المالي في الوقت، والتقرير، والالتزام بالجدول الفعلي.',
+        description: 'من نشاط المنصة: تسليم النماذج (مبكراً كامل الوزن، وفي الموعد النهائي جزء، وبعده صفر)، وإغلاق الرحلة وإغلاقها مالياً خلال المهلة، والتقرير، والالتزام بالجدول الفعلي.',
         subItems: [
-          { key: 'document_on_time', name: 'وثيقة الرحلة في موعدها', weight: 15 },
-          { key: 'schedule_on_time', name: 'الجدول الزمني في موعده', weight: 15 },
-          { key: 'budget_on_time', name: 'الميزانية في موعدها', weight: 15 },
-          { key: 'finance_closed', name: 'الإغلاق المالي في الوقت', weight: 20 },
-          { key: 'report_on_time', name: 'التقرير الختامي في موعده', weight: 15 },
+          { key: 'document_on_time', name: 'وثيقة الرحلة', weight: 15 },
+          { key: 'schedule_on_time', name: 'الجدول الزمني', weight: 15 },
+          { key: 'budget_on_time', name: 'الميزانية', weight: 15 },
+          { key: 'trip_closed', name: 'إغلاق الرحلة خلال المهلة', weight: 10 },
+          { key: 'finance_closed', name: 'الإغلاق المالي خلال المهلة', weight: 15 },
+          { key: 'report_on_time', name: 'التقرير الختامي في موعده', weight: 10 },
           { key: 'schedule_adherence', name: 'الالتزام بالجدول (الفعلي)', weight: 20 },
         ],
       },
@@ -50,7 +43,7 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
       { key: 'aids', name: 'استخدام وسائل مساعدة' },
       { key: 'fit', name: 'مناسبة الطرح للمادة' },
     ],
-    presentingExtraBonus: 0.1,
+    presentingExtraBonus: 2,
     presentingRevealAfterEnd: true,
     leaderEvalItems: [
       { key: 'leadership', name: 'المبادرة والقيادة', max: 20 },
@@ -60,13 +53,13 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
       { key: 'growth', name: 'النمو خلال البرنامج', max: 15 },
       { key: 'creativity', name: 'الإبداع والابتكار', max: 20 },
     ],
-    lateFactor: 0.5,
+    deadlineFinalCredit: 0.5,
     enrichmentPointsPerMaterial: 2,
     targets: { focusMeetingsPerGroup: 4, individualMeetingsPerParticipant: 4 },
     programCounts: { staffInternal: 2, groupInternal: 1, groupExternal: 1, staffExternal: 1 },
-    deadlineDefaults: { documentDaysBefore: 21, scheduleDaysBefore: 10, budgetDaysBefore: 10, finalReportDaysAfter: 7, financeCloseDaysAfter: 14, reminderDaysBefore: 3 },
+    deadlineDefaults: { documentEarlyDaysBefore: 30, documentDaysBefore: 21, scheduleEarlyDaysBefore: 15, scheduleDaysBefore: 10, budgetEarlyDaysBefore: 15, budgetDaysBefore: 10, finalReportDaysAfter: 7, tripCloseDaysAfter: 14, financeCloseDaysAfter: 14, reminderDaysBefore: 3 },
     attendanceWeights: { focus: 40, trip: 40, tripSession: 20 },
-    tripAttendanceStates: { early: 1, on_time: 1, late: 0.5 },
+    attendanceLateCredit: 0.5,
     evaluationLock: { locked: false },
     scheduleCategories: [
       { id: 'cat_lecture', name: 'لقاء/محاضرة', color: '#00708c', description: 'محاضرة أو دورة أو ورشة بمقدّم', requiresPrep: true },

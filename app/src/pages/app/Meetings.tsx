@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { addDays, fmtDate, fmtTime, todayISO } from '@/domain/dates';
-import { isFinanceOwner } from '@/domain/finance';
+import { isFinanceOwner, meetingBudgetReady } from '@/domain/finance';
 import { RequestPanel } from './RequestPanel';
 import { SAR } from '@/domain/labels';
 import type { Meeting, MeetingStatus } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
-import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Select, StatusPill, StepWizard, Tabs, Textarea, askConfirm, cx } from '@/ui';
+import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Select, StatusPill, StepWizard, Tabs, Textarea, Toggle, askConfirm, cx } from '@/ui';
 import type { Tone } from '@/domain/labels';
 import { PersonChip, TaskStatusBadge } from '@/ui/domain';
 
@@ -35,10 +35,10 @@ export default function MeetingsPage() {
   const [creating, setCreating] = useState(false);
   const today = todayISO();
   const shown = list.filter((m) => (tab === 'upcoming' ? m.status !== 'closed' : m.status === 'closed')).sort((a, b) => (tab === 'upcoming' ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)));
-  const canCreate = me.isStaff || !!me.leaderOf;
+  const canCreate = me.isStaff; // قائد المجموعة والمشارك يستقبلان الدعوات فقط
   return (
     <div>
-      <PageHeader title="الاجتماعات" subtitle="اجتماعات فريق العمل، والاجتماعات مع قادة المجموعات" actions={canCreate && <Button onClick={() => setCreating(true)} icon={<Icons.Plus className="h-4 w-4" />}>{me.isStaff ? 'أنشئ اجتماعاً' : 'اطلب اجتماعاً'}</Button>} />
+      <PageHeader title="الاجتماعات" subtitle="اجتماعات فريق العمل، والاجتماعات مع قادة المجموعات" actions={canCreate && <Button onClick={() => setCreating(true)} icon={<Icons.Plus className="h-4 w-4" />}>أنشئ اجتماعاً</Button>} />
       <Tabs value={tab} onChange={setTab} tabs={[{ key: 'upcoming', label: 'القادمة والمفتوحة' }, { key: 'past', label: 'المغلقة' }]} />
       {shown.length === 0 ? <Empty title="لا اجتماعات" text={canCreate ? 'ابدأ بـ «أنشئ اجتماعاً».' : undefined} /> : (
         <div className="space-y-3">
@@ -67,16 +67,23 @@ function CreateMeeting({ onClose }: { onClose: () => void }) {
   const staff = db.persons.filter((p) => p.kind === 'staff');
   const leaders = db.groups.map((g) => g.leaderId!).filter(Boolean);
   const [f, setF] = useState({
-    title: '', kind: 'periodic' as Meeting['kind'], recurrence: 'weekly' as Meeting['recurrence'], withGroupLeaders: !me.isStaff,
+    title: '', kind: 'periodic' as Meeting['kind'], recurrence: 'weekly' as Meeting['recurrence'], withGroupLeaders: false,
     date: addDays(todayISO(), 3), start: '21:00', end: '22:00', location: '', ownerId: me.person.id,
-    inviteeIds: me.isStaff ? staff.map((p) => p.id) : [me.person.id, db.persons.find((p) => p.isGeneralLeader)!.id], agenda: [''] as string[],
+    inviteeIds: staff.map((p) => p.id), agenda: [''] as string[],
   });
+  // طلب الميزانية جزء من الإنشاء إذا كانت ميزانية الاجتماعات معتمدة، ويرفعه مسؤول الاجتماع
+  const budgetReady = meetingBudgetReady(db);
+  const defaultAmount = db.programBudget.meetingDefault;
+  const [requestBudget, setRequestBudget] = useState(false);
+  const [amount, setAmount] = useState<number | null>(null);
+  const finalAmount = amount ?? defaultAmount;
+  const withBudget = budgetReady && requestBudget && f.ownerId === me.person.id;
   const set = (p: Partial<typeof f>) => setF((x) => ({ ...x, ...p }));
   const toggle = (id: string) => set({ inviteeIds: f.inviteeIds.includes(id) ? f.inviteeIds.filter((x) => x !== id) : [...f.inviteeIds, id] });
   const pool = [...staff.map((p) => p.id), ...leaders];
   return (
-    <Modal open onClose={onClose} title={me.isStaff ? 'اجتماع جديد' : 'طلب اجتماع'}>
-      <StepWizard onCancel={onClose} finishLabel="أنشئ الاجتماع" onFinish={() => act(() => { const id = repos.meetings.create({ ...f, agenda: f.agenda.filter(Boolean), inviteeIds: [...new Set([...f.inviteeIds, f.ownerId])] }); onClose(); nav(`/app/meetings/${id}`); }, 'أُنشئ الاجتماع ووصلت الدعوات')} steps={[
+    <Modal open onClose={onClose} title="اجتماع جديد">
+      <StepWizard onCancel={onClose} finishLabel="أنشئ الاجتماع" onFinish={() => act(() => { const id = repos.meetings.create({ ...f, agenda: f.agenda.filter(Boolean), inviteeIds: [...new Set([...f.inviteeIds, f.ownerId])] }, withBudget ? { amount: finalAmount } : undefined); onClose(); nav(`/app/meetings/${id}`); }, withBudget ? 'أُنشئ الاجتماع وأُرسل طلب الميزانية' : 'أُنشئ الاجتماع ووصلت الدعوات')} steps={[
         {
           title: 'العنوان والنوع', valid: !!f.title.trim(), hint: 'اكتب عنوان الاجتماع',
           content: (
@@ -124,6 +131,25 @@ function CreateMeeting({ onClose }: { onClose: () => void }) {
             </div>
           ),
         },
+        ...(budgetReady ? [{
+          title: 'الميزانية',
+          content: f.ownerId !== me.person.id ? (
+            <Notice>طلب الميزانية يرفعه مسؤول الاجتماع ({personName(db, f.ownerId)}) من صفحة الاجتماع بعد إنشائه.</Notice>
+          ) : (
+            <div className="space-y-3">
+              <Toggle checked={requestBudget} onChange={setRequestBudget} label="أرسل طلب ميزانية مع إنشاء الاجتماع" />
+              {requestBudget && (
+                <>
+                  <Field label="المبلغ (ر.س)" hint={`المرصود الافتراضي للاجتماع ${defaultAmount} حدده المسؤول المالي، ويمكنك تعديله`}>
+                    <Input className="num" type="number" min={0} value={finalAmount} onChange={(e) => setAmount(Math.max(0, +e.target.value))} />
+                  </Field>
+                  <p className="text-xs text-ink-500">{finalAmount <= defaultAmount ? 'ضمن المرصود: يذهب الطلب لمسؤول اللجنة المالية مباشرة.' : 'يتجاوز المرصود: يذهب الطلب للقائد العام أولاً.'}</p>
+                </>
+              )}
+              {!requestBudget && <p className="text-xs text-ink-500">يمكنك طلبها لاحقاً من صفحة الاجتماع.</p>}
+            </div>
+          ),
+        }] : []),
       ]} />
     </Modal>
   );

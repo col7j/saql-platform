@@ -228,21 +228,53 @@ export function staffRatingCount(db: DB, trip: Trip) {
   const staff = db.persons.filter((p) => p.kind === 'staff').length;
   return { rated: Object.keys(trip.evaluation.staffRatings).length, needed: Math.max(1, Math.ceil(staff * db.settings.tripRatingQuorum)), staff };
 }
-export function isTripClosed(db: DB, trip: Trip) {
-  return closureChecks(db, trip).every((c) => c.ok);
+/** الرحلة مغلقة حين يغلقها قائد الفريق أو القائد العام بعد اكتمال المتطلبات (ومنها نصاب التقييم) */
+export function isTripClosed(_db: DB, trip: Trip) {
+  return !!trip.closedAt;
+}
+/** سبب منع الإغلاق: أول متطلب ناقص. null = يمكن الإغلاق */
+export function tripCloseBlock(db: DB, trip: Trip): string | null {
+  if (trip.closedAt) return 'الرحلة مغلقة';
+  if (!tripHasEnded(trip)) return 'تُغلق الرحلة بعد انتهائها';
+  const count = staffRatingCount(db, trip);
+  if (count.rated < count.needed) return `لا تُغلق الرحلة قبل اكتمال تقييمات فريق العمل: ${count.rated} من ${count.needed} على الأقل`;
+  const missing = closureChecks(db, trip).filter((c) => !c.ok);
+  return missing.length ? `متطلبات الإغلاق الناقصة: ${missing.map((c) => c.label).join('، ')}` : null;
 }
 
-/** المواعيد النهائية القادمة والمتأخرة */
+/** موعد التبكير لنموذج الرحلة: أيام قبل الرحلة يحددها القائد العام، ولا يتأخر عن الموعد النهائي للرحلة */
+export function earlyDeadline(db: DB, trip: Trip, kind: 'document' | 'schedule' | 'budget'): string {
+  const dd = db.settings.deadlineDefaults;
+  const days = { document: dd.documentEarlyDaysBefore, schedule: dd.scheduleEarlyDaysBefore, budget: dd.budgetEarlyDaysBefore }[kind];
+  const early = addDays(trip.startDate, -days);
+  return early < trip.deadlines[kind] ? early : trip.deadlines[kind];
+}
+/** درجة التسليم من وزن البند: حتى موعد التبكير كامل، وحتى النهائي جزء يحدده القائد العام، وبعده أو بلا تسليم صفر */
+export function deadlineCredit(db: DB, submittedAt: string | undefined, early: string, final: string): number {
+  if (!submittedAt) return 0;
+  const day = submittedAt.slice(0, 10);
+  if (day <= early) return 1;
+  return day <= final ? db.settings.deadlineFinalCredit : 0;
+}
+/** آخر موعد لإغلاق الرحلة ولإغلاقها مالياً: أيام بعد نهايتها يحددها القائد العام */
+export function closeDeadline(db: DB, trip: Trip, which: 'trip' | 'finance'): string {
+  const days = which === 'trip' ? db.settings.deadlineDefaults.tripCloseDaysAfter : db.settings.deadlineDefaults.financeCloseDaysAfter;
+  return new Date(tripEndDT(trip).getTime() + days * 86400000).toISOString();
+}
+
+/** المواعيد النهائية القادمة والمتأخرة، ومع كل منها موعد التبكير */
 export function tripDeadlines(db: DB, trip: Trip) {
-  const list: { kind: DocKind | 'budget'; label: string; date: string; done: boolean; late: boolean; onTime: boolean | null }[] = [];
+  const list: { kind: DocKind | 'budget'; label: string; date: string; early: string; done: boolean; late: boolean; onTime: boolean | null; wasEarly: boolean }[] = [];
   const today = todayISO();
-  const mk = (kind: DocKind | 'budget', label: string, date: string, submittedAt?: string) => {
+  const mk = (kind: 'document' | 'schedule' | 'budget', label: string, submittedAt?: string) => {
+    const date = trip.deadlines[kind];
+    const early = earlyDeadline(db, trip, kind);
     const onTime = submittedAt ? submittedAt.slice(0, 10) <= date : null;
-    list.push({ kind, label, date, done: !!submittedAt, late: !submittedAt && today > date, onTime });
+    list.push({ kind, label, date, early, done: !!submittedAt, late: !submittedAt && today > date, onTime, wasEarly: !!submittedAt && submittedAt.slice(0, 10) <= early });
   };
-  mk('document', 'رفع وثيقة الرحلة', trip.deadlines.document, docFor(db, trip.id, 'document')?.submittedAt);
-  mk('schedule', 'رفع الجدول الزمني', trip.deadlines.schedule, docFor(db, trip.id, 'schedule')?.submittedAt);
-  mk('budget', 'رفع الميزانية', trip.deadlines.budget, requestFor(db, 'trip', trip.id)?.submittedAt);
+  mk('document', 'رفع وثيقة الرحلة', docFor(db, trip.id, 'document')?.submittedAt);
+  mk('schedule', 'رفع الجدول الزمني', docFor(db, trip.id, 'schedule')?.submittedAt);
+  mk('budget', 'رفع الميزانية', requestFor(db, 'trip', trip.id)?.submittedAt);
   return list;
 }
 

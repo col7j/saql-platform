@@ -58,7 +58,7 @@ function Evaluation() {
   const [unlocking, setUnlocking] = useState(false);
   const save = () => act(() => repos.settings.saveEvaluation(Object.fromEntries(EVALUATION_KEYS.map((k) => [k, s[k]]))), 'حُفظت إعدادات التقييم وقُفلت، وأُعيد حساب النقاط');
   const lock = db.settings.evaluationLock;
-  const dd = (k: keyof Settings['deadlineDefaults'], label: string) => <Field label={label}><Input type="number" value={s.deadlineDefaults[k]} onChange={(e) => setS({ ...s, deadlineDefaults: { ...s.deadlineDefaults, [k]: num(e.target.value) } })} /></Field>;
+  const dd = (k: keyof Settings['deadlineDefaults'], label: string, hint?: string) => <Field label={label} hint={hint}><Input type="number" value={s.deadlineDefaults[k]} onChange={(e) => setS({ ...s, deadlineDefaults: { ...s.deadlineDefaults, [k]: num(e.target.value) } })} /></Field>;
   const updItem = (key: string, p: Partial<EvaluationItem>) => setS({ ...s, evaluationItems: s.evaluationItems.map((i) => (i.key === key ? { ...i, ...p } : i)) });
   const section = (scope: 'individual' | 'group') => {
     const items = s.evaluationItems.filter((i) => i.scope === scope);
@@ -119,9 +119,10 @@ function Evaluation() {
         </Card>
         <Card title="معاملات">
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="تميّز التقديم المتكرر" hint="يُحسب متوسط مرات التقديم، ويُضاف هذا عن كل مرة بعد الأولى (0.1 = 10% من نقاط البند)"><Input type="number" step={0.05} value={s.presentingExtraBonus} onChange={(e) => setS({ ...s, presentingExtraBonus: num(e.target.value) })} /></Field>
+            <Field label="نقاط تميّز التقديم المتكرر" hint="رقم ثابت لا نسبة. بند التقديم يأخذ متوسط مرات التقديم لكل معيار ضمن سقفه، ويُضاف هذا العدد من النقاط عن كل مرة بعد الأولى"><Input type="number" step={0.5} value={s.presentingExtraBonus} onChange={(e) => setS({ ...s, presentingExtraBonus: num(e.target.value) })} /></Field>
             <div className="flex items-end pb-2"><Toggle checked={s.presentingRevealAfterEnd} onChange={(v) => setS({ ...s, presentingRevealAfterEnd: v })} label="تقييم المقدّمين يظهر بعد نهاية البرنامج" /></div>
-            <Field label="ما يُكسب عند التأخر عن الموعد" hint="نسبة من النقطة (0 إلى 1)"><Input type="number" step={0.1} value={s.lateFactor} onChange={(e) => setS({ ...s, lateFactor: Math.min(1, num(e.target.value)) })} /></Field>
+            <Field label="ما يُكسب عند التسليم في الموعد النهائي" hint="نسبة من وزن البند (0 إلى 1) لمن سلّم بعد موعد التبكير وقبل الموعد النهائي. المبكر يأخذ الوزن كاملاً، وبعد النهائي صفر"><Input type="number" step={0.1} value={s.deadlineFinalCredit} onChange={(e) => setS({ ...s, deadlineFinalCredit: Math.min(1, num(e.target.value)) })} /></Field>
+            <Field label="نصاب تقييم فريق العمل للرحلة" hint="نسبة من فريق العمل (0 إلى 1). لا تُغلق الرحلة قبل أن يقيّمها هذا العدد على الأقل، ويدخل المتوسط في درجة المجموعة"><Input type="number" step={0.1} value={s.tripRatingQuorum} onChange={(e) => setS({ ...s, tripRatingQuorum: Math.min(1, num(e.target.value)) })} /></Field>
             <Field label="نقاط المادة الإثرائية"><Input type="number" value={s.enrichmentPointsPerMaterial} onChange={(e) => setS({ ...s, enrichmentPointsPerMaterial: num(e.target.value) })} /></Field>
           </div>
           <div className="mt-3">
@@ -134,28 +135,28 @@ function Evaluation() {
         </Card>
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="شروط المواعيد (بالأيام)" subtitle="التأخر عنها يعني ألا تُكسب النقطة كاملة">
+        <Card title="مواعيد الرحلة (بالأيام)" subtitle="درجات المواعيد للرحلة نفسها وتذهب للمجموعة المنفِّذة. التسليم حتى موعد التبكير يأخذ وزن البند كاملاً، وحتى النهائي جزءاً، وبعده صفراً">
           <div className="grid gap-3 sm:grid-cols-2">
-            {dd('documentDaysBefore', 'وثيقة الرحلة قبلها بـ')}
-            {dd('scheduleDaysBefore', 'الجدول الزمني قبلها بـ')}
-            {dd('budgetDaysBefore', 'الميزانية قبلها بـ')}
-            {dd('financeCloseDaysAfter', 'الإغلاق المالي بعدها بـ')}
-            {dd('finalReportDaysAfter', 'التقرير الختامي بعدها بـ')}
-            {dd('reminderDaysBefore', 'التنبيه قبل الموعد بـ')}
+            {dd('documentEarlyDaysBefore', 'وثيقة الرحلة: التبكير قبلها بـ', 'من سلّم قبل هذا الموعد يأخذ وزن البند كاملاً')}
+            {dd('documentDaysBefore', 'وثيقة الرحلة: النهائي قبلها بـ', 'الموعد الافتراضي للرحلات الجديدة، ويمكن تعديله لكل رحلة')}
+            {dd('scheduleEarlyDaysBefore', 'الجدول الزمني: التبكير قبلها بـ')}
+            {dd('scheduleDaysBefore', 'الجدول الزمني: النهائي قبلها بـ')}
+            {dd('budgetEarlyDaysBefore', 'الميزانية: التبكير قبلها بـ')}
+            {dd('budgetDaysBefore', 'الميزانية: النهائي قبلها بـ')}
+            {dd('tripCloseDaysAfter', 'إغلاق الرحلة: أقصى مدة بعدها', 'إن تأخر الإغلاق عنها تخسر المجموعة نقاط بند الإغلاق')}
+            {dd('financeCloseDaysAfter', 'الإغلاق المالي: أقصى مدة بعدها', 'إن تأخر إغلاق العهدة عنها تخسر المجموعة نقاط بند الإغلاق المالي')}
+            {dd('finalReportDaysAfter', 'التقرير الختامي بعدها بـ', 'بعده لا يُكسب بند التقرير')}
+            {dd('reminderDaysBefore', 'التنبيه قبل الموعد بـ', 'تذكير داخل المنصة فقط')}
           </div>
+          <p className="mt-2 text-[11px] text-ink-400">أوزان هذه البنود في «البنود التلقائية للرحلة» ضمن البنود الجماعية أدناه.</p>
         </Card>
-        <Card title="أوزان الحضور" subtitle="الحضور يؤثر على التقييم الفردي فقط. يُطبَّق في محرك النقاط مع مرحلة الرحلات">
+        <Card title="أوزان الحضور" subtitle="وزن الحضور كله يُضبط من بند «الحضور» في البنود الفردية، وهنا نصيب كل نوع منه. الحضور يؤثر على التقييم الفردي فقط">
           <div className="grid gap-3 sm:grid-cols-3">
             {(['focus', 'trip', 'tripSession'] as const).map((k) => (
               <Field key={k} label={{ focus: 'لقاءات التركيز', trip: 'الرحلة (التحضير العام)', tripSession: 'لقاءات الرحلة' }[k]}><Input type="number" value={s.attendanceWeights[k]} onChange={(e) => setS({ ...s, attendanceWeights: { ...s.attendanceWeights, [k]: num(e.target.value) } })} /></Field>
             ))}
           </div>
-          <span className="label mt-3">ما يُكسب من نقطة حضور الرحلة لكل حالة (0 إلى 1، والغياب صفر)</span>
-          <div className="grid gap-3 sm:grid-cols-3">
-            {(['early', 'on_time', 'late'] as const).map((k) => (
-              <Field key={k} label={{ early: 'مبكر', on_time: 'في الوقت', late: 'متأخر' }[k]}><Input type="number" step={0.1} value={s.tripAttendanceStates[k]} onChange={(e) => setS({ ...s, tripAttendanceStates: { ...s.tripAttendanceStates, [k]: Math.min(1, num(e.target.value)) } })} /></Field>
-            ))}
-          </div>
+          <Field label="درجة المتأخر" hint="نسبة من الدرجة (0 إلى 1). المبكر والحاضر في الوقت يأخذان الدرجة كاملة بلا زيادة، والغائب صفر" className="mt-3"><Input type="number" step={0.1} value={s.attendanceLateCredit} onChange={(e) => setS({ ...s, attendanceLateCredit: Math.min(1, num(e.target.value)) })} /></Field>
         </Card>
       </div>
       <Card title="بنود تقييم القائد العام الفردي" subtitle={`يقيّم بها أي مشارك مرة واحدة · المجموع ${s.leaderEvalItems.reduce((a, i) => a + i.max, 0)} (المقترح 100، ومنها الإبداع والابتكار)`}
@@ -314,10 +315,6 @@ function OpenPoints() {
   return (
     <Card title="النقاط المفتوحة (القسم 20)" subtitle="مبنية قابلة للتعديل حتى تُحسم">
       <div className="grid gap-2 md:grid-cols-2">
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-3">
-          <div><div className="text-sm font-medium">نصاب تقييم فريق العمل للرحلة قبل إغلاقها</div><div className="text-[11px] text-ink-400">نسبة من فريق العمل (0 إلى 1)</div></div>
-          <Input type="number" step={0.1} className="w-24" value={s.tripRatingQuorum} onChange={(e) => repos.settings.update({ tripRatingQuorum: Math.min(1, num(e.target.value)) })} />
-        </div>
         {row('تعليقات رابط المتابعة تحتاج مراجعة قبل الظهور', '20.8', s.trackingCommentsNeedReview, 'trackingCommentsNeedReview')}
         {row('عرض التاريخ الهجري مع الميلادي', '20.11', s.showHijri, 'showHijri')}
         {row('دفع الرسوم داخل المنصة (وإلا تُسجَّل فقط)', '20.12', s.feesInPlatform, 'feesInPlatform')}

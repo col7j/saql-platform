@@ -555,7 +555,7 @@ function FeeRow({ fee: f, owner, label }: { fee: FeeRecord; owner: boolean; labe
       <td className="num">{SAR(f.amount)}</td>
       <td>{owner && f.status === 'partial' ? <Input className="num w-24" type="number" value={paid} onChange={(e) => setPaid(+e.target.value)} onBlur={() => paid !== f.paidAmount && save('partial', { paidAmount: paid })} /> : <span className="num">{SAR(f.paidAmount)}</span>}</td>
       <td>{owner ? <Select value={f.status} onChange={(e) => save(e.target.value as FeeStatus, { paidAmount: e.target.value === 'partial' ? Math.round(f.amount / 2) : undefined })} options={(['paid', 'partial', 'unpaid'] as FeeStatus[]).map((k) => ({ value: k, label: label[k] }))} aria-label="الحالة" /> : <Badge tone={f.status === 'paid' ? 'green' : f.status === 'partial' ? 'orange' : 'red'}>{label[f.status]}</Badge>}</td>
-      <td>{owner ? <Input className="w-44" placeholder="مثل: جمعية البر" value={ex} onChange={(e) => setEx(e.target.value)} onBlur={() => ex !== (f.exemption ?? '') && save(ex.trim() ? 'paid' : f.status, { exemption: ex })} /> : <span className="text-xs">{f.exemption ?? '—'}</span>}</td>
+      <td>{owner ? <Input className="w-44" placeholder="سبب الاستثناء (مثل: مستفيد جمعية البر)" value={ex} onChange={(e) => setEx(e.target.value)} onBlur={() => ex !== (f.exemption ?? '') && save(ex.trim() ? 'paid' : f.status, { exemption: ex })} /> : <span className="text-xs">{f.exemption ?? '—'}</span>}</td>
     </tr>
   );
 }
