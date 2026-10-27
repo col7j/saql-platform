@@ -201,7 +201,7 @@ export function Stars({ value, onChange, max = 5 }: { value?: number; onChange?:
 /** أقراص (segmented) للتبويبات داخل الشاشة وللفلاتر. تتمرر أفقياً على الجوال */
 export function Tabs<T extends string>({ tabs, value, onChange, size = 'md', className }: { tabs: { key: T; label: ReactNode; badge?: ReactNode }[]; value: T; onChange: (k: T) => void; size?: 'sm' | 'md'; className?: string }) {
   return (
-    <div className={cx('-mx-1 mb-4 overflow-x-auto px-1 pb-1', className)}>
+    <div className={cx('-mx-1 mb-4 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden', className)}>
       <div role="tablist" className="inline-flex gap-1 rounded-full border border-ink-100 bg-ink-50 p-1">
         {tabs.map((t) => (
           <button
@@ -250,7 +250,7 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center whitespace-normal bg-ink-900/40 p-0 text-start font-normal backdrop-blur-[2px] sm:items-center sm:p-4" onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} className={cx('flex max-h-[92vh] w-full flex-col rounded-t-3xl bg-white shadow-lift sm:rounded-3xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
         <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3.5">
           <h3 className="text-lg font-bold">{title}</h3>

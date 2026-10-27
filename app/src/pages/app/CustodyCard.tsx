@@ -10,7 +10,7 @@ import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Checklist, Field, Icons, Input, Modal, Notice, ReasonModal, Select, askConfirm, cx } from '@/ui';
 import { AttachmentInput, AttachmentView } from '@/ui/attachments';
 import { PersonChip } from '@/ui/domain';
-import { EditRequestButton } from './EditRequest';
+import { InvoiceTable } from './InvoiceTable';
 
 export function categoryLabel(db: ReturnType<typeof useDB>, l: { categoryId?: string; customCategory?: string }) {
   if (l.categoryId) return db.budgetCategories.find((x) => x.id === l.categoryId)?.name ?? '—';
@@ -67,7 +67,7 @@ export function CustodyCard({ custody: c, embedded }: { custody: Custody; embedd
           {isRecipient && c.status === 'active' && <Button size="sm" onClick={() => setFormOpen(true)} icon={<Icons.Plus className="h-4 w-4" />}>ارفع نموذج صرف</Button>}
         </div>
         {forms.length === 0 ? <p className="text-sm text-ink-400">لا نماذج بعد{isRecipient && c.status === 'active' ? '. ارفع نموذجاً بعد كل مصروف مع صورة الفاتورة.' : '.'}</p> : (
-          <div className="space-y-2">{forms.map((x) => <SpendFormView key={x.id} form={x} custody={c} />)}</div>
+          <InvoiceTable forms={forms} inCustody />
         )}
         {f.deficit > 0 && c.status === 'active' && <p className="mt-2 text-xs text-red-700">المقبول تجاوز المحوَّل بـ {SAR(f.deficit)}: يُسجَّل عجزاً ويُسوّى عند الإغلاق.</p>}
       </div>
@@ -127,64 +127,6 @@ function CloseTable({ custody: c }: { custody: Custody }) {
         </tbody>
       </table>
     </div>
-  );
-}
-
-/** نموذج صرف واحد: كل بند يُراجَع وحده، مع تنبيهات التكرار والتجزئة للمراجع */
-export function SpendFormView({ form: x, custody: c }: { form: SpendForm; custody: Custody }) {
-  const db = useDB();
-  const me = useMe();
-  const reviewer = hasFinancePerm(db, me.person.id, 'review_invoices') && c.recipientId !== me.person.id;
-  const [serial, setSerial] = useState(x.serial ?? '');
-  const warnings = reviewer ? [...formDuplicateWarnings(db, x), splitWarning(db, x)].filter((w): w is string => !!w) : [];
-  const anyPending = x.lines.some((l) => l.status === 'pending');
-  return (
-    <div className="rounded-xl border border-ink-100 p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <span><b>{x.vendor}</b> · {fmtDate(x.invoiceDate)} · {x.proofKind === 'invoice' ? 'فاتورة' : 'إيصال تحويل'} {x.serial ? <span className="text-xs text-ink-500">رقم {x.serial}</span> : <Badge tone="orange">بلا رقم تسلسلي</Badge>}</span>
-        <AttachmentView a={x.attachment} />
-      </div>
-      {warnings.length > 0 && <div className="mt-2 space-y-1">{warnings.map((w) => <Notice key={w} tone="orange" icon={<Icons.TriangleAlert className="h-4 w-4" />}>{w}</Notice>)}</div>}
-      {reviewer && anyPending && (
-        <div className="mt-2 flex items-end gap-2">
-          <Field label="الرقم التسلسلي (يُدخل يدوياً)" className="flex-1"><Input dir="ltr" value={serial} onChange={(e) => setSerial(e.target.value)} placeholder="مكان جاهز لقراءته آلياً لاحقاً" /></Field>
-          <Button size="sm" variant="secondary" disabled={serial === (x.serial ?? '')} onClick={() => act(() => repos.finance.setSerial(x.id, serial), 'حُفظ الرقم')}>احفظ</Button>
-        </div>
-      )}
-      <ul className="mt-2 space-y-1.5">{x.lines.map((l) => <LineRow key={l.id} form={x} line={l} reviewer={reviewer} />)}</ul>
-    </div>
-  );
-}
-
-function LineRow({ form, line: l, reviewer }: { form: SpendForm; line: SpendLine; reviewer: boolean }) {
-  const db = useDB();
-  const cats = db.budgetCategories.filter((x) => !x.hidden);
-  const [cat, setCat] = useState(l.categoryId ?? '');
-  const [amount, setAmount] = useState(l.amount);
-  const [rejecting, setRejecting] = useState(false);
-  const tone = l.status === 'accepted' ? 'green' : l.status === 'rejected' ? 'red' : 'orange';
-  return (
-    <li className={cx('rounded-lg px-2 py-1.5 text-xs', l.status === 'rejected' ? 'bg-red-50/60' : 'bg-ink-50')}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <span>{categoryLabel(db, l)} · {l.item}</span>
-        <span className="flex items-center gap-2">
-          <span className="num font-bold">{SAR(l.amount)}</span>
-          <Badge tone={tone}>{{ accepted: 'معتمد', rejected: 'مرفوض', pending: 'محجوز للمراجعة' }[l.status]}</Badge>
-          {l.status === 'accepted' && <EditRequestButton target={{ kind: 'spend_line', formId: form.id, lineId: l.id }} current={{ amount: l.amount, categoryId: l.categoryId }} title={`${l.item}`} />}
-        </span>
-      </div>
-      {l.original && <div className="text-xs text-ink-400">عدّلته المالية: كان {categoryLabel(db, l.original)} · {SAR(l.original.amount)}</div>}
-      {l.reviewNote && <div className={cx('text-xs', l.status === 'rejected' ? 'text-red-700' : 'text-ink-500')}>{l.reviewNote}</div>}
-      {reviewer && l.status === 'pending' && (
-        <div className="mt-1.5 grid gap-2 sm:grid-cols-[1fr_100px_auto_auto]">
-          <Select value={cat} onChange={(e) => setCat(e.target.value)} options={[{ value: '', label: l.customCategory ? `اختر بديلاً لـ «${l.customCategory}»` : '—' }, ...cats.map((x) => ({ value: x.id, label: x.name }))]} aria-label="التصنيف" />
-          <Input className="num" type="number" value={amount} onChange={(e) => setAmount(+e.target.value)} aria-label="المبلغ" />
-          <Button size="sm" onClick={() => act(() => repos.finance.reviewLine(form.id, l.id, { accept: true, categoryId: cat || undefined, amount }), 'اعتُمد البند')}>اعتمد</Button>
-          <Button size="sm" variant="danger" onClick={() => setRejecting(true)}>ارفض</Button>
-        </div>
-      )}
-      <ReasonModal open={rejecting} onClose={() => setRejecting(false)} title="ارفض البند" label="السبب (يصل لصاحب العهدة، ويُفك الحجز)" cta="ارفض البند" onSubmit={(r) => act(() => repos.finance.reviewLine(form.id, l.id, { accept: false, note: r }), 'رُفض البند')} />
-    </li>
   );
 }
 

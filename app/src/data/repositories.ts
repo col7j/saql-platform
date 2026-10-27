@@ -1173,6 +1173,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
         mutate((d) => {
           guard(d, me(), 'review_invoices');
           const f = findForm(d, formId);
+          if (findCustody(d, f.custodyId).recipientId === me()) throw new Error('لا يراجع صاحب العهدة صرفه بنفسه');
           if (f.lines.every((l) => l.status !== 'pending')) throw new Error('رُوجع النموذج وقُفل');
           f.serial = serial.trim() || undefined;
         });

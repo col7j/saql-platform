@@ -19,9 +19,10 @@ import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, MoreMenu, NavIcon, Notice, PageHeader, Progress, Select, Stat, StatusPill, Table, Tabs, Toggle, askConfirm, cx } from '@/ui';
 import { AuditLog } from './Audit';
 import { RequestsCustody } from './RequestsCustody';
+import { InvoiceTable } from './InvoiceTable';
 import { PersonChip } from '@/ui/domain';
 import { BudgetWizard } from './BudgetWizard';
-import { CustodyCard, IssueCustodyModal, LinesEditor, SpendFormView, categoryLabel, newLine, toLines } from './CustodyCard';
+import { CustodyCard, IssueCustodyModal, LinesEditor, categoryLabel, newLine, toLines } from './CustodyCard';
 import { RequestPanel } from './RequestPanel';
 
 const sectionLabel: Record<FinanceSection, string> = {
@@ -158,20 +159,7 @@ function SettingsSection() {
 // ───────────── الفواتير (مراجعة بنود الصرف) ─────────────
 function Invoices() {
   const db = useDB();
-  const forms = db.spendForms.filter((f) => f.lines.some((l) => l.status === 'pending'));
-  if (!forms.length) return <Empty title="لا بنود بانتظار المراجعة" text="كل بند يُراجَع وحده: يُعدَّل التصنيف والمبلغ ثم يُعتمد أو يُرفض." icon={<Icons.ReceiptText className="h-8 w-8" />} />;
-  return (
-    <div className="space-y-4">
-      {forms.map((f) => {
-        const c = db.custodies.find((x) => x.id === f.custodyId)!;
-        return (
-          <Card key={f.id} title={ownerTitle(db, c.ownerKind, c.ownerId)} subtitle={`${personName(db, c.recipientId)} · ${spendKindLabel[c.spendKind]}`}>
-            <SpendFormView form={f} custody={c} />
-          </Card>
-        );
-      })}
-    </div>
-  );
+  return <InvoiceTable forms={[...db.spendForms].reverse()} defaultStatus="pending" />;
 }
 
 // ───────────── المحفظة ─────────────
