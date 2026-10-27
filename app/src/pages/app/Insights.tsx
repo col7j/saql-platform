@@ -65,7 +65,7 @@ function AdminKpis() {
                     </div>
                     <div className="mt-2 flex items-center gap-3">
                       <Progress value={tripProgress(db, t)} className="flex-1" />
-                      {dl && <span className={`text-[11px] ${dl.late ? 'font-bold text-red-600' : 'text-ink-400'}`}>{dl.late ? 'متأخر: ' : ''}{dl.label} {fmtShort(dl.date)}</span>}
+                      {dl && <span className={`text-xs ${dl.late ? 'font-bold text-red-600' : 'text-ink-400'}`}>{dl.late ? 'متأخر: ' : ''}{dl.label} {fmtShort(dl.date)}</span>}
                     </div>
                   </Link>
                 </li>

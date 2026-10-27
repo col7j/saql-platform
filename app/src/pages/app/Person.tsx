@@ -53,7 +53,7 @@ export default function PersonPage() {
             <Card title="التقييم" subtitle={`الترتيب #${sc.rank} · ${sc.total} نقطة`}>
               <div className="space-y-2">
                 {sc.individual.map((i) => (
-                  <div key={i.key}><div className="mb-0.5 flex justify-between text-sm"><span>{i.name}</span><span className="num">{i.points} / {i.maxPoints}</span></div><Progress value={(i.points / (i.maxPoints || 1)) * 100} /><div className="text-[11px] text-ink-400">{i.detail}</div></div>
+                  <div key={i.key}><div className="mb-0.5 flex justify-between text-sm"><span>{i.name}</span><span className="num">{i.points} / {i.maxPoints}</span></div><Progress value={(i.points / (i.maxPoints || 1)) * 100} /><div className="text-xs text-ink-400">{i.detail}</div></div>
                 ))}
                 <div className="flex justify-between border-t border-ink-100 pt-2 text-sm"><span>نصيبه من الجماعي</span><span className="num font-bold">{sc.groupShare}</span></div>
               </div>

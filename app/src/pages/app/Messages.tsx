@@ -21,7 +21,7 @@ export function ContactPage() {
         {mine.map((m) => (
           <Card key={m.id}>
             <p className="text-sm">{m.text}</p>
-            <div className="text-[11px] text-ink-400">{fmtDateTime(m.at)}</div>
+            <div className="text-xs text-ink-400">{fmtDateTime(m.at)}</div>
             {m.reply && <div className="mt-2 rounded-xl bg-brand-50 p-2 text-sm"><b>{personName(db, m.reply.byId)}:</b> {m.reply.text}</div>}
           </Card>
         ))}
@@ -40,7 +40,7 @@ export function InboxPage() {
         <div className="space-y-3">
           {[...db.adminMessages].reverse().map((m) => (
             <Card key={m.id}>
-              <div className="flex items-center justify-between"><PersonChip id={m.fromId} /><span className="text-[11px] text-ink-400">{fmtDateTime(m.at)}</span></div>
+              <div className="flex items-center justify-between"><PersonChip id={m.fromId} /><span className="text-xs text-ink-400">{fmtDateTime(m.at)}</span></div>
               <p className="mt-2 text-sm">{m.text}</p>
               {m.reply ? <div className="mt-2 rounded-xl bg-brand-50 p-2 text-sm"><b>الرد:</b> {m.reply.text}</div> : (
                 <div className="mt-2 flex gap-2"><Input value={replies[m.id] ?? ''} onChange={(e) => setReplies({ ...replies, [m.id]: e.target.value })} placeholder="الرد" /><Button disabled={!replies[m.id]} onClick={() => act(() => repos.messages.reply(m.id, replies[m.id]), 'أُرسل الرد')}>ردّ</Button></div>

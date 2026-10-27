@@ -11,7 +11,7 @@ import { GroupBadge, PersonChip } from '@/ui/domain';
 const tripStates: { key: AttendanceStatus; label: string; tone: string }[] = [
   { key: 'early', label: 'مبكر', tone: 'bg-emerald-700 text-white' },
   { key: 'on_time', label: 'في الوقت', tone: 'bg-emerald-600 text-white' },
-  { key: 'late', label: 'متأخر', tone: 'bg-accent-500 text-white' },
+  { key: 'late', label: 'متأخر', tone: 'bg-accent-500 text-ink-900' },
   { key: 'absent', label: 'غائب', tone: 'bg-red-600 text-white' },
 ];
 const statusLabel: Record<AttendanceStatus, string> = { early: 'مبكر', on_time: 'في الوقت', late: 'متأخر', present: 'حاضر', absent: 'غائب' };

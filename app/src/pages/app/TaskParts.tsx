@@ -24,7 +24,7 @@ export function TaskRow({ task, showContext = true }: { task: Task; showContext?
         {task.status === 'done' ? <Icons.CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" /> : <Icons.Circle className="h-5 w-5 shrink-0 text-ink-300" />}
         <div className="min-w-0 flex-1">
           <div className={cx('text-sm font-medium', task.status === 'done' && 'text-ink-400 line-through')}>{task.title}</div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-ink-400">
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-400">
             <span className={isTaskLate(task) ? 'font-bold text-red-600' : ''}>{fmtShort(task.dueDate)} · {relativeDays(task.dueDate)}</span>
             {task.mandatory && <Badge tone="orange">إلزامية</Badge>}
             {task.proofType !== 'none' && <Badge icon={<Icons.Paperclip className="h-3 w-3" />}>إثبات: {proofTypeLabel[task.proofType]}</Badge>}

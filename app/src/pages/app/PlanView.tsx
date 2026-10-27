@@ -93,7 +93,7 @@ function AspectEditor({ participantId, aspect, editable }: { participantId: stri
     <Card title={<span style={{ color }}>الجانب {aspectLabel[a.key]}</span>} subtitle="رؤية تريد الوصول إليها، وتحتها خطوات عملية (العدد حر)"
       action={editable && dirty && <Button size="sm" onClick={() => act(() => { repos.plans.saveAspect(participantId, a); setDirty(false); }, 'حُفظ الجانب')}>احفظ</Button>}>
       <Field label="الرؤية">
-        {editable ? <Textarea rows={2} value={a.vision} onChange={(e) => upd({ vision: e.target.value })} placeholder="إلى أين تريد أن تصل في هذا الجانب؟" /> : <p className="text-sm">{a.vision || <span className="text-ink-300">لم تُكتب بعد</span>}</p>}
+        {editable ? <Textarea rows={2} value={a.vision} onChange={(e) => upd({ vision: e.target.value })} placeholder="إلى أين تريد أن تصل في هذا الجانب؟" /> : <p className="text-sm">{a.vision || <span className="text-ink-400">لم تُكتب بعد</span>}</p>}
       </Field>
       <div className="mt-4 space-y-3">
         {a.steps.map((s, i) => (
@@ -147,7 +147,7 @@ function AspectEditor({ participantId, aspect, editable }: { participantId: stri
 function FollowUpCard({ participantId, due }: { participantId: string; due: ReturnType<typeof dueSteps> }) {
   const [step, setStep] = useState<(typeof due)[number] | null>(null);
   return (
-    <Card className="border-accent-200 bg-accent-50/40" title={<span className="flex items-center gap-2"><Icons.Sparkles className="h-5 w-5 text-accent-600" />المتابعة الذكية</span>} subtitle="حان تاريخ هذه الخطوات">
+    <Card className="border-accent-200 bg-accent-50/40" title={<span className="flex items-center gap-2"><Icons.Sparkles className="h-5 w-5 text-accent-700" />المتابعة الذكية</span>} subtitle="حان تاريخ هذه الخطوات">
       <div className="space-y-2">
         {due.map((d) => (
           <div key={d.stepId} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-white px-3 py-2">

@@ -76,7 +76,7 @@ function MaterialCard({ m }: { m: Material }) {
         </div>
       </div>
       {m.description && <p className="mt-2 text-xs text-ink-500">{m.description}</p>}
-      <div className="mt-2 text-[11px] text-ink-400">{personName(db, m.uploaderId)} · {fmtDate(m.at)} · {materialTypeLabel[m.type]}{m.audience.kind !== 'all' && ` · ${m.audience.kind === 'group' ? db.groups.find((g) => g.id === (m.audience as { groupId: string }).groupId)?.name : `لـ ${personName(db, (m.audience as { personId: string }).personId)}`}`}</div>
+      <div className="mt-2 text-xs text-ink-400">{personName(db, m.uploaderId)} · {fmtDate(m.at)} · {materialTypeLabel[m.type]}{m.audience.kind !== 'all' && ` · ${m.audience.kind === 'group' ? db.groups.find((g) => g.id === (m.audience as { groupId: string }).groupId)?.name : `لـ ${personName(db, (m.audience as { personId: string }).personId)}`}`}</div>
       {m.pointsRequested && <div className="mt-2"><Badge tone={m.pointsStatus === 'approved' ? 'green' : m.pointsStatus === 'rejected' ? 'red' : 'orange'}>نقاط: {{ approved: 'معتمدة', rejected: 'مرفوضة', pending: 'بانتظار القائد العام' }[m.pointsStatus ?? 'pending']}</Badge></div>}
       <div className="mt-auto flex flex-wrap gap-2 pt-3">
         {me.isParticipant && revealed && st === 'new' && <><Button size="sm" variant="secondary" onClick={() => repos.materials.mark(m.id, 'viewed')} icon={<Icons.Eye className="h-3.5 w-3.5" />}>شاهد</Button><Button size="sm" variant="ghost" onClick={() => repos.materials.mark(m.id, 'skipped')}>تخطَّ</Button></>}

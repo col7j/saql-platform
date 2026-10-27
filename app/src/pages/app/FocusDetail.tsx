@@ -102,7 +102,7 @@ function AttendanceCard({ f, canAttend, isFac }: { f: FocusMeeting; canAttend: b
                   <button onClick={() => repos.trips.setAttendance('focus', f.id, pid, 'present')} className={cx('px-2.5 py-1', r?.present === true ? 'bg-emerald-600 text-white' : '')}>حاضر</button>
                   <button onClick={() => repos.trips.setAttendance('focus', f.id, pid, 'absent')} className={cx('px-2.5 py-1', r?.present === false ? 'bg-red-600 text-white' : '')}>غائب</button>
                 </div>
-              ) : r ? <Badge tone={r.present ? 'green' : 'red'}>{r.present ? 'حاضر' : 'غائب'}</Badge> : <span className="text-xs text-ink-300">—</span>}
+              ) : r ? <Badge tone={r.present ? 'green' : 'red'}>{r.present ? 'حاضر' : 'غائب'}</Badge> : <span className="text-xs text-ink-400">—</span>}
             </div>
           );
         })}

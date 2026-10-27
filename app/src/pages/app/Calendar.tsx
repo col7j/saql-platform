@@ -50,7 +50,7 @@ export default function CalendarPage() {
             </div>
             <Button variant="ghost" size="sm" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}><Icons.ChevronLeft className="h-4 w-4" /></Button>
           </div>
-          <div className="grid grid-cols-7 border-b border-ink-100 text-center text-[11px] text-ink-500">
+          <div className="grid grid-cols-7 border-b border-ink-100 text-center text-xs text-ink-500">
             {WEEK.map((w) => <div key={w} className="py-2"><span className="hidden sm:inline">{w}</span><span className="sm:hidden">{w.slice(0, 2)}</span></div>)}
           </div>
           <div className="grid grid-cols-7">
@@ -62,15 +62,15 @@ export default function CalendarPage() {
                 <div key={iso} className={cx('min-h-[72px] border-b border-e border-ink-100 p-1 sm:min-h-[104px] sm:p-1.5', !inMonth && 'bg-ink-50/60')}>
                   <div className="flex items-center justify-between">
                     <span className={cx('num flex h-6 w-6 items-center justify-center rounded-full text-xs', iso === today ? 'bg-brand-600 font-bold text-white' : inMonth ? 'text-ink-700' : 'text-ink-300')}>{d.getDate()}</span>
-                    {hijri && inMonth && <span className="hidden text-[9px] text-ink-300 sm:inline">{fmtHijri(iso).split(' ')[0]}</span>}
+                    {hijri && inMonth && <span className="hidden text-xs text-ink-400 sm:inline">{fmtHijri(iso).split(' ')[0]}</span>}
                   </div>
                   <div className="mt-0.5 space-y-0.5">
                     {evs.slice(0, 3).map((e) => (
-                      <Link key={e.id} to={e.link} title={e.title} className="block truncate rounded px-1 py-0.5 text-[10px] font-medium text-white sm:text-[11px]" style={{ background: calKindColor[e.kind] }}>
+                      <Link key={e.id} to={e.link} title={e.title} className="block truncate rounded px-1 py-0.5 text-xs font-medium text-white sm:text-xs" style={{ background: calKindColor[e.kind] }}>
                         <span className="hidden sm:inline">{e.title}</span><span className="sm:hidden">•</span>
                       </Link>
                     ))}
-                    {evs.length > 3 && <div className="text-[10px] text-ink-400">+{evs.length - 3}</div>}
+                    {evs.length > 3 && <div className="text-xs text-ink-400">+{evs.length - 3}</div>}
                   </div>
                 </div>
               );

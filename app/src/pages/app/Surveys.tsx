@@ -60,7 +60,7 @@ function FillModal({ survey, onClose }: { survey: Survey; onClose: () => void })
           {[1, 2, 3, 4, 5].map((n) => <button key={n} onClick={() => setAns({ ...ans, [q.id]: String(n) })} className={cx('num h-10 flex-1 rounded-xl border text-sm font-bold', ans[q.id] === String(n) ? 'border-brand-600 bg-brand-600 text-white' : 'border-ink-200 hover:bg-brand-50')}>{n}</button>)}
         </div>
       )}
-      {q.type === 'scale' && <div className="mt-1 flex justify-between text-[10px] text-ink-400"><span>كثيراً</span><span>قليلاً</span></div>}
+      {q.type === 'scale' && <div className="mt-1 flex justify-between text-xs text-ink-400"><span>كثيراً</span><span>قليلاً</span></div>}
       {q.type === 'choice' && <div className="flex flex-wrap gap-1.5">{q.options?.map((o) => <button key={o} onClick={() => setAns({ ...ans, [q.id]: o })} className={cx('chip border py-1', ans[q.id] === o ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-ink-200')}>{o}</button>)}</div>}
       {q.type === 'text' && <Textarea rows={2} value={ans[q.id] ?? ''} onChange={(e) => setAns({ ...ans, [q.id]: e.target.value })} />}
     </div>
@@ -93,7 +93,7 @@ function StaffSurveys() {
               <button key={s.id} onClick={() => setViewing(s)} className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-start hover:bg-ink-50 sm:px-5">
                 <Badge tone={s.phase === 'pre' ? 'blue' : 'purple'}>{s.phase === 'pre' ? 'قبلي' : 'بعدي'}</Badge>
                 <div className="min-w-0 flex-1"><div className="text-sm font-medium">{s.title}</div><div className="text-xs text-ink-400">{ctxTitle(db, s)} · يُفتح {fmtDate(s.opensAt)} · {s.mandatory ? 'إلزامي' : 'اختياري'}</div></div>
-                <div className="w-36"><Progress value={(s.responses.length / participants) * 100} /><div className="num mt-0.5 text-[11px] text-ink-400">{s.responses.length} استجابة</div></div>
+                <div className="w-36"><Progress value={(s.responses.length / participants) * 100} /><div className="num mt-0.5 text-xs text-ink-400">{s.responses.length} استجابة</div></div>
               </button>
             ))}
           </div>
@@ -126,9 +126,9 @@ function Impact() {
                 const a = avg(pre, pq.id), b = avg(post, q.id);
                 return (
                   <div key={q.id} className="grid gap-2 rounded-xl bg-ink-50 p-3 text-sm md:grid-cols-[1fr_1fr_auto]">
-                    <div><div className="text-[11px] text-ink-400">قبلي</div>{pq.text}<Progress value={((a ?? 0) / 5) * 100} className="mt-1" /></div>
-                    <div><div className="text-[11px] text-ink-400">بعدي</div>{q.text}<Progress value={((b ?? 0) / 5) * 100} tone="green" className="mt-1" /></div>
-                    <div className="self-center text-center"><div className="num text-lg font-bold text-emerald-700">{a != null && b != null ? `${b - a >= 0 ? '+' : ''}${(b - a).toFixed(1)}` : '—'}</div><div className="text-[10px] text-ink-400">التغيّر</div></div>
+                    <div><div className="text-xs text-ink-400">قبلي</div>{pq.text}<Progress value={((a ?? 0) / 5) * 100} className="mt-1" /></div>
+                    <div><div className="text-xs text-ink-400">بعدي</div>{q.text}<Progress value={((b ?? 0) / 5) * 100} tone="green" className="mt-1" /></div>
+                    <div className="self-center text-center"><div className="num text-lg font-bold text-emerald-700">{a != null && b != null ? `${b - a >= 0 ? '+' : ''}${(b - a).toFixed(1)}` : '—'}</div><div className="text-xs text-ink-400">التغيّر</div></div>
                   </div>
                 );
               })}

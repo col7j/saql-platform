@@ -29,7 +29,7 @@ export function EditRequestButton({ target, current, title, amountOnly }: { targ
   }, 'رُفع طلب التعديل للقائد العام');
   return (
     <>
-      <button className="text-[11px] text-brand-600 underline" onClick={() => setOpen(true)}>اطلب تعديلاً</button>
+      <button className="text-xs text-brand-600 underline" onClick={() => setOpen(true)}>اطلب تعديلاً</button>
       <Modal open={open} onClose={() => setOpen(false)} title={`طلب تعديل سجل معتمد: ${title}`} footer={<Button disabled={!reason.trim()} onClick={send}>أرسل للقائد العام</Button>}>
         <div className="space-y-3">
           {current.amount != null && <Field label="المبلغ الجديد"><Input className="num" type="number" value={amount} onChange={(e) => setAmount(+e.target.value)} /></Field>}

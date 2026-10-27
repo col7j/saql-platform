@@ -929,6 +929,8 @@ export interface ScheduleCategory {
 
 export interface SiteContent {
   heroTitle: string;
+  /** كلمة التمييز في العنوان تظهر باللون الأساسي (اختيارية) */
+  heroAccent?: string;
   heroSubtitle: string;
   contactEmail: string;
   /** الأقسام بالترتيب: يضيفها القائد العام (أو المفوَّض) ويحذفها ويخفيها ويعيد ترتيبها */

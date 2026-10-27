@@ -43,7 +43,7 @@ export default function TrackingLinkAdmin() {
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-[11px] text-ink-400">التصنيف (المكان والاتجاه والأساسي) لا يراه الزائر. كلمات المرور تُخزَّن مشفّرة ولا يُشترط تعقيدها.</p>
+          <p className="mt-2 text-xs text-ink-400">التصنيف (المكان والاتجاه والأساسي) لا يراه الزائر. كلمات المرور تُخزَّن مشفّرة ولا يُشترط تعقيدها.</p>
         </Card>
         <Card title="تعليقات الزوار" subtitle={`${pending.length} بانتظار الموافقة`} className="lg:col-span-2">
           {me.isLeader && <Toggle checked={db.settings.trackingCommentsNeedReview} onChange={(v) => repos.settings.update({ trackingCommentsNeedReview: v })} label="التعليقات تحتاج موافقة قبل الظهور" />}

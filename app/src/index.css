@@ -1,8 +1,4 @@
-@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Light.woff2') format('woff2'); font-weight: 300; font-display: swap; }
-@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
-@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
-@font-face { font-family: 'Thmanyah Sans'; src: url('./assets/fonts/thmanyahsans-Black.woff2') format('woff2'); font-weight: 900; font-display: swap; }
+@import './tokens.css';
 
 @tailwind base;
 @tailwind components;
@@ -10,18 +6,25 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; }
-  body { @apply bg-ink-50 text-ink-800 font-sans antialiased; }
-  h1, h2, h3, h4 { @apply font-bold text-ink-900; }
+  body { @apply bg-surface text-ink-800 font-sans antialiased; line-height: 1.7; }
+  h1, h2, h3, h4 { @apply font-bold text-ink-900; line-height: 1.3; }
   input, select, textarea { @apply font-sans; }
-  ::selection { background: #cdeef3; }
+  ::selection { background: rgb(var(--c-brand-100)); }
+  :focus-visible { outline: 2px solid rgb(var(--c-brand-600)); outline-offset: 2px; }
 }
 
 @layer components {
-  .input { @apply w-full min-h-[44px] sm:min-h-[40px] rounded-xl border border-ink-200 bg-white px-3 py-2 text-sm text-ink-800 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 disabled:bg-ink-50 disabled:text-ink-400; }
-  .label { @apply mb-1 block text-xs font-medium text-ink-600; }
+  /* الحقل: حافة 12، وارتفاع لمس 44 على الجوال */
+  .input { @apply w-full min-h-[44px] sm:min-h-[42px] rounded-xl border border-ink-200 bg-white px-3.5 py-2 text-sm text-ink-800 outline-none transition placeholder:text-ink-400 focus:border-brand-600 focus:ring-4 focus:ring-brand-100 disabled:bg-ink-50 disabled:text-ink-400; }
+  .label { @apply mb-1.5 block text-xs font-medium text-ink-600; }
   .chip { @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium; }
-  .table-base { @apply w-full text-sm; }
-  .table-base th { @apply whitespace-nowrap bg-ink-50 px-3 py-2 text-start text-xs font-medium text-ink-500; }
-  .table-base td { @apply border-t border-ink-100 px-3 py-2 align-middle; }
+  /* جدول البيانات: رأس بخلفية فاتحة وصفوف نظيفة */
+  .table-base { @apply w-full text-xs; }
+  .table-base th { @apply whitespace-nowrap bg-ink-50 px-4 py-3 text-start text-xs font-medium text-ink-500; }
+  .table-base td { @apply border-t border-ink-100 px-4 py-3 align-middle text-ink-800; }
+  .table-base tbody tr { @apply transition-colors hover:bg-ink-50/60; }
   .num { font-variant-numeric: tabular-nums; }
+  /* مسافات الصفحات العامة: 96 على الشاشة الكبيرة و56 على الجوال */
+  .section-y { @apply py-14 lg:py-24; }
+  .container-x { @apply mx-auto w-full max-w-container px-4 sm:px-6; }
 }

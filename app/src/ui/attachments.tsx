@@ -76,7 +76,7 @@ export function AttachmentView({ a, compact }: { a?: Attachment; compact?: boole
     <span className="mt-1 inline-flex items-center gap-2 text-xs text-ink-500">
       {a.preview && !compact ? <img src={a.preview} alt={a.name} className="h-12 w-12 rounded-lg border border-ink-100 object-cover" /> : <Icons.Paperclip className="h-3.5 w-3.5 text-brand-600" />}
       <span className="max-w-[180px] truncate" title={a.name}>{a.name}</span>
-      <span className="font-mono text-[10px] text-ink-300" dir="ltr" title="بصمة الملف">#{a.hash.slice(0, 8)}</span>
+      <span className="font-mono text-xs text-ink-400" dir="ltr" title="بصمة الملف">#{a.hash.slice(0, 8)}</span>
     </span>
   );
 }

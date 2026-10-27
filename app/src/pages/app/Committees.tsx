@@ -32,7 +32,7 @@ export default function CommitteesPage() {
                 <p className="mt-1 text-xs text-ink-500">{c.description}</p>
                 <div className="mt-3 flex -space-x-2 space-x-reverse">{members.slice(0, 6).map((m) => <Avatar key={m.id} name={personName(db, m.personId)} size={26} />)}</div>
                 <div className="mt-3 text-xs text-ink-500">{members.length} أعضاء · {tasks.filter((t) => t.status !== 'done').length} مهام مفتوحة</div>
-                {c.kpis.slice(0, 2).map((k) => { const v = kpiValue(db, c.id, k.taskTag); return <div key={k.id} className="mt-2"><div className="flex justify-between text-[11px]"><span>{k.title}</span><span className="num">{v}/{k.target}</span></div><Progress value={(v / k.target) * 100} /></div>; })}
+                {c.kpis.slice(0, 2).map((k) => { const v = kpiValue(db, c.id, k.taskTag); return <div key={k.id} className="mt-2"><div className="flex justify-between text-xs"><span>{k.title}</span><span className="num">{v}/{k.target}</span></div><Progress value={(v / k.target) * 100} /></div>; })}
               </Link>
             );
           })}

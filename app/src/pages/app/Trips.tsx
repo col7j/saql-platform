@@ -104,11 +104,11 @@ export function TripCard({ trip: t }: { trip: Trip }) {
       </div>
       <div className="mt-auto pt-4">
         <div className="mb-1.5 flex items-center justify-between text-xs">
-          <span className={cx('font-medium', st === 'live' ? 'text-accent-600' : st === 'closed' ? 'text-emerald-600' : 'text-brand-700')}>{showPrep || ['published', 'live', 'closing', 'closed'].includes(st) ? tripStageLabel[st] : 'قيد التجهيز'}</span>
+          <span className={cx('font-medium', st === 'live' ? 'text-accent-700' : st === 'closed' ? 'text-emerald-600' : 'text-brand-700')}>{showPrep || ['published', 'live', 'closing', 'closed'].includes(st) ? tripStageLabel[st] : 'قيد التجهيز'}</span>
           <span className="text-ink-400">{relativeDays(t.startDate)}</span>
         </div>
         <Progress value={tripProgress(db, t)} tone={st === 'live' ? 'accent' : 'brand'} />
-        {showPrep && next && <div className={cx('mt-2 text-[11px]', next.late ? 'font-bold text-red-600' : 'text-ink-400')}>{next.late ? 'متأخر · ' : ''}{next.label}: {fmtDate(next.date)}</div>}
+        {showPrep && next && <div className={cx('mt-2 text-xs', next.late ? 'font-bold text-red-600' : 'text-ink-400')}>{next.late ? 'متأخر · ' : ''}{next.label}: {fmtDate(next.date)}</div>}
       </div>
     </Link>
   );

@@ -68,7 +68,7 @@ export default function UsersPage() {
           <div className="space-y-3">
             <p className="text-sm">سلّمها لـ <b>{personName(db, issued.personId)}</b>. تظهر مرة واحدة، وسيُطلب منه تغييرها أول دخول.</p>
             <div dir="ltr" className="rounded-xl bg-ink-50 p-3 text-center font-mono text-lg tracking-widest">{issued.password}</div>
-            <p className="text-[11px] text-ink-400">اسم الدخول: <span dir="ltr" className="font-mono">{accountOf(db, issued.personId)?.username}</span>. الإيميل مؤجّل، فالتسليم يدوي حالياً.</p>
+            <p className="text-xs text-ink-400">اسم الدخول: <span dir="ltr" className="font-mono">{accountOf(db, issued.personId)?.username}</span>. الإيميل مؤجّل، فالتسليم يدوي حالياً.</p>
           </div>
         )}
       </Modal>

@@ -41,7 +41,7 @@ export function CustodyCard({ custody: c, embedded }: { custody: Custody; embedd
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {([['المعتمد', c.approved], ['المحوَّل', f.transferred], ['المقبول', f.accepted], ['محجوز للمراجعة', f.held], [f.deficit > 0 ? 'عجز' : 'الرصيد', f.deficit > 0 ? f.deficit : f.balance]] as [string, number][]).map(([l, v]) => (
-          <div key={l} className={cx('rounded-xl p-3', l === 'عجز' ? 'bg-red-50' : 'bg-ink-50')}><div className="text-[11px] text-ink-500">{l}</div><div className="num font-bold">{SAR(v)}</div></div>
+          <div key={l} className={cx('rounded-xl p-3', l === 'عجز' ? 'bg-red-50' : 'bg-ink-50')}><div className="text-xs text-ink-500">{l}</div><div className="num font-bold">{SAR(v)}</div></div>
         ))}
       </div>
 
@@ -173,8 +173,8 @@ function LineRow({ form, line: l, reviewer }: { form: SpendForm; line: SpendLine
           {l.status === 'accepted' && <EditRequestButton target={{ kind: 'spend_line', formId: form.id, lineId: l.id }} current={{ amount: l.amount, categoryId: l.categoryId }} title={`${l.item}`} />}
         </span>
       </div>
-      {l.original && <div className="text-[11px] text-ink-400">عدّلته المالية: كان {categoryLabel(db, l.original)} · {SAR(l.original.amount)}</div>}
-      {l.reviewNote && <div className={cx('text-[11px]', l.status === 'rejected' ? 'text-red-700' : 'text-ink-500')}>{l.reviewNote}</div>}
+      {l.original && <div className="text-xs text-ink-400">عدّلته المالية: كان {categoryLabel(db, l.original)} · {SAR(l.original.amount)}</div>}
+      {l.reviewNote && <div className={cx('text-xs', l.status === 'rejected' ? 'text-red-700' : 'text-ink-500')}>{l.reviewNote}</div>}
       {reviewer && l.status === 'pending' && (
         <div className="mt-1.5 grid gap-2 sm:grid-cols-[1fr_100px_auto_auto]">
           <Select value={cat} onChange={(e) => setCat(e.target.value)} options={[{ value: '', label: l.customCategory ? `اختر بديلاً لـ «${l.customCategory}»` : '—' }, ...cats.map((x) => ({ value: x.id, label: x.name }))]} aria-label="التصنيف" />

@@ -18,7 +18,7 @@ export function PersonChip({ id, sub, size = 28 }: { id?: ID; sub?: string; size
       <Avatar name={p.name} size={size} color={p.kind === 'staff' ? 'linear-gradient(135deg,#f79845,#fbb42b)' : g?.color} />
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium text-ink-800">{p.name}</span>
-        {sub && <span className="block truncate text-[11px] text-ink-400">{sub}</span>}
+        {sub && <span className="block truncate text-xs text-ink-400">{sub}</span>}
       </span>
     </span>
   );

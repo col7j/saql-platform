@@ -42,7 +42,7 @@ export function BudgetEditor({ lines, onChange, readOnly, allocated }: { lines: 
               </div>
             );
           })}
-          <div className="hidden px-2 text-[11px] text-ink-400 sm:grid sm:grid-cols-[1fr_1fr_1.2fr_70px_90px_auto] sm:gap-2"><span>التصنيف</span><span>البند</span><span>الوصف</span><span>العدد</span><span>سعر الوحدة</span><span /></div>
+          <div className="hidden px-2 text-xs text-ink-400 sm:grid sm:grid-cols-[1fr_1fr_1.2fr_70px_90px_auto] sm:gap-2"><span>التصنيف</span><span>البند</span><span>الوصف</span><span>العدد</span><span>سعر الوحدة</span><span /></div>
           <Button variant="secondary" size="sm" onClick={() => onChange?.([...lines, { id: uid('bl'), categoryId: cats[0]?.id ?? '', description: '', unit: 'وحدة', qty: 1, price: 0 }])} icon={<Icons.Plus className="h-4 w-4" />}>أضف سطراً</Button>
         </div>
       )}

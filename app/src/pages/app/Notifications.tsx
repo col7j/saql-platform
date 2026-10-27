@@ -28,7 +28,7 @@ export default function NotificationsPage() {
                   <span className={cx('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.read ? 'bg-ink-200' : 'bg-accent-500')} />
                   <div className="min-w-0 flex-1">
                     <div className={cx('text-sm', !n.read && 'font-bold')}>{n.title}</div>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ink-400">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-400">
                       <span>{timeAgo(n.at)}</span>
                       <Badge>{notificationTypeLabel[n.type]}</Badge>
                     </div>

@@ -40,6 +40,7 @@ export default function SiteEditor() {
         <Card title="الواجهة">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="العنوان"><Input value={s.heroTitle} onChange={(e) => setS({ ...s, heroTitle: e.target.value })} /></Field>
+            <Field label="كلمة التمييز" hint="كلمة من العنوان تظهر باللون الأساسي"><Input value={s.heroAccent ?? ''} onChange={(e) => setS({ ...s, heroAccent: e.target.value })} /></Field>
             <Field label="بريد التواصل"><Input dir="ltr" value={s.contactEmail} onChange={(e) => setS({ ...s, contactEmail: e.target.value })} /></Field>
             <Field label="النبذة" className="sm:col-span-2"><Textarea rows={2} value={s.heroSubtitle} onChange={(e) => setS({ ...s, heroSubtitle: e.target.value })} /></Field>
           </div>

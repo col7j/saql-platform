@@ -463,7 +463,7 @@ function Categories() {
           ]} />}>
           <div className="flex flex-wrap gap-1.5">
             {c.items.map((i) => (
-              <span key={i.id} className={cx('chip border border-ink-200 py-1', i.hidden && 'text-ink-300 line-through')}>
+              <span key={i.id} className={cx('chip border border-ink-200 py-1', i.hidden && 'text-ink-400 line-through')}>
                 {i.name}
                 {manage && <button className="ms-1 text-ink-400" onClick={() => repos.finance.saveCategory({ ...c, items: c.items.map((x) => (x.id === i.id ? { ...x, hidden: !x.hidden } : x)) })} aria-label="إظهار أو إخفاء"><Icons.EyeOff className="h-3 w-3" /></button>}
               </span>
@@ -476,7 +476,7 @@ function Categories() {
               <Button variant="secondary" disabled={!itemDraft[c.id]?.trim()} onClick={() => act(() => { repos.finance.saveCategory({ ...c, items: [...c.items, { id: uid('bi'), name: itemDraft[c.id] }] }); setItemDraft({ ...itemDraft, [c.id]: '' }); })}>أضف البند</Button>
             </div>
           )}
-          {used(c.id) && <p className="mt-2 text-[11px] text-ink-400">عليه فواتير أو موازنات، فلا يُحذف (يمكن إخفاؤه).</p>}
+          {used(c.id) && <p className="mt-2 text-xs text-ink-400">عليه فواتير أو موازنات، فلا يُحذف (يمكن إخفاؤه).</p>}
         </Card>
       ))}
     </div>
@@ -502,7 +502,7 @@ function Team() {
                 const on = (m.financePerms ?? []).includes(p.key);
                 return (
                   <div key={p.key} className="flex min-h-[44px] items-center justify-between gap-2 rounded-xl bg-ink-50 px-3">
-                    <span className="text-sm">{p.label}<span className="block text-[11px] text-ink-400">{p.hint}</span></span>
+                    <span className="text-sm">{p.label}<span className="block text-xs text-ink-400">{p.hint}</span></span>
                     {owner ? <Toggle checked={on} onChange={(v) => act(() => repos.finance.setPermission(m.personId, p.key, v), v ? 'مُنحت الصلاحية وسُجّلت' : 'سُحبت الصلاحية وسُجّلت')} /> : <Badge tone={on ? 'green' : 'gray'}>{on ? 'ممنوحة' : 'لا'}</Badge>}
                   </div>
                 );
@@ -581,7 +581,7 @@ function Analysis() {
               <div key={name}>
                 <div className="mb-1 flex justify-between text-sm"><b>{name}</b><span className="num">{SAR(spent)}</span></div>
                 <div className="h-2.5 overflow-hidden rounded-full bg-ink-100"><div className="h-full bg-brand-grad" style={{ width: `${(spent / max) * 100}%` }} /></div>
-                <details className="mt-1 text-[11px] text-ink-500"><summary className="cursor-pointer">حسب النشاط</summary>{[...new Set(ls.map((l) => ownerTitle(db, l.ownerKind, l.ownerId)))].map((t) => <div key={t} className="flex justify-between"><span>{t}</span><span className="num">{SAR(ls.filter((l) => ownerTitle(db, l.ownerKind, l.ownerId) === t).reduce((s, l) => s + l.amount, 0))}</span></div>)}</details>
+                <details className="mt-1 text-xs text-ink-500"><summary className="cursor-pointer">حسب النشاط</summary>{[...new Set(ls.map((l) => ownerTitle(db, l.ownerKind, l.ownerId)))].map((t) => <div key={t} className="flex justify-between"><span>{t}</span><span className="num">{SAR(ls.filter((l) => ownerTitle(db, l.ownerKind, l.ownerId) === t).reduce((s, l) => s + l.amount, 0))}</span></div>)}</details>
               </div>
             ))}
           </div>

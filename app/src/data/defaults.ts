@@ -83,7 +83,8 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     ui: defaultUiConfig(),
     supporterLink: { maxAttempts: 5, lockMinutes: 15, programIdea: 'صقل برنامج لتنمية وتأهيل القيادات الشبابية من طلاب الجامعات في المدينة المنورة، يتعلم فيه المشارك القيادة بممارستها: يخطط مع مجموعته رحلات ولقاءات وينفّذها ويغلقها.' },
     site: {
-      heroTitle: 'صقل',
+      heroTitle: 'برنامج صقل للقيادات الشبابية',
+      heroAccent: 'صقل',
       heroSubtitle: 'برنامج لتنمية وتأهيل القيادات الشبابية من طلاب الجامعات في المدينة المنورة. نتعلم القيادة بممارستها.',
       contactEmail: 'info@saql.example',
       // أقسام بقوالب جاهزة (نص، صورة، قائمة أشخاص، جدول) تُدار من المنصة بلا محرر مواقع حر

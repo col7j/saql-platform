@@ -1,23 +1,49 @@
 /** @type {import('tailwindcss').Config} */
+// كل القيم تُقرأ من src/tokens.css (مصدر واحد للرموز)
+const v = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
+const scale = (name, steps) => Object.fromEntries(steps.map((s) => [s, v(`${name}-${s}`)]));
+const status = (name) => scale(name, [50, 100, 200, 500, 600, 700, 800]);
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      fontFamily: { sans: ['Thmanyah Sans', 'system-ui', 'sans-serif'] },
-      colors: {
-        // مستخرجة من ملفات الشعار الرسمية
-        brand: {
-          50: '#e8f6f9', 100: '#cdeef3', 200: '#9fdde8', 300: '#5fc8da', 400: '#00b9d1',
-          500: '#008fa8', 600: '#00708c', 700: '#005c73', 800: '#004a5d', 900: '#06384a',
-        },
-        accent: { 50: '#fff6e8', 100: '#feeacb', 300: '#fcc76a', 400: '#fbb42b', 500: '#f79845', 600: '#dd7a26', 700: '#b45d14' },
-        ink: { 50: '#f6f7f8', 100: '#eceef0', 200: '#d9dcdf', 300: '#b9bdc1', 400: '#919498', 500: '#74777b', 600: '#5a5d61', 700: '#3f4246', 800: '#2a2c2f', 900: '#17191b' },
+      fontFamily: { sans: ['var(--font-sans)'] },
+      // النص 16، الصغير 14 (لا نص أصغر)، العنوان الصغير 20، الثانوي 32-36، الرئيسي 48-56
+      fontSize: {
+        xs: ['14px', { lineHeight: '1.6' }],
+        sm: ['16px', { lineHeight: '1.7' }],
+        base: ['16px', { lineHeight: '1.7' }],
+        lg: ['20px', { lineHeight: '1.3' }],
+        xl: ['20px', { lineHeight: '1.3' }],
+        '2xl': ['32px', { lineHeight: '1.3' }],
+        '3xl': ['36px', { lineHeight: '1.3' }],
+        '4xl': ['48px', { lineHeight: '1.25' }],
+        '5xl': ['56px', { lineHeight: '1.2' }],
       },
-      boxShadow: { card: '0 1px 2px rgba(6,56,74,.06), 0 4px 16px rgba(6,56,74,.05)' },
+      // العناوين 600 والنص 400 (الخط لا يحمل أثقل من 600 هنا)
+      fontWeight: { bold: '600', extrabold: '600', black: '600' },
+      colors: {
+        brand: scale('brand', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
+        accent: scale('accent', [50, 100, 300, 400, 500, 600, 700]),
+        ink: scale('ink', [50, 100, 200, 300, 400, 500, 600, 700, 800, 900]),
+        // ألوان الحالات الوظيفية: الأخضر معتمد والأحمر مرفوض، بنسخ هادئة
+        emerald: status('ok'),
+        red: status('bad'),
+        ok: status('ok'),
+        bad: status('bad'),
+        indigo: { 50: v('brand-50'), 700: v('brand-800') },
+        surface: v('surface'),
+      },
+      borderRadius: { '2xl': 'var(--r-card)', xl: 'var(--r-field)', table: 'var(--r-table)', '3xl': '24px' },
+      boxShadow: { card: 'var(--shadow-soft)', lift: 'var(--shadow-lift)' },
+      maxWidth: { container: 'var(--container)' },
       backgroundImage: {
-        'brand-grad': 'linear-gradient(135deg,#00708c 0%,#008fa8 55%,#00b9d1 100%)',
-        'accent-grad': 'linear-gradient(135deg,#f79845 0%,#fbb42b 100%)',
-        'brand-deep': 'linear-gradient(135deg,#06384a 0%,#00708c 50%,#008fa8 100%)',
+        'brand-grad': 'linear-gradient(135deg, rgb(var(--c-brand-600)) 0%, rgb(var(--c-brand-700)) 100%)',
+        'accent-grad': 'linear-gradient(135deg, rgb(var(--c-accent-500)) 0%, rgb(var(--c-accent-400)) 100%)',
+        'brand-deep': 'linear-gradient(135deg, rgb(var(--c-ink-900)) 0%, rgb(var(--c-brand-700)) 60%, rgb(var(--c-brand-600)) 100%)',
+        // التوهّج الناعم من الثانوي بشفافية 8-12%
+        glow: 'radial-gradient(60% 50% at 50% 0%, rgb(var(--c-brand-400) / 0.12) 0%, transparent 70%), radial-gradient(40% 40% at 90% 30%, rgb(var(--c-brand-400) / 0.08) 0%, transparent 70%)',
       },
     },
   },

@@ -132,7 +132,7 @@ function CreateFocusModal({ onClose }: { onClose: () => void }) {
                 return (
                   <div key={m} className="flex flex-wrap items-center gap-2">
                     <button type="button" onClick={() => set({ presenterIds: on ? f.presenterIds.filter((x) => x !== m) : [...f.presenterIds, m] })} className={cx('chip min-h-[40px] border px-3', on ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-ink-200 text-ink-500')}>{on && <Icons.Check className="h-3 w-3" />}{personName(db, m)}</button>
-                    <span className="text-[11px] text-ink-400">قدّم {db.focusMeetings.filter((x) => x.presenterIds.includes(m)).length} مرة</span>
+                    <span className="text-xs text-ink-400">قدّم {db.focusMeetings.filter((x) => x.presenterIds.includes(m)).length} مرة</span>
                     {on && <Input className="flex-1" placeholder="المحور" value={f.axes[m] ?? ''} onChange={(e) => set({ axes: { ...f.axes, [m]: e.target.value } })} />}
                   </div>
                 );

@@ -76,7 +76,7 @@ function Evaluation() {
                 <div className="pb-2"><Toggle checked={i.enabled} onChange={(v) => updItem(i.key, { enabled: v })} label="مفعّل" /></div>
                 <button className="pb-2.5 text-ink-300 hover:text-red-600" onClick={() => setS({ ...s, evaluationItems: s.evaluationItems.filter((x) => x.key !== i.key) })}><Icons.Trash2 className="h-4 w-4" /></button>
               </div>
-              {i.description && <p className="mt-1 text-[11px] text-ink-400">{i.description}</p>}
+              {i.description && <p className="mt-1 text-xs text-ink-400">{i.description}</p>}
               {i.subItems && (
                 <div className="mt-2 flex flex-wrap gap-2">
                   {i.subItems.map((sub) => (
@@ -148,7 +148,7 @@ function Evaluation() {
             {dd('finalReportDaysAfter', 'التقرير الختامي بعدها بـ', 'بعده لا يُكسب بند التقرير')}
             {dd('reminderDaysBefore', 'التنبيه قبل الموعد بـ', 'تذكير داخل المنصة فقط')}
           </div>
-          <p className="mt-2 text-[11px] text-ink-400">أوزان هذه البنود في «البنود التلقائية للرحلة» ضمن البنود الجماعية أدناه.</p>
+          <p className="mt-2 text-xs text-ink-400">أوزان هذه البنود في «البنود التلقائية للرحلة» ضمن البنود الجماعية أدناه.</p>
         </Card>
         <Card title="أوزان الحضور" subtitle="وزن الحضور كله يُضبط من بند «الحضور» في البنود الفردية، وهنا نصيب كل نوع منه. الحضور يؤثر على التقييم الفردي فقط">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -308,7 +308,7 @@ function OpenPoints() {
   const s = db.settings;
   const row = (label: string, ref: string, checked: boolean, k: keyof Settings) => (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-3">
-      <div><div className="text-sm font-medium">{label}</div><div className="text-[11px] text-ink-400">النقطة المفتوحة {ref}</div></div>
+      <div><div className="text-sm font-medium">{label}</div><div className="text-xs text-ink-400">النقطة المفتوحة {ref}</div></div>
       <Toggle checked={checked} onChange={(v) => repos.settings.update({ [k]: v } as Partial<Settings>)} />
     </div>
   );
@@ -319,12 +319,12 @@ function OpenPoints() {
         {row('عرض التاريخ الهجري مع الميلادي', '20.11', s.showHijri, 'showHijri')}
         {row('دفع الرسوم داخل المنصة (وإلا تُسجَّل فقط)', '20.12', s.feesInPlatform, 'feesInPlatform')}
         <div className="flex items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-3">
-          <div><div className="text-sm font-medium">قيمة رسوم البرنامج</div><div className="text-[11px] text-ink-400">ر.س</div></div>
+          <div><div className="text-sm font-medium">قيمة رسوم البرنامج</div><div className="text-xs text-ink-400">ر.س</div></div>
           <Input type="number" className="w-28" value={s.feeAmount} onChange={(e) => repos.settings.update({ feeAmount: num(e.target.value) })} />
         </div>
         <div className="rounded-xl border border-ink-100 px-3 py-3 text-sm">
           <div className="font-medium">الإبداع والابتكار</div>
-          <div className="text-[11px] text-ink-400">أحد بنود تقييم القائد العام الفردي (تبويب التقييم والأوزان).</div>
+          <div className="text-xs text-ink-400">أحد بنود تقييم القائد العام الفردي (تبويب التقييم والأوزان).</div>
         </div>
       </div>
     </Card>

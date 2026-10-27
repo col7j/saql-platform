@@ -38,7 +38,7 @@ export default function LeaderboardPage() {
                     <span className="num w-8 text-center text-2xl">{medal[g.rank - 1] ?? g.rank}</span>
                     <div className="min-w-0 flex-1">
                       <div className="font-bold" style={{ color: gr.color }}>{gr.name}</div>
-                      <div className="mt-1 flex gap-3 text-[11px] text-ink-500"><span>داخلية {g.internal.points}/{g.internal.max}</span><span>خارجية {g.external.points}/{g.external.max}</span></div>
+                      <div className="mt-1 flex gap-3 text-xs text-ink-500"><span>داخلية {g.internal.points}/{g.internal.max}</span><span>خارجية {g.external.points}/{g.external.max}</span></div>
                       <Progress value={(g.total / s.split.group) * 100} className="mt-1.5" />
                     </div>
                     <span className="num text-xl font-black">{g.total}</span>
@@ -59,7 +59,7 @@ export default function LeaderboardPage() {
                     <div key={i.key}>
                       <div className="flex justify-between text-xs"><span>{i.name} {i.mode === 'auto' ? <Badge className="ms-1">تلقائي</Badge> : <Badge tone="orange" className="ms-1">يدوي</Badge>}</span><span className="num">{i.points}/{i.maxPoints}</span></div>
                       <Progress value={Math.min(100, (i.points / (i.maxPoints || 1)) * 100)} className="mt-0.5" />
-                      <div className="text-[10px] text-ink-400">{i.detail}</div>
+                      <div className="text-xs text-ink-400">{i.detail}</div>
                     </div>
                   ))}
                   <div className="flex justify-between border-t border-ink-100 pt-2 text-sm"><span>الجماعي (من مجموعتي)</span><span className="num font-bold">{mine.groupShare}</span></div>

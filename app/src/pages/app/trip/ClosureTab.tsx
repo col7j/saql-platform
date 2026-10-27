@@ -80,7 +80,7 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
           {trip.closedAt ? <div className="mt-3"><Notice tone="green">أُغلقت الرحلة {fmtDateTime(trip.closedAt)}.</Notice></div> : (isLead || me.isLeader) && (
             <div className="mt-3">
               <Button className="w-full" disabled={!!tripCloseBlock(db, trip)} onClick={() => act(() => repos.trips.close(trip.id), 'أُغلقت الرحلة')}>أغلق الرحلة</Button>
-              {tripCloseBlock(db, trip) && <p className="mt-1 text-[11px] text-ink-400">{tripCloseBlock(db, trip)}</p>}
+              {tripCloseBlock(db, trip) && <p className="mt-1 text-xs text-ink-400">{tripCloseBlock(db, trip)}</p>}
             </div>
           )}
         </Card>
@@ -90,7 +90,7 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
               {tripScore.items.map((i) => (
                 <div key={i.key} className="text-sm">
                   <div className="flex justify-between"><span>{i.name}</span><span className="num font-medium">{i.points} / {i.maxPoints}</span></div>
-                  {i.detail && <div className="text-[11px] text-ink-400">{i.detail}</div>}
+                  {i.detail && <div className="text-xs text-ink-400">{i.detail}</div>}
                 </div>
               ))}
               <div className="flex justify-between border-t border-ink-100 pt-2 font-bold"><span>المجموع</span><span className="num">{tripScore.items.reduce((s, i) => s + i.points, 0).toFixed(2)}</span></div>

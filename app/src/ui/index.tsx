@@ -20,19 +20,21 @@ export function NavIcon({ name, className }: { name: string; className?: string 
 export { L as Icons };
 
 // ───────────── أزرار ─────────────
-type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent' | 'success';
-// زر رئيسي واحد في كل شاشة: primary (أو accent للتأكيد). البقية ثانوية. الرفض/الحذف بإطار أحمر لا بتعبئة.
-const btnBase = 'inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap';
+type BtnVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'accent' | 'success' | 'text';
+// الأزرار حبّة كاملة: أساسي مملوء (نصه أبيض) وثانوي بإطار، والنصي بسهم. زر رئيسي واحد في كل شاشة.
+// accent للإجراء المطلوب (برتقالي بنص داكن). الرفض/الحذف بإطار أحمر لا بتعبئة.
+const btnBase = 'inline-flex items-center justify-center gap-1.5 rounded-full font-medium transition disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap';
 const btnVar: Record<BtnVariant, string> = {
   primary: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
-  secondary: 'bg-white text-ink-700 border border-ink-200 hover:border-brand-300 hover:text-brand-700',
-  ghost: 'text-ink-600 hover:bg-ink-100',
+  secondary: 'bg-white text-brand-700 border border-brand-600/40 hover:border-brand-600 hover:bg-brand-50',
+  ghost: 'text-ink-600 hover:bg-ink-50',
   danger: 'bg-white text-red-700 border border-red-200 hover:bg-red-50',
-  accent: 'bg-accent-grad text-white hover:brightness-105 shadow-sm',
+  accent: 'bg-accent-500 text-ink-900 hover:bg-accent-400 shadow-sm',
   success: 'bg-brand-600 text-white hover:bg-brand-700 shadow-sm',
+  text: 'text-brand-700 hover:text-brand-800 hover:underline underline-offset-4 !px-1',
 };
 // أهداف لمس لا تقل عن 44px على الجوال
-const btnSize = { sm: 'px-3 min-h-[40px] sm:min-h-[32px] text-xs', md: 'px-4 min-h-[44px] sm:min-h-[40px] text-sm' };
+const btnSize = { sm: 'px-3.5 min-h-[44px] sm:min-h-[34px] text-xs', md: 'px-5 min-h-[44px] text-sm' };
 export function Button({
   children, variant = 'primary', size = 'md', className, icon, ...rest
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: BtnVariant; size?: 'sm' | 'md'; icon?: ReactNode }) {
@@ -40,6 +42,7 @@ export function Button({
     <button {...rest} className={cx(btnBase, btnVar[variant], btnSize[size], className)}>
       {icon}
       {children}
+      {variant === 'text' && <L.ArrowLeft className="h-4 w-4" />}
     </button>
   );
 }
@@ -48,6 +51,7 @@ export function LinkButton({ to, children, variant = 'secondary', size = 'md', c
     <Link to={to} className={cx(btnBase, btnVar[variant], btnSize[size], className)}>
       {icon}
       {children}
+      {variant === 'text' && <L.ArrowLeft className="h-4 w-4" />}
     </Link>
   );
 }
@@ -57,29 +61,29 @@ export function Card({ children, className, title, action, subtitle, pad = true 
   return (
     <section className={cx('rounded-2xl border border-ink-100 bg-white shadow-card', className)}>
       {(title || action) && (
-        <header className="flex flex-wrap items-start justify-between gap-2 border-b border-ink-100 bg-gradient-to-l from-brand-50/60 to-white px-4 py-3 sm:px-5">
+        <header className="flex flex-wrap items-start justify-between gap-2 px-4 pt-4 sm:px-6 sm:pt-5">
           <div className="min-w-0">
-            {title && <h3 className="text-[15px] font-bold text-ink-900">{title}</h3>}
+            {title && <h3 className="text-lg font-bold text-ink-900">{title}</h3>}
             {subtitle && <p className="mt-0.5 text-xs text-ink-500">{subtitle}</p>}
           </div>
           {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
         </header>
       )}
-      <div className={pad ? 'p-4 sm:p-5' : ''}>{children}</div>
+      <div className={pad ? 'p-4 sm:p-6' : (title || action) ? 'pt-3' : ''}>{children}</div>
     </section>
   );
 }
 
 export function PageHeader({ title, subtitle, actions, back }: { title: ReactNode; subtitle?: ReactNode; actions?: ReactNode; back?: string }) {
   return (
-    <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3 lg:mb-8">
       <div className="min-w-0">
         {back && (
-          <Link to={back} className="mb-1 inline-flex items-center gap-1 text-xs text-ink-500 hover:text-brand-600">
+          <Link to={back} className="mb-2 inline-flex min-h-[44px] items-center gap-1 text-xs text-ink-500 hover:text-brand-700 sm:min-h-0">
             <L.ArrowRight className="h-3.5 w-3.5" /> رجوع
           </Link>
         )}
-        <h1 className="flex items-center gap-2.5 text-xl font-black text-ink-900 sm:text-2xl"><span className="h-7 w-1.5 shrink-0 rounded-full bg-accent-grad" />{title}</h1>
+        <h1 className="text-[26px] font-bold leading-[1.3] text-ink-900 sm:text-2xl">{title}</h1>
         {subtitle && <p className="mt-1 text-sm text-ink-500">{subtitle}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
@@ -87,28 +91,29 @@ export function PageHeader({ title, subtitle, actions, back }: { title: ReactNod
   );
 }
 
+// شارة الحالة: معتمد (green) وبانتظار (orange) ومرفوض (red) بألوان وظيفية خفيفة ونص داكن
 const toneCls: Record<Tone, string> = {
-  gray: 'bg-ink-100 text-ink-600',
+  gray: 'bg-ink-50 text-ink-600 ring-1 ring-inset ring-ink-100',
   blue: 'bg-brand-50 text-brand-700',
   brand: 'bg-brand-600 text-white',
-  green: 'bg-emerald-50 text-emerald-700',
-  red: 'bg-red-50 text-red-700',
+  green: 'bg-ok-50 text-ok-700',
+  red: 'bg-bad-50 text-bad-700',
   orange: 'bg-accent-50 text-accent-700',
-  purple: 'bg-indigo-50 text-indigo-700',
+  purple: 'bg-accent-400/25 text-ink-800',
 };
 export function Badge({ children, tone = 'gray', className, icon }: { children: ReactNode; tone?: Tone; className?: string; icon?: ReactNode }) {
   return <span className={cx('chip', toneCls[tone], className)}>{icon}{children}</span>;
 }
 
 export function Stat({ label, value, hint, icon, tone = 'brand', to }: { label: string; value: ReactNode; hint?: ReactNode; icon?: ReactNode; tone?: 'brand' | 'accent' | 'red' | 'green'; to?: string }) {
-  const ring = { brand: 'bg-brand-50 text-brand-600', accent: 'bg-accent-50 text-accent-600', red: 'bg-red-50 text-red-600', green: 'bg-emerald-50 text-emerald-600' }[tone];
+  const ring = { brand: 'bg-brand-50 text-brand-600', accent: 'bg-accent-50 text-accent-700', red: 'bg-bad-50 text-bad-600', green: 'bg-ok-50 text-ok-600' }[tone];
   const body = (
-    <div className="flex h-full items-start gap-3 rounded-2xl border border-ink-100 bg-white p-4 shadow-card transition hover:border-brand-200">
+    <div className="flex h-full items-start gap-3 rounded-2xl border border-ink-100 bg-white p-4 shadow-card transition hover:border-brand-200 hover:shadow-lift sm:p-5">
       {icon && <div className={cx('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', ring)}>{icon}</div>}
       <div className="min-w-0">
         <div className="text-xs text-ink-500">{label}</div>
         <div className="num mt-0.5 text-xl font-bold text-ink-900">{value}</div>
-        {hint && <div className="mt-0.5 text-xs text-ink-400">{hint}</div>}
+        {hint && <div className="mt-0.5 text-xs text-ink-500">{hint}</div>}
       </div>
     </div>
   );
@@ -132,7 +137,7 @@ export function Avatar({ name, size = 32, color }: { name: string; size?: number
   const parts = name.split(' ');
   const initials = (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '');
   return (
-    <span className="inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white" style={{ width: size, height: size, fontSize: size * 0.38, background: color ?? 'linear-gradient(135deg,#00708c,#00b9d1)' }}>
+    <span className="inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white" style={{ width: size, height: size, fontSize: size * 0.38, background: color ?? 'rgb(var(--c-brand-600))' }}>
       {initials}
     </span>
   );
@@ -140,9 +145,9 @@ export function Avatar({ name, size = 32, color }: { name: string; size?: number
 
 export function Empty({ title, text, icon, action }: { title: string; text?: string; icon?: ReactNode; action?: ReactNode }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-200 bg-white/60 px-6 py-10 text-center">
-      <div className="text-ink-300">{icon ?? <L.Inbox className="h-8 w-8" />}</div>
-      <div className="font-medium text-ink-700">{title}</div>
+    <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-ink-200 bg-ink-50/60 px-6 py-12 text-center">
+      <div className="mb-1 flex h-14 w-14 items-center justify-center rounded-full bg-brand-400/10 text-brand-600">{icon ?? <L.Inbox className="h-7 w-7" />}</div>
+      <div className="font-bold text-ink-900">{title}</div>
       {text && <p className="max-w-md text-sm text-ink-500">{text}</p>}
       {action}
     </div>
@@ -155,7 +160,7 @@ export function Field({ label, children, hint, className }: { label: string; chi
     <label className={cx('block', className)}>
       <span className="label">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-[11px] text-ink-400">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-ink-500">{hint}</span>}
     </label>
   );
 }
@@ -172,7 +177,7 @@ export function Select({ options, ...p }: React.SelectHTMLAttributes<HTMLSelectE
 }
 export function Toggle({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label?: ReactNode; disabled?: boolean }) {
   return (
-    <button type="button" disabled={disabled} onClick={() => onChange(!checked)} className="inline-flex items-center gap-2 text-sm text-ink-700 disabled:opacity-50">
+    <button type="button" disabled={disabled} onClick={() => onChange(!checked)} className="inline-flex min-h-[44px] items-center gap-2 text-sm text-ink-700 disabled:opacity-50 sm:min-h-0">
       <span className={cx('relative h-5 w-9 rounded-full transition', checked ? 'bg-brand-600' : 'bg-ink-200')}>
         <span className={cx('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all', checked ? 'start-[18px]' : 'start-0.5')} />
       </span>
@@ -185,28 +190,53 @@ export function Stars({ value, onChange, max = 5 }: { value?: number; onChange?:
     <div className="inline-flex gap-0.5" dir="ltr">
       {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
         <button key={n} type="button" disabled={!onChange} onClick={() => onChange?.(n)} className="disabled:cursor-default">
-          <L.Star className={cx('h-5 w-5', (value ?? 0) >= n ? 'fill-accent-400 text-accent-400' : 'text-ink-200')} />
+          <L.Star className={cx('h-5 w-5', (value ?? 0) >= n ? 'fill-accent-400 text-accent-400' : 'text-ink-300')} />
         </button>
       ))}
     </div>
   );
 }
 
-// ───────────── تبويبات ─────────────
-export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { key: T; label: ReactNode; badge?: ReactNode }[]; value: T; onChange: (k: T) => void }) {
+// ───────────── تبويبات وفلاتر (أقراص) ─────────────
+/** أقراص (segmented) للتبويبات داخل الشاشة وللفلاتر. تتمرر أفقياً على الجوال */
+export function Tabs<T extends string>({ tabs, value, onChange, size = 'md', className }: { tabs: { key: T; label: ReactNode; badge?: ReactNode }[]; value: T; onChange: (k: T) => void; size?: 'sm' | 'md'; className?: string }) {
   return (
-    <div className="-mx-1 mb-4 flex gap-1 overflow-x-auto px-1 pb-1">
-      {tabs.map((t) => (
-        <button
-          key={t.key}
-          onClick={() => onChange(t.key)}
-          className={cx('inline-flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-xl px-3.5 text-sm font-medium transition sm:min-h-[40px]', value === t.key ? 'bg-brand-grad text-white shadow-md shadow-brand-600/20' : 'border border-ink-100 bg-white text-ink-600 hover:border-brand-200 hover:bg-brand-50')}
-        >
-          {t.label}
-          {t.badge}
-        </button>
-      ))}
+    <div className={cx('-mx-1 mb-4 overflow-x-auto px-1 pb-1', className)}>
+      <div role="tablist" className="inline-flex gap-1 rounded-full border border-ink-100 bg-ink-50 p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            role="tab"
+            aria-selected={value === t.key}
+            onClick={() => onChange(t.key)}
+            className={cx('inline-flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 font-medium transition', size === 'sm' ? 'text-xs sm:min-h-[34px]' : 'text-sm sm:min-h-[38px]', value === t.key ? 'bg-white text-brand-700 shadow-card ring-1 ring-brand-600/15' : 'text-ink-600 hover:text-brand-700')}
+          >
+            {t.label}
+            {t.badge}
+          </button>
+        ))}
+      </div>
     </div>
+  );
+}
+/** فلتر أقراص بقيمة «الكل» أولاً */
+export function FilterPills<T extends string>({ label, options, value, onChange }: { label?: string; options: { key: T; label: ReactNode }[]; value: T; onChange: (k: T) => void }) {
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      {label && <span className="shrink-0 text-xs text-ink-500">{label}</span>}
+      <Tabs tabs={options} value={value} onChange={onChange} size="sm" className="!mb-0 min-w-0" />
+    </div>
+  );
+}
+
+/** عنوان ثنائي اللون: كلمة التمييز بالأساسي */
+export function TwoToneTitle({ text, accent, as = 'h2', className }: { text: string; accent?: string; as?: 'h1' | 'h2' | 'h3'; className?: string }) {
+  const Tag = as;
+  const i = accent ? text.indexOf(accent) : -1;
+  return (
+    <Tag className={cx('font-bold text-ink-900', className)}>
+      {i < 0 ? text : <>{text.slice(0, i)}<span className="text-brand-600">{accent}</span>{text.slice(i + accent!.length)}</>}
+    </Tag>
   );
 }
 
@@ -221,10 +251,10 @@ export function Modal({ open, onClose, title, children, footer, wide }: { open: 
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink-900/40 p-0 backdrop-blur-[2px] sm:items-center sm:p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className={cx('flex max-h-[92vh] w-full flex-col rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
+      <div onClick={(e) => e.stopPropagation()} className={cx('flex max-h-[92vh] w-full flex-col rounded-t-3xl bg-white shadow-lift sm:rounded-3xl', wide ? 'sm:max-w-3xl' : 'sm:max-w-lg')}>
         <div className="flex items-center justify-between border-b border-ink-100 px-5 py-3.5">
-          <h3 className="font-bold">{title}</h3>
-          <button onClick={onClose} className="rounded-lg p-1 text-ink-400 hover:bg-ink-100"><L.X className="h-5 w-5" /></button>
+          <h3 className="text-lg font-bold">{title}</h3>
+          <button onClick={onClose} aria-label="إغلاق" className="flex h-11 w-11 items-center justify-center rounded-full text-ink-500 hover:bg-ink-50"><L.X className="h-5 w-5" /></button>
         </div>
         <div className="overflow-y-auto px-5 py-4">{children}</div>
         {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-ink-100 px-5 py-3">{footer}</div>}
@@ -300,11 +330,59 @@ export function Checklist({ items }: { items: { label: string; ok: boolean }[] }
   );
 }
 
-export function Table({ children }: { children: ReactNode }) {
+/** جدول البيانات: إطار بحافة 16، رأس بخلفية فاتحة، وتمرير أفقي */
+export function Table({ children, minWidth = 560 }: { children: ReactNode; minWidth?: number }) {
   return (
-    <div className="-mx-4 overflow-x-auto sm:mx-0">
-      <table className="table-base min-w-[560px]">{children}</table>
+    <div className="overflow-hidden rounded-table border border-ink-100 bg-white">
+      <div className="overflow-x-auto">
+        <table className="table-base" style={{ minWidth }}>{children}</table>
+      </div>
     </div>
+  );
+}
+
+export interface Column<T> {
+  key: string;
+  header: ReactNode;
+  cell: (row: T) => ReactNode;
+  className?: string;
+  /** يُخفى من البطاقة المضغوطة على الجوال */
+  hideOnCard?: boolean;
+}
+/**
+ * جدول بيانات بأعمدة: جدول على الشاشة الكبيرة، وكل صف بطاقة مضغوطة بنفس الحقول على الجوال.
+ * cardHead يحدد ما يظهر في رأس البطاقة (الافتراضي أول عمود)، وactionsKey العمود الذي يظهر في أسفلها.
+ */
+export function DataTable<T>({ columns, rows, rowKey, empty, minWidth = 720, actionsKey, rowClassName }: { columns: Column<T>[]; rows: T[]; rowKey: (r: T) => string; empty?: ReactNode; minWidth?: number; actionsKey?: string; rowClassName?: (r: T) => string | undefined }) {
+  if (!rows.length) return <>{empty ?? <Empty title="لا بيانات" />}</>;
+  const [head, ...rest] = columns;
+  const body = rest.filter((c) => c.key !== actionsKey && !c.hideOnCard);
+  const actions = columns.find((c) => c.key === actionsKey);
+  return (
+    <>
+      <div className="hidden md:block">
+        <Table minWidth={minWidth}>
+          <thead><tr>{columns.map((c) => <th key={c.key} className={c.className}>{c.header}</th>)}</tr></thead>
+          <tbody>{rows.map((r) => <tr key={rowKey(r)} className={rowClassName?.(r)}>{columns.map((c) => <td key={c.key} className={c.className}>{c.cell(r)}</td>)}</tr>)}</tbody>
+        </Table>
+      </div>
+      <ul className="space-y-3 md:hidden">
+        {rows.map((r) => (
+          <li key={rowKey(r)} className={cx('rounded-2xl border border-ink-100 bg-white p-4 shadow-card', rowClassName?.(r))}>
+            <div className="mb-2 font-medium text-ink-900">{head.cell(r)}</div>
+            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+              {body.map((c) => (
+                <div key={c.key} className="min-w-0">
+                  <dt className="text-ink-500">{c.header}</dt>
+                  <dd className="mt-0.5 min-w-0 break-words text-ink-800">{c.cell(r)}</dd>
+                </div>
+              ))}
+            </dl>
+            {actions && <div className="mt-3 flex flex-wrap gap-2 border-t border-ink-100 pt-3">{actions.cell(r)}</div>}
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }
 
@@ -318,9 +396,9 @@ export function KeyVal({ k, v }: { k: string; v: ReactNode }) {
 }
 
 export function Notice({ tone = 'blue', children, icon }: { tone?: 'blue' | 'orange' | 'red' | 'green'; children: ReactNode; icon?: ReactNode }) {
-  const cls = { blue: 'bg-brand-50 text-brand-800 border-brand-100', orange: 'bg-accent-50 text-accent-700 border-accent-100', red: 'bg-red-50 text-red-700 border-red-100', green: 'bg-emerald-50 text-emerald-800 border-emerald-100' }[tone];
+  const cls = { blue: 'bg-brand-50 text-brand-800 border-brand-100', orange: 'bg-accent-50 text-accent-700 border-accent-100', red: 'bg-bad-50 text-bad-700 border-bad-100', green: 'bg-ok-50 text-ok-800 border-ok-100' }[tone];
   return (
-    <div className={cx('flex items-start gap-2 rounded-xl border px-3.5 py-2.5 text-sm', cls)}>
+    <div className={cx('flex items-start gap-2 rounded-xl border px-4 py-3 text-sm', cls)}>
       <span className="mt-0.5 shrink-0">{icon ?? <L.Info className="h-4 w-4" />}</span>
       <div className="min-w-0">{children}</div>
     </div>

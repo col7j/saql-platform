@@ -47,8 +47,8 @@ function GroupList() {
       {db.groups.map((g) => (
         <Card key={g.id} title={<span style={{ color: g.color }}>{g.name}</span>} subtitle={`${g.memberIds.length} أعضاء`} action={me.group?.id === g.id && <Badge tone="brand">مجموعتي</Badge>}>
           <div className="mb-3 grid gap-2 sm:grid-cols-2">
-            <div className="rounded-xl bg-brand-50 p-2"><div className="mb-1 text-[11px] text-brand-700">الميسّر</div><PersonChip id={g.facilitatorId} size={26} /></div>
-            <div className="rounded-xl bg-accent-50 p-2"><div className="mb-1 text-[11px] text-accent-700">قائد المجموعة</div><PersonChip id={g.leaderId} size={26} /></div>
+            <div className="rounded-xl bg-brand-50 p-2"><div className="mb-1 text-xs text-brand-700">الميسّر</div><PersonChip id={g.facilitatorId} size={26} /></div>
+            <div className="rounded-xl bg-accent-50 p-2"><div className="mb-1 text-xs text-accent-700">قائد المجموعة</div><PersonChip id={g.leaderId} size={26} /></div>
           </div>
           <ul className="grid gap-2 sm:grid-cols-2">
             {g.memberIds.filter((m) => m !== g.leaderId).map((m) => (

@@ -17,7 +17,7 @@ const groupIcon: Record<string, typeof Icons.Wallet> = {
 };
 const toneStyle = {
   red: { bar: 'bg-red-500', icon: 'bg-red-50 text-red-600', label: 'عاجل' },
-  orange: { bar: 'bg-accent-grad', icon: 'bg-accent-50 text-accent-600', label: 'مطلوب' },
+  orange: { bar: 'bg-accent-grad', icon: 'bg-accent-50 text-accent-700', label: 'مطلوب' },
   blue: { bar: 'bg-brand-grad', icon: 'bg-brand-50 text-brand-600', label: 'للعلم' },
 } as const;
 const medal = ['🥇', '🥈', '🥉'];
@@ -93,7 +93,7 @@ function MyRankBadge() {
   return (
     <Link to="/app/leaderboard" className="flex items-center gap-4 rounded-2xl bg-white/15 px-4 py-3 backdrop-blur hover:bg-white/20">
       <div className="text-center">
-        <div className="text-[11px] text-white/80">ترتيبك</div>
+        <div className="text-xs text-white/80">ترتيبك</div>
         <div className="num text-3xl font-black text-white">#{mine.rank}</div>
       </div>
       <div className="h-10 w-px bg-white/25" />
@@ -161,7 +161,7 @@ function Competition() {
                   <Avatar name={personName(db, p.personId)} size={place === 1 ? 52 : 44} color={g?.color} />
                 </div>
                 <div className={cx('mt-1 line-clamp-1 text-xs font-bold', p.personId === me.person.id && 'text-brand-700')}>{personName(db, p.personId)}</div>
-                <div className="num text-[11px] text-ink-500">{p.total}</div>
+                <div className="num text-xs text-ink-500">{p.total}</div>
                 <div className={cx('mt-1 w-full rounded-t-xl', h, place === 1 ? 'bg-accent-grad' : 'bg-brand-grad opacity-80')} />
               </div>
             );
@@ -214,7 +214,7 @@ function ActionsSection({ actions }: { actions: PendingAction[] }) {
                 <div className="flex flex-1 flex-wrap items-center gap-3 p-4">
                   <span className={cx('flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl', t.icon)}><I className="h-5 w-5" /></span>
                   <div className="min-w-0 flex-1">
-                    <div className="text-[11px] font-medium text-ink-400">{t.label} · {a.group}</div>
+                    <div className="text-xs font-medium text-ink-400">{t.label} · {a.group}</div>
                     <div className="font-bold leading-6">{a.title}</div>
                     {a.hint && <div className="mt-0.5 text-xs text-ink-500">{a.hint}</div>}
                   </div>
@@ -263,7 +263,7 @@ function Upcoming() {
             <Link key={e.id} to={e.link} className="flex items-center gap-3 rounded-2xl border border-ink-100 bg-white p-3 shadow-card hover:border-brand-200">
               <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl text-white" style={{ background: calKindColor[e.kind] }}>
                 <span className="num text-lg font-black leading-none">{d.getDate()}</span>
-                <span className="text-[10px]">{d.toLocaleDateString('ar-SA-u-ca-gregory', { month: 'short' })}</span>
+                <span className="text-xs">{d.toLocaleDateString('ar-SA-u-ca-gregory', { month: 'short' })}</span>
               </div>
               <div className="min-w-0">
                 <div className="truncate text-sm font-bold">{e.title}</div>

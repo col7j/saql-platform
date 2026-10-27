@@ -107,7 +107,7 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
                 ) : (
                   <div key={f.key}>
                     <div className="text-xs text-ink-500">{f.label}</div>
-                    <p className="mt-0.5 whitespace-pre-line text-sm text-ink-800">{doc.fields[f.key] || <span className="text-ink-300">—</span>}</p>
+                    <p className="mt-0.5 whitespace-pre-line text-sm text-ink-800">{doc.fields[f.key] || <span className="text-ink-400">—</span>}</p>
                   </div>
                 ),
               )}
