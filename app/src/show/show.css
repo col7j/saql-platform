@@ -1,0 +1,24 @@
+/* حركات وضع العرض. تُحمَّل مع حزمة العرض فقط */
+.show-stage { position: fixed; inset: 0; overflow: hidden; background: #000; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; }
+.show-stage.hide-cursor, .show-stage.hide-cursor * { cursor: none !important; }
+.show-layer { position: absolute; inset: 0; transition: opacity 700ms cubic-bezier(.4, 0, .2, 1); }
+.show-layer.entering { opacity: 0; }
+.show-layer.leaving { opacity: 0; pointer-events: none; }
+
+.show-dark { background: radial-gradient(120% 90% at 50% 40%, rgb(var(--c-brand-800)) 0%, rgb(var(--c-brand-900)) 45%, #021c26 100%); }
+
+@keyframes show-rise { from { opacity: 0; transform: translateY(24px) scale(.98); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+.show-rise { animation: show-rise 900ms cubic-bezier(.2, .7, .2, 1) both; }
+
+@keyframes show-fade { from { opacity: 0; } to { opacity: 1; } }
+.show-fade { animation: show-fade 1200ms ease both; }
+
+.show-slide { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 500ms ease; }
+
+.show-chrome { transition: opacity 400ms ease; }
+.show-stage.hide-cursor .show-chrome { opacity: 0; pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .show-layer, .show-slide { transition-duration: 1ms; }
+  .show-rise, .show-fade { animation-duration: 1ms; }
+}
