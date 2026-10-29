@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "title": "حفل برنامج صقل",
+  "updatedAt": "2026-10-29T00:00:00.000Z",
+  "segments": [
+    { "id": "seg_opening", "type": "blank", "title": "الافتتاح", "order": 0, "settings": { "variant": "logo", "caption": "حفل برنامج صقل" } },
+    { "id": "seg_intro", "type": "video", "title": "فيديو المقدمة", "order": 1, "settings": { "media": { "kind": "url", "src": "show-media/intro.mp4" }, "muted": false, "showSkip": true, "autoAdvance": true } },
+    { "id": "seg_speaker", "type": "blank", "title": "كلمة الافتتاح", "order": 2, "settings": { "variant": "black" } },
+    { "id": "seg_slides", "type": "slides", "title": "عرض البرنامج", "order": 3, "settings": { "slides": [], "fit": "contain" } },
+    { "id": "seg_demo", "type": "demo", "title": "جولة في المنصة", "order": 4, "settings": { "steps": ["list", "focusTrip", "trip", "document", "schedule", "budget", "plans", "back"] } },
+    { "id": "seg_names", "type": "names", "title": "المكرَّمون", "order": 5, "settings": { "heading": "المكرَّمون", "names": ["الاسم الأول", "الاسم الثاني", "الاسم الثالث", "الاسم الرابع"], "perStep": 1, "columns": 2 } },
+    { "id": "seg_closing", "type": "blank", "title": "الختام", "order": 6, "settings": { "variant": "logo", "caption": "شكراً لحضوركم" } }
+  ]
+}
