@@ -53,8 +53,9 @@ export default function ShowPlayer() {
   // تعديل الإعدادات من شاشة التحكم: يبقى العرض على نفس الفقرة
   const prevCfg = useRef<ShowConfig | null>(null);
   useEffect(() => {
-    if (cfg && prevCfg.current && prevCfg.current !== cfg) setPos((p) => followSegment(prevCfg.current!, cfg, p));
+    const before = prevCfg.current;
     prevCfg.current = cfg;
+    if (cfg && before && before !== cfg) setPos((p) => followSegment(before, cfg, p));
   }, [cfg]);
 
   useEffect(() => {

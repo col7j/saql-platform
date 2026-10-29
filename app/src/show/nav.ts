@@ -92,3 +92,12 @@ export function followSegment(before: ShowConfig, after: ShowConfig, pos: Pos): 
   const idx = sortSegments(after.segments).findIndex((s) => s.id === id);
   return clampPos(after, idx >= 0 ? { seg: idx, step: pos.step } : pos);
 }
+
+/** ترتيب طبيعي لأسماء الملفات: Slide2 قبل Slide10 (تصدير PowerPoint) */
+export const naturalCompare = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+/** مسارات شرائح بنمط مرقّم: show-media/slides/Slide{n}.PNG مع العدد */
+export function expandPattern(pattern: string, count: number): string[] {
+  if (!pattern.includes('{n}')) return pattern.trim() ? [pattern.trim()] : [];
+  return Array.from({ length: Math.max(0, Math.min(500, Math.floor(count))) }, (_, i) => pattern.trim().replace(/\{n\}/g, String(i + 1)));
+}

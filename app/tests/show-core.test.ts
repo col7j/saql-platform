@@ -191,3 +191,13 @@ describe('مفاتيح الكليكر واللمس', () => {
     expect(touchAction(20, 200, 500, 1000)).toBeNull();
   });
 });
+
+describe('أدوات الشرائح', () => {
+  it('ترتيب طبيعي لملفات PowerPoint ومسارات بنمط مرقّم', async () => {
+    const { naturalCompare, expandPattern } = await import('@/show/nav');
+    expect(['Slide10.PNG', 'Slide2.PNG', 'Slide1.PNG'].sort(naturalCompare)).toEqual(['Slide1.PNG', 'Slide2.PNG', 'Slide10.PNG']);
+    expect(expandPattern('show-media/slides/Slide{n}.PNG', 3)).toEqual(['show-media/slides/Slide1.PNG', 'show-media/slides/Slide2.PNG', 'show-media/slides/Slide3.PNG']);
+    expect(expandPattern('show-media/a.png', 9)).toEqual(['show-media/a.png']);
+    expect(expandPattern('x{n}', -2)).toEqual([]);
+  });
+});
