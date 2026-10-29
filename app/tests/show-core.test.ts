@@ -171,3 +171,23 @@ describe('طبقة التزامن', () => {
     b.close();
   });
 });
+
+describe('مفاتيح الكليكر واللمس', () => {
+  it('التالي والسابق بمفاتيح الكليكر والأسهم', async () => {
+    const { keyAction } = await import('@/show/keys');
+    for (const key of ['PageDown', 'ArrowRight', 'ArrowDown', ' ', 'Enter']) expect(keyAction({ key })).toBe('next');
+    for (const key of ['PageUp', 'ArrowLeft', 'ArrowUp', 'Backspace']) expect(keyAction({ key })).toBe('prev');
+    expect(keyAction({ key: 'ب', code: 'KeyF' })).toBe('fullscreen'); // F على اللوحة العربية
+    expect(keyAction({ key: 'b', code: 'KeyB' })).toBe('blackout');
+    expect(keyAction({ key: 'ArrowRight', metaKey: true })).toBeNull();
+    expect(keyAction({ key: 'x', code: 'KeyX' })).toBeNull();
+  });
+  it('السحب يميناً أو النقر يسار الشاشة للتالي', async () => {
+    const { touchAction } = await import('@/show/keys');
+    expect(touchAction(120, 5, 500, 1000)).toBe('next');
+    expect(touchAction(-120, 5, 500, 1000)).toBe('prev');
+    expect(touchAction(2, 2, 100, 1000)).toBe('next');
+    expect(touchAction(2, 2, 900, 1000)).toBe('prev');
+    expect(touchAction(20, 200, 500, 1000)).toBeNull();
+  });
+});
