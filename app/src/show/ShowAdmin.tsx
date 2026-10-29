@@ -55,7 +55,9 @@ function Preview({ seg, step }: { seg: Segment; step: number }) {
   useEffect(() => {
     const el = box.current;
     if (!el) return;
-    const ro = new ResizeObserver(([e]) => setScale(e.contentRect.width / 1280));
+    const measure = () => setScale(el.getBoundingClientRect().width / 1280);
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
