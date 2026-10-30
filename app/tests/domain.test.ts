@@ -1,11 +1,12 @@
 // اختبارات منطق الصلاحيات والنقاط ودورة الاعتماد (بلا واجهة)
 import { describe, expect, it } from 'vitest';
 import { buildSeed } from '@/data/seed';
+import { fixtureSeed } from './helpers/fixture';
 import { canEditTripDoc, canFacilitatorReview, canLeaderDecide, canSeeFacilitatorNotes, canSeeFinance, canSeePersonalPlan, canViewTripPlans, getCapabilities, trackerConflict } from '@/domain/permissions';
 import { computeScores } from '@/domain/points';
 import { applyDocAction, canPublish, docFor, isPlanUnlocked, publishChecks } from '@/domain/workflow';
 
-const db = buildSeed();
+const db = fixtureSeed();
 const trip = (id: string) => db.trips.find((t) => t.id === id)!;
 
 describe('الصفات والصلاحيات', () => {

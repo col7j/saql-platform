@@ -98,7 +98,7 @@
     seg('image', { media: img }, 'صورة بإطار'),
     seg('image', { media: img, cover: true }, 'صورة بملء الشاشة'),
     seg('video', { title: 'فيديو المقدمة', media: video, video: { autoAdvance: false } }, 'فيديو'),
-    seg('names', { title: 'المكرَّمون', names: ['يوسف الرحيلي', 'عبدالرحمن السالم', 'محمد الأنصاري'] }, 'أسماء'),
+    seg('names', { title: 'المكرَّمون', names: ['أصيل نايف الجهني', 'عبدالعزيز محمد الأنصاري', 'البراء بشير شيخ النجارين'] }, 'أسماء'),
     counter,
     partners,
     shapes,
