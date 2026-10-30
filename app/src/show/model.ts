@@ -1,8 +1,13 @@
 // نموذج بيانات وضع «عرض الحفل»: منفصل تماماً عن قاعدة بيانات المنصة وعن DB_VERSION.
+// الإصدار 2: كل فقرة شريحة حرّة (slides/model.ts) أو ديمو المنصة. أنواع الإصدار 1
+// (فيديو، صور، أسماء، شاشة المتحدث) صارت قوالب، وتتحول تلقائياً عند القراءة (slides/templates.ts).
+import type { SlideSettings } from './slides/model';
 
-export const SHOW_SCHEMA_VERSION = 1;
+export const SHOW_SCHEMA_VERSION = 2;
 
-export type SegmentType = 'video' | 'slides' | 'demo' | 'names' | 'blank';
+export type SegmentType = 'slide' | 'demo';
+/** أنواع الإصدار 1: للقراءة والتحويل فقط */
+export type LegacySegmentType = 'video' | 'slides' | 'names' | 'blank';
 
 /** مرجع وسيط: ملف في public/show-media (أو أي رابط)، أو ملف مرفوع محلياً في IndexedDB على هذا الجهاز */
 export type MediaRef = { kind: 'url'; src: string } | { kind: 'local'; id: string; name?: string };
@@ -80,19 +85,22 @@ export interface BlankSettings {
   caption?: string;
 }
 
-interface Base<T extends SegmentType, S> {
+interface Base<T extends SegmentType | LegacySegmentType, S> {
   id: string;
   type: T;
   title: string;
   order: number;
   settings: S;
 }
+export type SlideSegment = Base<'slide', SlideSettings>;
+export type DemoSegment = Base<'demo', DemoSettings>;
+export type Segment = SlideSegment | DemoSegment;
+
 export type VideoSegment = Base<'video', VideoSettings>;
 export type SlidesSegment = Base<'slides', SlidesSettings>;
-export type DemoSegment = Base<'demo', DemoSettings>;
 export type NamesSegment = Base<'names', NamesSettings>;
 export type BlankSegment = Base<'blank', BlankSettings>;
-export type Segment = VideoSegment | SlidesSegment | DemoSegment | NamesSegment | BlankSegment;
+export type LegacySegment = VideoSegment | SlidesSegment | NamesSegment | BlankSegment;
 
 export interface ShowConfig {
   schemaVersion: number;
@@ -102,30 +110,15 @@ export interface ShowConfig {
 }
 
 export const SEGMENT_LABELS: Record<SegmentType, string> = {
-  video: 'فيديو',
-  slides: 'شرائح',
+  slide: 'شريحة',
   demo: 'ديمو المنصة',
-  names: 'أسماء',
-  blank: 'شاشة المتحدث',
 };
-
-export function defaultSettings(type: SegmentType): Segment['settings'] {
-  switch (type) {
-    case 'video': return { muted: false, showSkip: true, autoAdvance: true } satisfies VideoSettings;
-    case 'slides': return { slides: [], fit: 'contain' } satisfies SlidesSettings;
-    case 'demo': return { scenes: [...DEMO_SCENES] } satisfies DemoSettings;
-    case 'names': return { heading: '', names: [], perStep: 1, columns: 2 } satisfies NamesSettings;
-    case 'blank': return { variant: 'logo' } satisfies BlankSettings;
-  }
-}
 
 export const DEFAULT_CONFIG: ShowConfig = {
   schemaVersion: SHOW_SCHEMA_VERSION,
   title: 'حفل برنامج صقل',
   updatedAt: '2026-01-01T00:00:00.000Z',
   segments: [
-    { id: 'seg_intro', type: 'blank', title: 'الافتتاح', order: 0, settings: { variant: 'logo', caption: 'حفل برنامج صقل' } },
-    { id: 'seg_demo', type: 'demo', title: 'جولة في المنصة', order: 1, settings: { scenes: [...DEMO_SCENES] } },
-    { id: 'seg_speaker', type: 'blank', title: 'كلمة', order: 2, settings: { variant: 'black' } },
+    { id: 'seg_demo', type: 'demo', title: 'جولة في المنصة', order: 0, settings: { scenes: [...DEMO_SCENES] } },
   ],
 };

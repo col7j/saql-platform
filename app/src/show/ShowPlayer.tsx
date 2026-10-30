@@ -14,12 +14,18 @@ const FADE_MS = 900;
 
 function preloadAround(cfg: ShowConfig, pos: Pos) {
   const list = sortSegments(cfg.segments);
-  const warm = (s: Segment | undefined, from: number) => {
-    if (s?.type === 'video' && s.settings.media) preload(s.settings.media, 'video').catch(() => undefined);
-    if (s?.type === 'slides') s.settings.slides.slice(from, from + 2).forEach((m) => preload(m, 'image').catch(() => undefined));
+  // وسائط الشريحة الحالية والتالية: صور وفيديو وشعارات الشركاء
+  const warm = (s: Segment | undefined) => {
+    if (s?.type !== 'slide') return;
+    if (s.settings.bg.kind === 'media' && s.settings.bg.media) preload(s.settings.bg.media, 'image').catch(() => undefined);
+    for (const el of s.settings.elements) {
+      if (el.type === 'image' && el.props.media) preload(el.props.media, 'image').catch(() => undefined);
+      if (el.type === 'video' && el.props.media) preload(el.props.media, 'video').catch(() => undefined);
+      if (el.type === 'logoGrid') el.props.tiers.forEach((t) => t.logos.forEach((m) => preload(m, 'image').catch(() => undefined)));
+    }
   };
-  warm(list[pos.seg], pos.step + 1);
-  warm(list[pos.seg + 1], 0);
+  warm(list[pos.seg]);
+  warm(list[pos.seg + 1]);
 }
 
 function toggleFullscreen() {

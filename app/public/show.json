@@ -1,14 +1,467 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "title": "حفل برنامج صقل",
-  "updatedAt": "2026-10-29T00:00:00.000Z",
   "segments": [
-    { "id": "seg_opening", "type": "blank", "title": "الافتتاح", "order": 0, "settings": { "variant": "logo", "caption": "حفل برنامج صقل" } },
-    { "id": "seg_intro", "type": "video", "title": "فيديو المقدمة", "order": 1, "settings": { "media": { "kind": "url", "src": "show-media/intro.mp4" }, "muted": false, "showSkip": true, "autoAdvance": true } },
-    { "id": "seg_speaker", "type": "blank", "title": "كلمة الافتتاح", "order": 2, "settings": { "variant": "black" } },
-    { "id": "seg_slides", "type": "slides", "title": "عرض البرنامج", "order": 3, "settings": { "slides": [], "fit": "contain" } },
-    { "id": "seg_demo", "type": "demo", "title": "جولة في المنصة", "order": 4, "settings": { "scenes": ["calendar", "trips", "focus", "plan"] } },
-    { "id": "seg_names", "type": "names", "title": "المكرَّمون", "order": 5, "settings": { "heading": "المكرَّمون", "names": ["الاسم الأول", "الاسم الثاني", "الاسم الثالث", "الاسم الرابع"], "perStep": 1, "columns": 2 } },
-    { "id": "seg_closing", "type": "blank", "title": "الختام", "order": 6, "settings": { "variant": "logo", "caption": "شكراً لحضوركم" } }
-  ]
+    {
+      "id": "seg_opening",
+      "type": "slide",
+      "title": "الافتتاح",
+      "order": 0,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": false,
+        "elements": [
+          {
+            "id": "seg_opening_e1",
+            "type": "logo",
+            "x": 767.5565198251737,
+            "y": 230,
+            "w": 385,
+            "h": 380,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "kind": "vertical",
+              "variant": "white"
+            }
+          },
+          {
+            "id": "seg_opening_e2",
+            "type": "text",
+            "x": 96,
+            "y": 680,
+            "w": 1728,
+            "h": 100,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 260,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "حفل برنامج صقل",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 60,
+              "color": "fg",
+              "align": "center",
+              "line": 1.25
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "seg_intro",
+      "type": "slide",
+      "title": "فيديو المقدمة",
+      "order": 1,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "seg_intro_e1",
+            "type": "text",
+            "x": 96,
+            "y": 400,
+            "w": 1728,
+            "h": 150,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "فيديو المقدمة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 96,
+              "color": "fg",
+              "align": "center",
+              "line": 1.15
+            }
+          },
+          {
+            "id": "seg_intro_e2",
+            "type": "shape",
+            "x": 890,
+            "y": 590,
+            "w": 140,
+            "h": 7,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 200,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "seg_intro_e9",
+            "type": "video",
+            "x": 115,
+            "y": 97,
+            "w": 1690,
+            "h": 886,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "lift",
+            "anim": {
+              "type": "fade",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "fit": "contain",
+              "radius": 24,
+              "muted": false,
+              "autoAdvance": true,
+              "showSkip": true,
+              "media": {
+                "kind": "url",
+                "src": "show-media/intro.mp4"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "seg_speaker",
+      "type": "slide",
+      "title": "كلمة الافتتاح",
+      "order": 2,
+      "settings": {
+        "bg": {
+          "kind": "black"
+        },
+        "mark": false,
+        "elements": []
+      }
+    },
+    {
+      "id": "seg_slides",
+      "type": "slide",
+      "title": "عرض البرنامج",
+      "order": 3,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "seg_slides_e1",
+            "type": "text",
+            "x": 96,
+            "y": 400,
+            "w": 1728,
+            "h": 150,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "عرض البرنامج",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 96,
+              "color": "fg",
+              "align": "center",
+              "line": 1.15
+            }
+          },
+          {
+            "id": "seg_slides_e2",
+            "type": "shape",
+            "x": 890,
+            "y": 590,
+            "w": 140,
+            "h": 7,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 200,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "seg_demo",
+      "type": "demo",
+      "title": "جولة في المنصة",
+      "order": 4,
+      "settings": {
+        "scenes": [
+          "calendar",
+          "trips",
+          "focus",
+          "plan"
+        ]
+      }
+    },
+    {
+      "id": "seg_names",
+      "type": "slide",
+      "title": "المكرَّمون",
+      "order": 5,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "seg_names_e1",
+            "type": "text",
+            "x": 96,
+            "y": 400,
+            "w": 1728,
+            "h": 150,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "المكرَّمون",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 96,
+              "color": "fg",
+              "align": "center",
+              "line": 1.15
+            },
+            "until": 1
+          },
+          {
+            "id": "seg_names_e2",
+            "type": "shape",
+            "x": 890,
+            "y": 590,
+            "w": 140,
+            "h": 7,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 200,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            },
+            "until": 1
+          },
+          {
+            "id": "seg_names_e3",
+            "type": "text",
+            "x": 96,
+            "y": 640,
+            "w": 1728,
+            "h": 60,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 320,
+              "duration": 1000
+            },
+            "step": 0,
+            "until": 1,
+            "props": {
+              "text": "4 أسماء",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "seg_names_e4",
+            "type": "text",
+            "x": 96,
+            "y": 60,
+            "w": 1728,
+            "h": 60,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 0,
+              "duration": 800
+            },
+            "step": 1,
+            "props": {
+              "text": "المكرَّمون",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "seg_names_e5",
+            "type": "names",
+            "x": 96,
+            "y": 200,
+            "w": 1728,
+            "h": 820,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 1300
+            },
+            "step": 1,
+            "props": {
+              "names": [
+                "الاسم الأول",
+                "الاسم الثاني",
+                "الاسم الثالث",
+                "الاسم الرابع"
+              ],
+              "perStep": 1,
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 110,
+              "color": "fg",
+              "counter": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "seg_closing",
+      "type": "slide",
+      "title": "الختام",
+      "order": 6,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": false,
+        "elements": [
+          {
+            "id": "seg_closing_e1",
+            "type": "logo",
+            "x": 767.5565198251737,
+            "y": 230,
+            "w": 385,
+            "h": 380,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "kind": "vertical",
+              "variant": "white"
+            }
+          },
+          {
+            "id": "seg_closing_e2",
+            "type": "text",
+            "x": 96,
+            "y": 680,
+            "w": 1728,
+            "h": 100,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 260,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "شكراً لحضوركم",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 60,
+              "color": "fg",
+              "align": "center",
+              "line": 1.25
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "updatedAt": "2026-10-30T08:11:01.960Z"
 }

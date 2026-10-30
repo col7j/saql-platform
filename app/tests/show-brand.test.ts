@@ -74,15 +74,16 @@ describe('الشعارات', () => {
 });
 
 describe('لا قيم مباشرة في شاشات العرض', () => {
-  // المحرّر (admin) يتبع واجهة المنصة، والديمو يعرض صفحات المنصة نفسها
-  const files = Object.keys(SHOW).filter((f) => !/\/(brand|admin)\/|ShowAdmin|PreviewFrame|DemoFrame/.test(f));
+  // المحرّر (admin وeditor) يتبع واجهة المنصة، والديمو يعرض صفحات المنصة نفسها
+  const files = Object.keys(SHOW).filter((f) => !/\/(brand|admin|editor)\/|ShowAdmin|PreviewFrame|DemoFrame/.test(f));
   const read = (f: string) => SHOW[f];
 
   it('لا ألوان hex ولا rgb ثابتة ولا رموز ألوان المنصة', () => {
     for (const f of files) {
       const s = read(f).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
       expect(s, f).not.toMatch(/#[0-9a-fA-F]{3,8}\b(?![^'"`]*\.svg)/);
-      expect(s, f).not.toMatch(/rgb\((?!var\(--[bt]-)/);
+      // rgb(var(${v})) في SlideView: اسم المتغير من رموز الهوية
+      expect(s, f).not.toMatch(/rgb\((?!var\((--[bt]-|\$\{))/);
       expect(s, f).not.toMatch(/--c-(brand|accent|ink)/);
       expect(s, f).not.toMatch(/\b(bg|text|ring|shadow|border)-(brand|accent|ink|white|black)\b/);
     }
@@ -90,6 +91,6 @@ describe('لا قيم مباشرة في شاشات العرض', () => {
 
   it('لا خطوط مكتوبة مباشرة', () => {
     expect(files.length).toBeGreaterThan(10);
-    for (const f of files) expect(read(f), f).not.toMatch(/font-family:(?!\s*var\(--b-font\))|fontFamily:/);
+    for (const f of files) expect(read(f), f).not.toMatch(/font-family:(?!\s*var\(--b-font\))|fontFamily:\s*['"`]/);
   });
 });

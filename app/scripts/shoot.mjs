@@ -1,5 +1,5 @@
 // لقطات مراجعة بدقة 1920×1080 من Chrome الحقيقي (بلا اعتماديات): node --experimental-websocket scripts/shoot.mjs plan.json outDir
-// plan.json: [{ "name": "01-start", "url": "http://localhost:5173/#/show", "wait": 2500, "keys": ["ArrowRight"], "eval": "js", "fresh": true }]
+// plan.json: [{ "name": "01-start", "url": "http://localhost:5173/#/show", "wait": 2500, "keys": ["ArrowRight"], "eval": "js", "fresh": true, "setupFile": "scripts/review-deck.js" }]
 // كل لقطة تُنفَّذ بالترتيب في نفس الصفحة ما لم تحمل url جديداً. fresh يمسح التخزين قبل التحميل.
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
@@ -57,12 +57,30 @@ for (const s of plan) {
       await sleep(300);
       await evaluate('localStorage.clear(); indexedDB.databases?.().then(d => Promise.all(d.map(x => new Promise(r => { const q = indexedDB.deleteDatabase(x.name); q.onsuccess = q.onerror = q.onblocked = r; }))))');
     }
-    if (s.setup) { await send('Page.navigate', { url: new URL(s.url).origin + '/favicon.ico' }); await sleep(300); await evaluate(s.setup); }
+    // setup: نص JS أو ملف (setupFile) يُنفَّذ في صفحة من نفس الأصل قبل فتح الرابط (لتجهيز التخزين)
+    const setup = s.setupFile ? readFileSync(s.setupFile, 'utf8') : s.setup;
+    if (setup) {
+      await send('Page.navigate', { url: new URL(s.url).origin + '/show-media/README.md' });
+      await sleep(500);
+      console.log('setup:', JSON.stringify(await evaluate(setup)));
+    }
     await send('Page.navigate', { url: s.url });
     await sleep(800);
     await evaluate('document.fonts.ready.then(() => true)');
   }
   for (const k of s.keys ?? []) { await press(k); await sleep(s.keyGap ?? 300); }
+  // clickAt: تعبير JS يعيد [x, y] (أو [x1, y1, x2, y2] للسحب) فيُضاف إلى clicks
+  const clicks = [...(s.clicks ?? [])];
+  if (s.clickAt) clicks.push(await evaluate(s.clickAt));
+  // clicks: [[x, y], …] أو [[x1, y1, x2, y2]] للسحب
+  for (const c of clicks) {
+    const [x, y, x2, y2] = c;
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y });
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1, pointerType: 'mouse' });
+    if (x2 !== undefined) for (let i = 1; i <= 10; i++) { await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: x + ((x2 - x) * i) / 10, y: y + ((y2 - y) * i) / 10, button: 'left', buttons: 1 }); await sleep(20); }
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: x2 ?? x, y: y2 ?? y, button: 'left', clickCount: 1 });
+    await sleep(s.clickGap ?? 300);
+  }
   if (s.eval) results.push({ name: s.name, value: await evaluate(s.eval) });
   await sleep(s.wait ?? 2000);
   if (s.name) {
