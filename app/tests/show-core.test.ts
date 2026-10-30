@@ -58,7 +58,8 @@ describe('التنقل بين الفقرات والخطوات', () => {
     expect(stepCount(seg('x', 0))).toBe(1);
     expect(stepCount(slides('x', 0, 3))).toBe(3);
     expect(stepCount(names('x', 0, ['أ', 'ب', 'ج', 'د', 'هـ'], 2))).toBe(4); // العنوان ثم 2+2+1
-    expect(stepCount({ ...seg('d', 0), type: 'demo', settings: { scenes: ['calendar', 'plan'] } } as Segment)).toBe(3 + 2);
+    // الديمو: خطوة لكل صفحة (التقويم ولقاءاتي، والخطة)، وبطاقات الصفحة داخلها تتولاها الجولة
+    expect(stepCount({ ...seg('d', 0), type: 'demo', settings: { scenes: ['calendar', 'plan'] } } as Segment)).toBe(2 + 1);
   });
   it('التالي يمر على كل الخطوات ثم يقف في الآخر', () => {
     let p = { seg: 0, step: 0 };
@@ -212,24 +213,24 @@ describe('أدوات الشرائح', () => {
 });
 
 describe('مشاهد الديمو', () => {
-  it('الخطوات بترتيب المشاهد، وأول كل مشهد معلَّم لعنوانه', async () => {
+  it('الصفحات بترتيب المشاهد، وأول كل مشهد معلَّم لعنوانه', async () => {
     const { demoSteps } = await import('@/show/model');
     const steps = demoSteps({ scenes: ['calendar', 'trips', 'focus', 'plan'] });
-    expect(steps.map((s) => s.key)).toEqual(['calendar.month', 'calendar.day', 'calendar.event', 'trips.trip', 'trips.docs', 'trips.plans', 'trips.attendance', 'trips.evaluation', 'focus.list', 'focus.detail', 'focus.evaluation', 'plan.wheel', 'plan.goals']);
+    expect(steps.map((s) => s.page)).toEqual(['calendar', 'individual', 'trip', 'docs', 'plans', 'attendance', 'closure', 'focus', 'focusDetail', 'plan']);
     expect(steps.filter((s) => s.first).map((s) => s.scene)).toEqual(['calendar', 'trips', 'focus', 'plan']);
   });
   it('القفز بالأرقام إلى أول المشهد، وخارج المشاهد لا شيء', async () => {
     const { sceneStart } = await import('@/show/model');
     const all = { scenes: [...DEMO_SCENES] };
-    expect([0, 1, 2, 3].map((n) => sceneStart(all, n))).toEqual([0, 3, 8, 11]);
-    expect(sceneStart({ scenes: ['focus', 'plan'] }, 1)).toBe(3);
+    expect([0, 1, 2, 3].map((n) => sceneStart(all, n))).toEqual([0, 2, 7, 9]);
+    expect(sceneStart({ scenes: ['focus', 'plan'] }, 1)).toBe(2);
     expect(sceneStart({ scenes: ['focus', 'plan'] }, 2)).toBeNull();
   });
   it('الإعدادات القديمة (خطوات القائد) تتحول إلى المشاهد الأربعة، والمكرر يُحذف', () => {
     const old = parseConfig({ segments: [{ type: 'demo', title: 'ديمو', settings: { tripId: 't4', steps: ['list', 'focusTrip', 'budget'] } }] });
-    expect(old.segments[0].settings).toEqual({ scenes: [...DEMO_SCENES] });
-    const picked = parseConfig({ segments: [{ type: 'demo', settings: { scenes: ['plan', 'calendar', 'plan', 'x'] } }] });
-    expect(picked.segments[0].settings).toEqual({ scenes: ['plan', 'calendar'] });
+    expect(old.segments[0].settings).toEqual({ scenes: [...DEMO_SCENES], autoplay: true, dwell: 5, durations: {} });
+    const picked = parseConfig({ segments: [{ type: 'demo', settings: { scenes: ['plan', 'calendar', 'plan', 'x'], autoplay: false, dwell: 7, durations: { 'plan|الصفحة': 0, 'plan|x': 3, bad: 'x', far: 500 } } }] });
+    expect(picked.segments[0].settings).toEqual({ scenes: ['plan', 'calendar'], autoplay: false, dwell: 7, durations: { 'plan|الصفحة': 0, 'plan|x': 3 } });
   });
   it('الأرقام 1–4 بلوحتي المفاتيح العربية والإنجليزية', async () => {
     const { sceneKey } = await import('@/show/keys');

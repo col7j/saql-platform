@@ -111,6 +111,11 @@
 .show-dot { display: block; border-radius: 999px; transition: all 500ms ease; height: max(6px, calc(9 * var(--u))); width: max(6px, calc(9 * var(--u))); background: rgb(var(--t-fg) / .28); }
 .show-dot.done { background: rgb(var(--t-fg) / .8); }
 .show-dot.now { background: rgb(var(--t-em)); width: max(22px, calc(32 * var(--u))); }
+/* حالة الجولة وشريط مدة الخطوة الحالية */
+.show-tour-state { display: block; height: max(12px, calc(16 * var(--u))); width: max(12px, calc(16 * var(--u))); color: rgb(var(--t-fg) / .8); }
+.show-tour-bar { position: relative; height: max(2px, calc(3 * var(--u))); border-radius: 999px; background: rgb(var(--t-fg) / .16); overflow: hidden; }
+.show-tour-bar > span { position: absolute; inset: 0; transform-origin: right; background: rgb(var(--t-em)); animation-name: show-tour-fill; animation-timing-function: linear; animation-fill-mode: both; }
+@keyframes show-tour-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 @media (prefers-reduced-motion: reduce) {
   .show-layer.entering, .show-layer.leaving, .show-in, .show-reveal, .show-fade { animation-duration: 1ms; animation-delay: 0ms; }

@@ -1,5 +1,5 @@
 // خريطة المفاتيح لشاشة العرض. الكليكر يرسل غالباً PageDown/PageUp أو الأسهم، وزر «الشاشة السوداء» فيه يرسل B أو النقطة.
-export type KeyAction = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'blackout';
+export type KeyAction = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'blackout' | 'tour';
 
 export function keyAction(e: { key: string; code?: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean }): KeyAction | null {
   if (e.ctrlKey || e.metaKey || e.altKey) return null;
@@ -15,6 +15,8 @@ export function keyAction(e: { key: string; code?: string; ctrlKey?: boolean; me
   // بالحرف الفعلي على لوحة المفاتيح، فيعمل F وB مع اللوحة العربية أيضاً
   if (e.code === 'KeyF') return 'fullscreen';
   if (e.code === 'KeyB') return 'blackout';
+  // تشغيل الجولة التلقائية في الديمو أو إيقافها
+  if (e.code === 'KeyK') return 'tour';
   return null;
 }
 

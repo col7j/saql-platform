@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, ConfirmHost, Icons, Input, MoreMenu, Modal, Toasts, askConfirm, cx } from '@/ui';
 import { CANVAS } from './brand/brand';
-import { DEMO_SCENES, DEMO_SCENE_LABELS, DEMO_STEP_LABELS, THEMES, demoSteps, type DemoSegment, type MediaRef, type Segment, type ShowConfig, type ShowTheme } from './model';
+import { DEMO_DEFAULTS, DEMO_PAGE_LABELS, DEMO_SCENES, DEMO_SCENE_LABELS, THEMES, demoSteps, type DemoSegment, type MediaRef, type Segment, type ShowConfig, type ShowTheme } from './model';
 import { insertSegment, moveSegment, removeSegment, replaceSegment, sortSegments, stepCount, type Pos } from './nav';
 import { exportConfig, loadRepoConfig, parseConfig, saveConfig } from './storage';
 import { useShowConfig, useSync } from './useShow';
@@ -25,7 +25,7 @@ const segId = () => `seg_${Date.now().toString(36)}${Math.random().toString(36).
 function stepLabel(seg: Segment, step: number) {
   if (seg.type === 'demo') {
     const d = demoSteps(seg.settings)[step];
-    return d ? `${DEMO_SCENE_LABELS[d.scene]} · ${DEMO_STEP_LABELS[d.key]}` : '';
+    return d ? `${DEMO_SCENE_LABELS[d.scene]} · ${DEMO_PAGE_LABELS[d.page]}` : '';
   }
   const n = stepCount(seg);
   return n > 1 ? `النقرة ${step} من ${n - 1}` : '';
@@ -108,7 +108,7 @@ export default function ShowAdmin() {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [step, setStep] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [live, setLive] = useState<{ pos: Pos; started: boolean; at: number } | null>(null);
+  const [live, setLive] = useState<{ pos: Pos; started: boolean; paused?: boolean; at: number } | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -125,7 +125,7 @@ export default function ShowAdmin() {
 
   useEffect(() => {
     document.title = 'محرّر العرض · صقل';
-    const off = sync.subscribe((m) => m.type === 'state' && setLive({ pos: m.pos, started: m.started, at: Date.now() }));
+    const off = sync.subscribe((m) => m.type === 'state' && setLive({ pos: m.pos, started: m.started, paused: m.paused, at: Date.now() }));
     sync.send({ type: 'hello' });
     return off;
   }, [sync]);
@@ -247,7 +247,7 @@ export default function ShowAdmin() {
 
   const addSlide = (key: TemplateKey | 'demo') => {
     const id = segId();
-    const s: Segment = key === 'demo' ? ({ id, type: 'demo', title: 'جولة في المنصة', order: 0, settings: { scenes: [...DEMO_SCENES] } } as DemoSegment) : templateSegment(key, id, 0, key === 'opening' ? { title: cfg.title } : {});
+    const s: Segment = key === 'demo' ? ({ id, type: 'demo', title: 'جولة في المنصة', order: 0, settings: { scenes: [...DEMO_SCENES], ...DEMO_DEFAULTS } } as DemoSegment) : templateSegment(key, id, 0, key === 'opening' ? { title: cfg.title } : {});
     setSegments((x) => insertSegment(x, s, seg?.id));
     selectSeg(id);
     setAddOpen(false);
@@ -297,6 +297,11 @@ export default function ShowAdmin() {
         </Badge>
         <Button size="sm" variant="secondary" disabled={!connected} title="السابق" onClick={() => sync.send({ type: 'nav', dir: 'prev' })}><Icons.ChevronRight className="h-4 w-4" /></Button>
         <Button size="sm" variant="secondary" disabled={!connected} title="التالي" onClick={() => sync.send({ type: 'nav', dir: 'next' })}><Icons.ChevronLeft className="h-4 w-4" /></Button>
+        {liveSeg?.type === 'demo' && (
+          <Button size="sm" variant="secondary" icon={live?.paused ? <Icons.Play className="h-4 w-4" /> : <Icons.Pause className="h-4 w-4" />} onClick={() => sync.send({ type: 'tour', action: 'toggle' })}>
+            {live?.paused ? 'شغّل الجولة' : 'أوقف الجولة'}
+          </Button>
+        )}
         {seg && <Button size="sm" variant="secondary" disabled={!connected} icon={<Icons.Cast className="h-4 w-4" />} onClick={() => sync.send({ type: 'goto', pos: { seg: list.indexOf(seg), step: curStep } })}>اعرضها الآن</Button>}
         <MoreMenu
           label="الملف"
@@ -467,7 +472,7 @@ export default function ShowAdmin() {
           <li>
             <button onClick={() => addSlide('demo')} className="group block w-full text-start">
               <span className="relative block overflow-hidden rounded-xl ring-1 ring-ink-200 transition group-hover:ring-[3px] group-hover:ring-brand-600" style={{ aspectRatio: '16 / 9' }}>
-                <Thumb seg={{ id: 'x', type: 'demo', title: '', order: 0, settings: { scenes: [...DEMO_SCENES] } }} theme={cfg.theme} />
+                <Thumb seg={{ id: 'x', type: 'demo', title: '', order: 0, settings: { scenes: [...DEMO_SCENES], ...DEMO_DEFAULTS } }} theme={cfg.theme} />
               </span>
               <span className="mt-1.5 block text-sm font-medium text-ink-900">ديمو المنصة</span>
               <span className="block text-xs text-ink-500">جولة متحركة في شاشات المنصة بصفة مشارك</span>

@@ -1,6 +1,6 @@
 // تخزين إعدادات العرض بمفتاح خاص (show-config)، مستقل عن مفاتيح المنصة (saql.*) وعن DB_VERSION،
 // فلا يُمسح عند رفع نسخة البيانات التجريبية ولا عند «إعادة البيانات».
-import { DEFAULT_CONFIG, DEMO_SCENES, SHOW_SCHEMA_VERSION, type LegacySegment, type LegacySegmentType, type MediaRef, type Segment, type ShowConfig } from './model';
+import { DEFAULT_CONFIG, DEMO_DEFAULTS, DEMO_SCENES, SHOW_SCHEMA_VERSION, type LegacySegment, type LegacySegmentType, type MediaRef, type Segment, type ShowConfig } from './model';
 import { normalize } from './nav';
 import { media, slideSettings } from './slides/sanitize';
 import { migrateLegacy } from './slides/templates';
@@ -50,7 +50,14 @@ function readSegment(v: unknown, i: number): Segment[] {
     const s = isObj(v.settings) ? v.settings : {};
     // الإعدادات القديمة (خطوات بصفة القائد) تتحول إلى المشاهد الأربعة
     const scenes = (Array.isArray(s.scenes) ? s.scenes : []).filter((x: unknown, k: number, a: unknown[]) => (DEMO_SCENES as readonly unknown[]).includes(x) && a.indexOf(x) === k);
-    return [{ id, type, title, order, settings: { scenes: scenes.length ? scenes : [...DEMO_SCENES] } }];
+    const durations: Record<string, number> = {};
+    if (isObj(s.durations)) for (const [k, v] of Object.entries(s.durations)) if (typeof v === 'number' && v >= 0 && v <= 120) durations[k] = v; // 0 = تخطّي الخطوة
+    return [{ id, type, title, order, settings: {
+      scenes: scenes.length ? scenes : [...DEMO_SCENES],
+      autoplay: bool(s.autoplay, DEMO_DEFAULTS.autoplay),
+      dwell: typeof s.dwell === 'number' && s.dwell >= 1 && s.dwell <= 120 ? s.dwell : DEMO_DEFAULTS.dwell,
+      durations,
+    } }];
   }
   if (LEGACY.includes(type)) return migrateLegacy(legacy(type, v, id, title, order));
   throw new Error(`نوع الفقرة ${i + 1} غير معروف: ${String(type)}`);

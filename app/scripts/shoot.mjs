@@ -81,8 +81,9 @@ for (const s of plan) {
     await send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: x2 ?? x, y: y2 ?? y, button: 'left', clickCount: 1 });
     await sleep(s.clickGap ?? 300);
   }
-  if (s.eval) results.push({ name: s.name, value: await evaluate(s.eval) });
+  if (s.eval && !s.evalAfter) results.push({ name: s.name, value: await evaluate(s.eval) });
   await sleep(s.wait ?? 2000);
+  if (s.eval && s.evalAfter) results.push({ name: s.name, value: await evaluate(s.eval) });
   if (s.name) {
     const { data } = await send('Page.captureScreenshot', { format: 'png', clip: { x: 0, y: 0, width: 1920, height: 1080, scale: 1 } });
     writeFileSync(join(outDir, s.name + '.png'), Buffer.from(data, 'base64'));

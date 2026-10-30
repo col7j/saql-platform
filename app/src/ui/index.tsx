@@ -59,7 +59,8 @@ export function LinkButton({ to, children, variant = 'secondary', size = 'md', c
 // ───────────── بطاقات وعناوين ─────────────
 export function Card({ children, className, title, action, subtitle, pad = true }: { children: ReactNode; className?: string; title?: ReactNode; action?: ReactNode; subtitle?: ReactNode; pad?: boolean }) {
   return (
-    <section className={cx('rounded-2xl border border-ink-100 bg-white shadow-card', className)}>
+    // data-demo-card: سمة فقط بلا منطق، يقرأ منها ديمو عرض الحفل بطاقات الصفحة تلقائياً
+    <section data-demo-card={typeof title === 'string' ? title : ''} className={cx('rounded-2xl border border-ink-100 bg-white shadow-card', className)}>
       {(title || action) && (
         <header className="flex flex-wrap items-start justify-between gap-2 px-4 pt-4 sm:px-6 sm:pt-5">
           <div className="min-w-0">

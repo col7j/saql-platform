@@ -5,6 +5,7 @@ import { sceneStart, type Segment, type ShowConfig } from './model';
 import { preload } from './media';
 import { clampPos, followSegment, next, prev, skipSegment, sortSegments, stepCount, type Pos } from './nav';
 import { keyAction, sceneKey, touchAction } from './keys';
+import type { DemoNav } from './demo/DemoView';
 import { SegmentView, hidesCornerMark } from './segments';
 import { Backdrop, heroLogo, markLogo } from './segments/Fallback';
 import { useShowConfig, useSync } from './useShow';
@@ -39,12 +40,16 @@ export default function ShowPlayer() {
   const [pos, setPos] = useState<Pos>({ seg: 0, step: 0 });
   const [started, setStarted] = useState(false);
   const [blackout, setBlackout] = useState(false);
+  // جولة الديمو: موقوفة أم تعمل، ومعالج التقدّم اليدوي داخل صفحتها
+  const [paused, setPaused] = useState(false);
+  const tourNav = useRef<DemoNav | null>(null);
+  const registerNav = useCallback((fn: DemoNav | null) => void (tourNav.current = fn), []);
   const [idle, setIdle] = useState(false);
   // الطبقات: الفقرة الحالية فوق، والسابقة تحتها حتى يكتمل الظهور التدريجي
   const [layers, setLayers] = useState<{ id: string; step: number; leaving: boolean }[]>([]);
 
-  const ref = useRef({ cfg, pos, started });
-  ref.current = { cfg, pos, started };
+  const ref = useRef({ cfg, pos, started, paused });
+  ref.current = { cfg, pos, started, paused };
 
   const list = cfg ? sortSegments(cfg.segments) : [];
   const current = list[pos.seg];
@@ -57,6 +62,20 @@ export default function ShowPlayer() {
     setPos((p) => fn(cfg, p));
   }, []);
 
+  /** التالي والسابق: جولة الديمو تتولى بطاقات صفحتها أولاً، وعند حدودها ننتقل */
+  const nav = useCallback(
+    (dir: 'next' | 'prev') => {
+      if (ref.current.started && tourNav.current?.(dir)) return;
+      go(dir === 'next' ? next : prev);
+    },
+    [go],
+  );
+
+  // كل فقرة ديمو تبدأ بحسب إعداد التشغيل التلقائي
+  useEffect(() => {
+    setPaused(current?.type === 'demo' ? !current.settings.autoplay : false);
+  }, [current?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // تعديل الإعدادات من شاشة التحكم: يبقى العرض على نفس الفقرة
   const prevCfg = useRef<ShowConfig | null>(null);
   useEffect(() => {
@@ -67,17 +86,18 @@ export default function ShowPlayer() {
 
   useEffect(() => {
     if (cfg) preloadAround(cfg, pos);
-    sync.send({ type: 'state', pos, started });
-  }, [cfg, pos, started, sync]);
+    sync.send({ type: 'state', pos, started, paused });
+  }, [cfg, pos, started, paused, sync]);
 
   useEffect(
     () =>
       sync.subscribe((m) => {
-        if (m.type === 'hello') sync.send({ type: 'state', pos: ref.current.pos, started: ref.current.started });
+        if (m.type === 'hello') sync.send({ type: 'state', pos: ref.current.pos, started: ref.current.started, paused: ref.current.paused });
         if (m.type === 'goto') go((c) => clampPos(c, m.pos));
-        if (m.type === 'nav') go(m.dir === 'next' ? next : prev);
+        if (m.type === 'nav') nav(m.dir);
+        if (m.type === 'tour') setPaused((p) => (m.action === 'toggle' ? !p : m.action === 'pause'));
       }),
-    [sync, go],
+    [sync, go, nav],
   );
 
   // الانتقال بين الفقرات
@@ -115,8 +135,9 @@ export default function ShowPlayer() {
         if (a === 'next') setStarted(true);
         return;
       }
-      if (a === 'next') go(next);
-      else if (a === 'prev') go(prev);
+      if (a === 'next') nav('next');
+      else if (a === 'prev') nav('prev');
+      else if (a === 'tour') setPaused((p) => !p);
       else if (a === 'first') go(() => ({ seg: 0, step: 0 }));
       else if (a === 'last') go((c) => ({ seg: c.segments.length - 1, step: 0 }));
       else if (a === 'fullscreen') toggleFullscreen();
@@ -124,7 +145,7 @@ export default function ShowPlayer() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go]);
+  }, [go, nav]);
 
   // إخفاء المؤشر بعد ثانيتين بلا حركة
   useEffect(() => {
@@ -149,7 +170,7 @@ export default function ShowPlayer() {
     touch.current = null;
     if (!t || !started) return;
     const a = touchAction(e.clientX - t.x, e.clientY - t.y, e.clientX, window.innerWidth);
-    if (a) go(a === 'next' ? next : prev);
+    if (a) nav(a);
   };
 
   const skip = useCallback(() => go(skipSegment), [go]);
@@ -163,7 +184,18 @@ export default function ShowPlayer() {
         if (!seg) return null;
         return (
           <div key={l.id} className={`show-layer ${l.leaving ? 'leaving' : 'entering'}`}>
-            <SegmentView seg={seg} theme={cfg.theme} step={Math.min(l.step, stepCount(seg) - 1)} active={started && !l.leaving} animate={started} onSkip={skip} />
+            <SegmentView
+              seg={seg}
+              theme={cfg.theme}
+              step={Math.min(l.step, stepCount(seg) - 1)}
+              active={started && !l.leaving}
+              animate={started}
+              onSkip={skip}
+              playing={!paused}
+              onAdvance={() => go(next)}
+              onEnd={() => setPaused(true)}
+              registerNav={registerNav}
+            />
           </div>
         );
       })}
@@ -197,7 +229,7 @@ export default function ShowPlayer() {
                 <p className="show-in show-help mt-[4vh]" style={{ ['--i' as string]: 3 }}>
                   {list.length} فقرات · التالي: → أو PageDown أو المسافة · السابق: ← أو PageUp
                   <br />
-                  F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
+                  F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · K تشغيل الجولة أو إيقافها · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
                 </p>
               </div>
             </div>

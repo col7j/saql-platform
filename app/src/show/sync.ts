@@ -7,7 +7,8 @@ export type ShowMessage =
   | { type: 'config'; config: ShowConfig } // الأدمن حفظ إعدادات جديدة
   | { type: 'goto'; pos: Pos } // الأدمن ينقل العرض
   | { type: 'nav'; dir: 'next' | 'prev' } // ريموت من الأدمن
-  | { type: 'state'; pos: Pos; started: boolean } // العرض يبلّغ موضعه
+  | { type: 'state'; pos: Pos; started: boolean; paused?: boolean } // العرض يبلّغ موضعه وحالة الجولة
+  | { type: 'tour'; action: 'toggle' | 'play' | 'pause' } // تشغيل جولة الديمو أو إيقافها
   | { type: 'hello' }; // نافذة فُتحت وتطلب الحالة
 
 export interface ShowSync {

@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import type { Segment, ShowTheme, SlideSegment } from '../model';
 import { FitStage, SlideCanvas } from '../slides/SlideView';
 import { Backdrop, SegmentBoundary } from './Fallback';
+import type { DemoNav } from '../demo/DemoView';
 
 const DemoView = lazy(() => import('../demo/DemoView'));
 
@@ -15,6 +16,11 @@ export interface SegProps<S extends Segment = Segment> {
   theme: ShowTheme;
   /** حركات الدخول (افتراضياً تعمل) */
   animate?: boolean;
+  /** الديمو: الجولة تعمل، وانتقالها للصفحة التالية، وانتهاؤها، ومعالج التنقل اليدوي */
+  playing?: boolean;
+  onAdvance?: () => void;
+  onEnd?: () => void;
+  registerNav?: (fn: DemoNav | null) => void;
 }
 
 /** شرائح الشعار الكبير والشاشة السوداء: لا يظهر شعار الزاوية */
@@ -25,7 +31,7 @@ export function SegmentView(p: SegProps) {
     <SegmentBoundary key={p.seg.id} title={p.seg.title}>
       {p.seg.type === 'demo' ? (
         <Suspense fallback={<Backdrop />}>
-          <DemoView seg={p.seg} step={p.step} active={p.active} />
+          <DemoView seg={p.seg} step={p.step} active={p.active} animate={p.animate} playing={p.playing} onAdvance={p.onAdvance} onEnd={p.onEnd} registerNav={p.registerNav} theme={p.theme} />
         </Suspense>
       ) : (
         <SlidePlayer {...(p as SegProps<SlideSegment>)} />
