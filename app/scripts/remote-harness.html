@@ -1,16 +1,31 @@
 <!doctype html>
-<!-- تجربة الريموت على جهاز واحد (خادم التطوير فقط): شاشة العرض وجوال جنباً إلى جنب عبر الخادم المحلي ?remote=loopback -->
+<!-- تجربة الربط على جهاز واحد (خادم التطوير فقط) عبر الخادم المحلي ?remote=loopback:
+     المحرّر يُنشئ الجلسة من «الربط»، فتُفتح شاشة العرض هنا من رابطها تلقائياً، والجوال يدخل بالرمز. -->
 <html lang="ar" dir="rtl">
 <meta charset="utf-8" />
-<title>تجربة الريموت</title>
+<title>تجربة الربط</title>
 <style>
   body { margin: 0; background: #111; height: 100vh; overflow: hidden; font: 14px system-ui; color: #ccc; }
-  #show { position: absolute; left: 24px; top: 140px; width: 1920px; height: 1080px; border: 0; transform: scale(.72); transform-origin: 0 0; border-radius: 12px; }
-  #phone { position: absolute; right: 40px; top: 60px; width: 390px; height: 844px; border: 10px solid #222; border-radius: 44px; }
+  iframe { position: absolute; border: 0; border-radius: 12px; background: #fff; }
+  #admin { left: 24px; top: 40px; width: 1440px; height: 900px; transform: scale(.5); transform-origin: 0 0; }
+  #show { left: 24px; top: 520px; width: 1920px; height: 1080px; transform: scale(.38); transform-origin: 0 0; background: #000; }
+  #phone { right: 40px; top: 60px; width: 390px; height: 844px; border: 10px solid #222; border-radius: 44px; }
   p { position: absolute; margin: 0; }
 </style>
-<p style="left:24px;top:100px">شاشة العرض (#/show)</p>
+<p style="left:24px;top:14px">المحرّر (#/show-admin) ← «الربط»</p>
+<p style="left:24px;top:496px">شاشة العرض (تُفتح من رابط الربط)</p>
 <p style="right:40px;top:30px">الجوال (#/show-remote)</p>
+<iframe id="admin" src="/?remote=loopback#/show-admin"></iframe>
 <iframe id="show" src="/?remote=loopback#/show"></iframe>
 <iframe id="phone" src="/?remote=loopback#/show-remote"></iframe>
+<script>
+  // كما ينسخ المقدّم الرابط: عند إنشاء جلسة تُفتح شاشة العرض من رابطها
+  let last = '';
+  setInterval(() => {
+    try {
+      const l = JSON.parse(localStorage.getItem('show-link-host') || 'null');
+      if (l && l.displayKey !== last) (last = l.displayKey), (document.getElementById('show').src = '/?remote=loopback#/show?link=' + l.displayKey);
+    } catch {}
+  }, 500);
+</script>
 </html>

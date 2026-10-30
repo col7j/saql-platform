@@ -10,18 +10,16 @@ export type ShowMessage =
   | { type: 'state'; pos: Pos; started: boolean; paused?: boolean; blackout?: boolean; outline?: OutlineItem[]; steps?: number; remote?: RemoteInfo } // العرض يبلّغ حالته
   | { type: 'tour'; action: 'toggle' | 'play' | 'pause' } // تشغيل جولة الديمو أو إيقافها
   | { type: 'blackout' } // الشاشة السوداء (تبديل)
-  | { type: 'remote'; action: 'renew' } // رمز جديد للتحكم من الجوال (يفصل الأجهزة المتصلة)
   | { type: 'hello' }; // نافذة فُتحت وتطلب الحالة
 
 export interface OutlineItem {
   title: string;
   type: 'slide' | 'demo';
 }
-/** حالة التحكم من الجوال كما تراها شاشة العرض */
-export type RemoteStatus = 'off' | 'connecting' | 'online' | 'offline';
+/** حالة الربط كما تراها شاشة العرض. unlinked: لم تُفتح من رابط المحرّر (تعمل محلياً فقط)، off: لا إعداد Firebase */
+export type RemoteStatus = 'off' | 'unlinked' | 'connecting' | 'online' | 'offline';
 export interface RemoteInfo {
   status: RemoteStatus;
-  code?: string;
   remotes: number;
 }
 

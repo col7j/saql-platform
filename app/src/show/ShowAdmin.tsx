@@ -10,6 +10,8 @@ import { useShowConfig, useSync } from './useShow';
 import type { RemoteInfo } from './sync';
 import { DemoEditor } from './admin/DemoEditor';
 import { useSnapshotStatus } from './admin/DemoDataCard';
+import { LinkBadge, LinkPanel } from './admin/LinkPanel';
+import { useHostLink } from './remote/host';
 import { toast } from './admin/MediaPicker';
 import { mediaUsage } from './editor/usage';
 import { ExportModal, ImportModal } from './editor/Transfer';
@@ -146,6 +148,8 @@ export default function ShowAdmin() {
   const seg = list.find((s) => s.id === selectedSeg) ?? list[0];
   const hasDemo = list.some((s) => s.type === 'demo');
   const snapStatus = useSnapshotStatus();
+  const host = useHostLink();
+  const [linkOpen, setLinkOpen] = useState(false);
   const slide = seg?.type === 'slide' ? seg : null;
   const maxStep = seg ? stepCount(seg) - 1 : 0;
   const curStep = Math.min(step, maxStep);
@@ -310,22 +314,7 @@ export default function ShowAdmin() {
         </Badge>
         <Button size="sm" variant="secondary" disabled={!connected} title="السابق" onClick={() => sync.send({ type: 'nav', dir: 'prev' })}><Icons.ChevronRight className="h-4 w-4" /></Button>
         <Button size="sm" variant="secondary" disabled={!connected} title="التالي" onClick={() => sync.send({ type: 'nav', dir: 'next' })}><Icons.ChevronLeft className="h-4 w-4" /></Button>
-        {connected && live?.remote && live.remote.status !== 'off' && (
-          <span className="flex items-center gap-1.5 rounded-full border border-ink-100 px-2.5 py-1 text-xs text-ink-600" title="افتح #/show-remote على الجوال وأدخل الرمز">
-            <Icons.Smartphone className="h-3.5 w-3.5" />
-            {live.remote.code ? (
-              <>
-                الجوال <b className="num text-ink-900" dir="ltr">{live.remote.code}</b>
-                {live.remote.remotes > 0 && <span className="num">· {live.remote.remotes}</span>}
-              </>
-            ) : live.remote.status === 'offline' ? 'الجوال: بلا إنترنت' : 'الجوال: جارٍ الاتصال'}
-            {live.remote.code && (
-              <button className="ms-1 text-brand-700 hover:underline" onClick={() => askConfirm({ title: 'رمز جديد للتحكم من الجوال؟', body: 'تنفصل كل الأجهزة المتصلة الآن وتحتاج الرمز الجديد.', cta: 'رمز جديد', run: () => sync.send({ type: 'remote', action: 'renew' }) })}>
-                رمز جديد
-              </button>
-            )}
-          </span>
-        )}
+        <LinkBadge host={host} onOpen={() => setLinkOpen(true)} />
         {liveSeg?.type === 'demo' && (
           <Button size="sm" variant="secondary" icon={live?.paused ? <Icons.Play className="h-4 w-4" /> : <Icons.Pause className="h-4 w-4" />} onClick={() => sync.send({ type: 'tour', action: 'toggle' })}>
             {live?.paused ? 'شغّل الجولة' : 'أوقف الجولة'}
@@ -518,6 +507,7 @@ export default function ShowAdmin() {
       </Modal>
 
       <ExportModal cfg={cfg} open={exportOpen} onClose={() => setExportOpen(false)} />
+      <LinkPanel host={host} open={linkOpen} onClose={() => setLinkOpen(false)} />
       <ImportModal
         file={bundleFile}
         onClose={() => setBundleFile(null)}

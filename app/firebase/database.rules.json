@@ -1,30 +1,73 @@
 {
   "rules": {
     "sessions": {
-      "$code": {
-        ".read": "auth != null && $code.matches(/^[0-9]{4}$/) && (!data.exists() || data.child('expiresAt').val() < now || data.child('owner').val() === auth.uid || data.child('remotes').child(auth.uid).exists())",
-        ".write": "auth != null && $code.matches(/^[0-9]{4}$/) && ((newData.exists() && newData.child('owner').val() === auth.uid && (!data.exists() || data.child('expiresAt').val() < now || data.child('owner').val() === auth.uid)) || (!newData.exists() && data.child('owner').val() === auth.uid))",
+      "$key": {
+        ".read": "auth != null && $key.matches(/^[A-Za-z0-9_-]{22}$/) && (data.child('owner').val() === auth.uid || data.child('displays').child(auth.uid).exists() || data.child('remotes').child(auth.uid).exists())",
+        ".write": "auth != null && $key.matches(/^[A-Za-z0-9_-]{22}$/) && ((!data.exists() && newData.child('owner').val() === auth.uid) || data.child('owner').val() === auth.uid)",
         ".validate": "newData.hasChildren(['owner', 'createdAt', 'expiresAt'])",
-        "owner": { ".validate": "newData.isString()" },
+        "owner": { ".validate": "newData.isString() && (!data.exists() || newData.val() === data.val())" },
         "createdAt": { ".validate": "newData.isNumber()" },
-        "expiresAt": { ".validate": "newData.isNumber() && newData.val() <= now + 43500000" },
-        "online": { ".validate": "newData.isBoolean()" },
+        "expiresAt": {
+          ".write": "auth != null && data.parent().child('displays').child(auth.uid).exists()",
+          ".validate": "newData.isNumber() && newData.val() <= now + 43500000"
+        },
+        "online": {
+          ".write": "auth != null && data.parent().child('displays').child(auth.uid).exists()",
+          ".validate": "newData.isBoolean()"
+        },
         "state": {
+          ".write": "auth != null && data.parent().child('displays').child(auth.uid).exists()",
           ".validate": "newData.hasChildren(['seg', 'step', 'started']) && newData.child('seg').isNumber() && newData.child('step').isNumber()"
+        },
+        "displays": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && newData.exists() && newData.child('via').isString() && root.child('displayKeys').child(newData.child('via').val()).child('session').val() === $key",
+            ".validate": "newData.hasChildren(['at', 'via']) && newData.child('at').isNumber()"
+          }
         },
         "remotes": {
           "$uid": {
-            ".write": "auth != null && auth.uid === $uid && root.child('sessions').child($code).child('owner').exists() && root.child('sessions').child($code).child('expiresAt').val() > now",
-            ".validate": "newData.child('at').isNumber()"
+            ".write": "auth != null && auth.uid === $uid && ((!newData.exists()) || (newData.child('code').isString() && newData.child('code').val().matches(/^[0-9]{6}$/) && root.child('codes').child(newData.child('code').val()).child('session').val() === $key && root.child('codes').child(newData.child('code').val()).child('expiresAt').val() > now && root.child('claims').child(newData.child('code').val()).child(auth.uid).child('at').val() >= root.child('codes').child(newData.child('code').val()).child('createdAt').val()))",
+            ".validate": "newData.hasChildren(['at', 'code']) && newData.child('at').isNumber()"
           }
         },
         "commands": {
           "$cmd": {
-            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && root.child('sessions').child($code).child('remotes').child(auth.uid).exists() && root.child('sessions').child($code).child('expiresAt').val() > now) || (!newData.exists() && root.child('sessions').child($code).child('owner').val() === auth.uid))",
+            ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && root.child('sessions').child($key).child('remotes').child(auth.uid).exists() && root.child('sessions').child($key).child('expiresAt').val() > now) || (!newData.exists() && root.child('sessions').child($key).child('displays').child(auth.uid).exists()))",
             ".validate": "newData.hasChildren(['uid', 'type', 'at']) && newData.child('type').isString() && newData.child('type').val().matches(/^(next|prev|tour|blackout|goto)$/) && (newData.child('type').val() !== 'goto' || (newData.child('seg').isNumber() && newData.child('seg').val() >= 0 && newData.child('seg').val() < 1000))"
           }
         },
         "$other": { ".validate": false }
+      }
+    },
+    "displayKeys": {
+      "$dk": {
+        ".read": "auth != null && $dk.matches(/^[A-Za-z0-9_-]{22}$/)",
+        ".write": "auth != null && $dk.matches(/^[A-Za-z0-9_-]{22}$/) && ((!data.exists() && newData.child('owner').val() === auth.uid && newData.child('session').isString() && root.child('sessions').child(newData.child('session').val()).child('owner').val() === auth.uid) || (data.exists() && data.child('owner').val() === auth.uid && (!newData.exists() || newData.child('owner').val() === auth.uid)))",
+        ".validate": "newData.hasChildren(['session', 'owner']) && newData.child('session').val().matches(/^[A-Za-z0-9_-]{22}$/)"
+      }
+    },
+    "codes": {
+      "$code": {
+        ".read": "auth != null && (data.child('owner').val() === auth.uid || (data.child('expiresAt').val() > now && root.child('claims').child($code).child(auth.uid).child('at').val() >= data.child('createdAt').val()))",
+        ".write": "auth != null && $code.matches(/^[0-9]{6}$/) && ((newData.exists() && newData.child('owner').val() === auth.uid && newData.child('session').isString() && root.child('sessions').child(newData.child('session').val()).child('owner').val() === auth.uid && (data.child('owner').val() === auth.uid || ((!data.exists() || data.child('expiresAt').val() < now) && root.child('attempts').child(auth.uid).child('code').val() === $code))) || (!newData.exists() && data.child('owner').val() === auth.uid))",
+        ".validate": "newData.hasChildren(['session', 'owner', 'createdAt', 'expiresAt']) && newData.child('createdAt').isNumber() && newData.child('createdAt').val() <= now && newData.child('createdAt').val() > now - 60000 && newData.child('expiresAt').isNumber() && newData.child('expiresAt').val() <= now + 660000"
+      }
+    },
+    "attempts": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && newData.exists()",
+        ".validate": "newData.hasChildren(['count', 'windowStart', 'code']) && newData.child('code').isString() && newData.child('code').val().matches(/^[0-9]{6}$/) && newData.child('count').isNumber() && newData.child('windowStart').isNumber() && (((!data.exists() || data.child('windowStart').val() < now - 600000) && newData.child('count').val() === 1 && newData.child('windowStart').val() <= now && newData.child('windowStart').val() > now - 60000) || (data.exists() && data.child('windowStart').val() >= now - 600000 && newData.child('count').val() === data.child('count').val() + 1 && newData.child('count').val() <= 5 && newData.child('windowStart').val() === data.child('windowStart').val()))"
+      }
+    },
+    "claims": {
+      "$code": {
+        "$uid": {
+          ".read": "auth != null && auth.uid === $uid",
+          ".write": "auth != null && auth.uid === $uid && newData.exists() && root.child('attempts').child($uid).child('code').val() === $code && root.child('codes').child($code).child('expiresAt').val() > now",
+          ".validate": "newData.hasChildren(['at']) && newData.child('at').isNumber() && newData.child('at').val() <= now && newData.child('at').val() > now - 60000"
+        }
       }
     },
     "$other": { ".read": false, ".write": false }

@@ -1,11 +1,43 @@
-// جانب شاشة العرض: يفتح جلسة التحكم من الجوال ويقدّمها كتنفيذ ShowSync يُضم إلى القناة المحلية.
+// جانب شاشة العرض: تتصل بجلسة أنشأها المحرّر بمفتاح العرض من رابطها، وتقدّمها كتنفيذ ShowSync يُضم إلى القناة المحلية.
 // أوامر الجوال تصل كرسائل ShowMessage عادية (nav، goto، tour، blackout)، وحالة العرض تُنشر للجوال.
-// بلا إعداد Firebase أو بلا إنترنت: العرض يعمل كاملاً، ويُعاد المحاولة بهدوء.
-import { useCallback, useEffect, useRef, useState } from 'react';
+// شاشة العرض لا تعرض أي رمز. بلا رابط أو بلا إعداد Firebase أو بلا إنترنت: العرض يعمل كاملاً محلياً.
+import { useEffect, useState } from 'react';
 import type { RemoteInfo, ShowMessage, ShowSync } from '../sync';
 import { connectFirebase, loadFirebaseConfig } from './firebase';
 import { loopbackClient, loopbackEnabled } from './loopback';
-import { openSession, type Backend, type DisplaySession, type RemoteCommand, type RemoteState } from './protocol';
+import { KEY_RE, openDisplay, type Backend, type DisplaySession, type RemoteCommand, type RemoteState } from './protocol';
+
+/** مفتاح العرض على هذا الجهاز (من رابط شاشة العرض)، بمفتاح مستقل عن مفاتيح المنصة */
+export const DISPLAY_KEY = 'show-display-link';
+const LINK_RE = /[?&]link=([A-Za-z0-9_-]{22})(?=$|&)/;
+
+const store = {
+  get: () => {
+    try {
+      const v = localStorage.getItem(DISPLAY_KEY) ?? '';
+      return KEY_RE.test(v) ? v : '';
+    } catch {
+      return '';
+    }
+  },
+  set: (v: string | null) => {
+    try {
+      v ? localStorage.setItem(DISPLAY_KEY, v) : localStorage.removeItem(DISPLAY_KEY);
+    } catch {
+      /* بلا تخزين: يبقى في الذاكرة لهذه الجلسة */
+    }
+  },
+};
+
+/** يأخذ مفتاح العرض من الرابط ويحفظه محلياً، ثم يحذفه من شريط العنوان فوراً (لا يبقى في السجل ولا يظهر) */
+export function takeDisplayKey(loc: Pick<Location, 'hash' | 'pathname' | 'search'> = location, replace = (url: string) => history.replaceState(history.state, '', url)): string | null {
+  const m = loc.hash.match(LINK_RE);
+  if (!m) return null;
+  store.set(m[1]);
+  const rest = loc.hash.replace(/[?&]link=[^&]*/, '').replace(/^(#[^?&]*)&/, '$1?');
+  replace(`${loc.pathname}${loc.search}${rest}`);
+  return m[1];
+}
 
 /** أمر الجوال كرسالة ShowSync، فيعامله العرض كأي ريموت */
 export function commandToMessage(c: RemoteCommand): ShowMessage {
@@ -35,7 +67,7 @@ export function messageToState(m: ShowMessage): RemoteState | null {
 }
 
 /** ShowSync فوق جلسة: send ينشر الحالة، وsubscribe يستقبل أوامر الجوال */
-export function createRemoteSync(session: DisplaySession): ShowSync {
+export function createRemoteSync(session: Pick<DisplaySession, 'publish' | 'onCommand'>): ShowSync {
   const subs = new Set<(m: ShowMessage) => void>();
   let off: (() => void) | null = null;
   let last = '';
@@ -65,34 +97,50 @@ export function createRemoteSync(session: DisplaySession): ShowSync {
 
 const RETRY_MS = 15000;
 
-/** الجلسة في شاشة العرض: الرمز، والحالة، وعدد الأجوال، وقناة ShowSync لها */
+/** الربط في شاشة العرض: الحالة وعدد الأجوال وقناة ShowSync. لا رمز هنا: الربط من المحرّر */
 export function useRemoteDisplay(connect: () => Promise<Backend | null> = defaultConnect) {
-  const [info, setInfo] = useState<RemoteInfo>({ status: 'connecting', remotes: 0 });
+  const [info, setInfo] = useState<RemoteInfo>(() => (takeDisplayKey(), { status: store.get() ? 'connecting' : 'unlinked', remotes: 0 }));
   const [sync, setSync] = useState<ShowSync | null>(null);
-  const session = useRef<DisplaySession | null>(null);
-  const backend = useRef<Backend | null>(null);
   const [round, setRound] = useState(0);
+
+  // رابط جديد في نفس النافذة (تغيّر الجزء بعد # فقط، بلا إعادة تحميل)
+  useEffect(() => {
+    const on = () => takeDisplayKey() && setRound((r) => r + 1);
+    window.addEventListener('hashchange', on);
+    return () => window.removeEventListener('hashchange', on);
+  }, []);
 
   useEffect(() => {
     let alive = true;
     let retry: ReturnType<typeof setTimeout>;
+    let session: DisplaySession | null = null;
     const offs: (() => void)[] = [];
+    const unlink = () => {
+      store.set(null);
+      setSync(null);
+      setInfo({ status: 'unlinked', remotes: 0 });
+    };
     (async () => {
+      const dk = store.get();
+      if (!dk) return setInfo({ status: 'unlinked', remotes: 0 });
+      setInfo({ status: 'connecting', remotes: 0 });
       try {
-        const b = backend.current ?? (await connect());
+        const b = await connect();
         if (!alive) return;
         if (!b) return setInfo({ status: 'off', remotes: 0 });
-        backend.current = b;
-        const s = await openSession(b);
-        if (!alive) return void s.close().catch(() => undefined);
-        session.current = s;
+        const s = await openDisplay(b, dk);
+        if (!alive) return void s.close();
+        session = s;
         setSync(createRemoteSync(s));
-        setInfo({ status: 'online', code: s.code, remotes: 0 });
+        setInfo({ status: 'online', remotes: 0 });
         offs.push(s.onRemotes((n) => setInfo((i) => ({ ...i, remotes: n }))));
         offs.push(b.onConnected((on) => setInfo((i) => ({ ...i, status: on ? 'online' : 'offline' }))));
-      } catch {
-        // بلا إنترنت أو تعذّر الدخول: العرض يكمل، ونحاول لاحقاً
+        offs.push(s.onEnded(() => alive && unlink()));
+      } catch (e) {
         if (!alive) return;
+        // انتهت الجلسة أو الرابط غير صالح: يُنسى الرابط. وبلا إنترنت: العرض يكمل ونحاول لاحقاً
+        const code = (e as { code?: string }).code;
+        if (code === 'ended' || code === 'invalid') return unlink();
         setInfo((i) => ({ ...i, status: 'offline' }));
         retry = setTimeout(() => setRound((r) => r + 1), RETRY_MS);
       }
@@ -101,20 +149,12 @@ export function useRemoteDisplay(connect: () => Promise<Backend | null> = defaul
       alive = false;
       clearTimeout(retry);
       offs.forEach((f) => f());
+      setSync(null);
+      session?.close();
     };
   }, [round, connect]);
 
-  /** رمز جديد: يغلق الجلسة الحالية فينفصل كل جوال متصل */
-  const renew = useCallback(async () => {
-    const old = session.current;
-    session.current = null;
-    setSync(null);
-    setInfo((i) => ({ ...i, status: 'connecting', code: undefined, remotes: 0 }));
-    await old?.close().catch(() => undefined);
-    setRound((r) => r + 1);
-  }, []);
-
-  return { info, sync, renew };
+  return { info, sync };
 }
 
 async function defaultConnect(): Promise<Backend | null> {

@@ -1,14 +1,16 @@
-// ريموت الجوال (#/show-remote): رمز من 4 أرقام يظهر في زاوية شاشة العرض، ثم التالي والسابق،
+// ريموت الجوال (#/show-remote): رمز من 6 أرقام يظهر في لوحة «الربط» في المحرّر فقط، ثم التالي والسابق،
 // وإيقاف جولة الديمو، والشاشة السوداء، والانتقال لأي فقرة. حالة الاتصال ظاهرة دائماً.
+// بعد الدخول يُحفظ مفتاح الجلسة على الجوال، فإعادة تحميل الصفحة تعود بلا رمز ما دام الجوال لم يُفصل.
 import { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, LogOut, MonitorOff, Pause, Play } from 'lucide-react';
 import { markLogo } from '../segments/Fallback';
 import { connectFirebase, loadFirebaseConfig } from './firebase';
 import { loopbackClient, loopbackEnabled } from './loopback';
-import { CODE_RE, joinSession, type Backend, type RemoteCommand, type RemoteSession, type RemoteState } from './protocol';
+import { CODE_RE, joinWithCode, KEY_RE, rejoin, type Backend, type RemoteCommand, type RemoteSession, type RemoteState } from './protocol';
 import './remote.css';
 
-const LAST_CODE = 'show-remote-last';
+/** مفتاح الجلسة على الجوال (بعد الدخول بالرمز) */
+const REMOTE_KEY = 'show-remote-key';
 
 type Phase =
   | { kind: 'loading' }
@@ -16,26 +18,27 @@ type Phase =
   | { kind: 'enter'; error?: string; busy?: boolean }
   | { kind: 'joined'; session: RemoteSession };
 
-const session = {
+const saved = {
   get: () => {
     try {
-      return sessionStorage.getItem(LAST_CODE) ?? '';
+      const v = localStorage.getItem(REMOTE_KEY) ?? '';
+      return KEY_RE.test(v) ? v : '';
     } catch {
       return '';
     }
   },
-  set: (c: string | null) => {
+  set: (k: string | null) => {
     try {
-      c ? sessionStorage.setItem(LAST_CODE, c) : sessionStorage.removeItem(LAST_CODE);
+      k ? localStorage.setItem(REMOTE_KEY, k) : localStorage.removeItem(REMOTE_KEY);
     } catch {
-      /* تفضيل على هذا الجهاز فقط */
+      /* بلا تخزين: يُطلب الرمز بعد إعادة التحميل */
     }
   },
 };
 
 export default function ShowRemote() {
   const [phase, setPhase] = useState<Phase>({ kind: 'loading' });
-  const [code, setCode] = useState(session.get);
+  const [code, setCode] = useState('');
   const [net, setNet] = useState(true);
   const backend = useRef<Backend | null>(null);
 
@@ -52,7 +55,18 @@ export default function ShowRemote() {
         (b) => {
           backend.current = b;
           b.onConnected((on) => alive && setNet(on));
-          if (CODE_RE.test(session.get())) join(session.get(), b);
+          const key = saved.get();
+          if (key) {
+            setPhase({ kind: 'enter', busy: true });
+            rejoin(b, key).then(
+              (s) => alive && setPhase({ kind: 'joined', session: s }),
+              (e) => {
+                if (!alive) return;
+                if ((e as { code?: string }).code === 'ended') saved.set(null);
+                setPhase({ kind: 'enter', error: (e as { code?: string }).code === 'ended' ? 'انتهت الجلسة أو فُصل هذا الجوال. أدخل الرمز الجديد من المحرّر.' : (e as Error).message });
+              },
+            );
+          }
         },
         () => alive && setNet(false),
       );
@@ -71,11 +85,11 @@ export default function ShowRemote() {
     if (!b) return setPhase({ kind: 'enter', error: 'لا اتصال بالإنترنت بعد، حاول بعد لحظة' });
     setPhase({ kind: 'enter', busy: true });
     try {
-      const s = await joinSession(b, c);
-      session.set(c);
+      const s = await joinWithCode(b, c);
+      saved.set(s.key);
+      setCode('');
       setPhase({ kind: 'joined', session: s });
     } catch (e) {
-      session.set(null);
       setPhase({ kind: 'enter', error: (e as Error).message });
     }
   };
@@ -102,17 +116,17 @@ export default function ShowRemote() {
             if (CODE_RE.test(code)) join(code);
           }}
         >
-          <label className="rm-big" htmlFor="rm-code">أدخل الرمز الظاهر في زاوية شاشة العرض</label>
+          <label className="rm-big" htmlFor="rm-code">أدخل رمز الربط (6 أرقام) من لوحة «الربط» في المحرّر</label>
           <input
             id="rm-code"
             className="rm-code num"
             dir="ltr"
             inputMode="numeric"
             autoComplete="one-time-code"
-            pattern="[0-9]{4}"
-            maxLength={4}
+            pattern="[0-9]{6}"
+            maxLength={6}
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 4))}
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
             autoFocus
             aria-describedby="rm-err"
           />
@@ -125,13 +139,13 @@ export default function ShowRemote() {
           s={phase.session}
           net={net}
           onLeave={async () => {
-            session.set(null);
+            saved.set(null);
             await phase.session.leave();
             setPhase({ kind: 'enter' });
           }}
           onEnded={() => {
-            session.set(null);
-            setPhase({ kind: 'enter', error: 'انتهت الجلسة أو تغيّر الرمز. أدخل الرمز الجديد من شاشة العرض.' });
+            saved.set(null);
+            setPhase({ kind: 'enter', error: 'انتهت الجلسة أو فُصل هذا الجوال. أدخل الرمز الجديد من المحرّر.' });
           }}
         />
       )}
@@ -160,7 +174,7 @@ function Controls({ s, net, onLeave, onEnded }: { s: RemoteSession; net: boolean
     <div className="rm-controls">
       <div className="rm-status" data-live={live}>
         <span className="rm-dot" />
-        {!net ? 'انقطع اتصال الجوال، يُعاد تلقائياً' : !display ? 'شاشة العرض غير متصلة الآن' : `متصل بالعرض · الرمز ${s.code}`}
+        {!net ? 'انقطع اتصال الجوال، يُعاد تلقائياً' : !display ? 'شاشة العرض غير متصلة الآن' : 'متصل بالعرض'}
       </div>
       <div className="rm-now">
         <p className="rm-kicker num">{st ? `الفقرة ${st.seg + 1} من ${st.outline.length}${st.steps > 1 ? ` · ${st.step + 1}/${st.steps}` : ''}` : '…'}</p>
