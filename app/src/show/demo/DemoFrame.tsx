@@ -1,24 +1,33 @@
-// إطار الديمو (#/show/demo?view=…&trip=…&seq=…): شاشات المنصة الحقيقية داخل iframe بعرض 1440،
+// إطار الديمو (#/show/demo?view=…&id=…&seq=…): شاشات المنصة الحقيقية داخل iframe بصفة مشارك،
 // فوق لقطة بيانات ثابتة ومتجر للقراءة فقط. لا يتفاعل معه أحد مباشرة: الكاميرا في النافذة الأم.
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { MemoryRouter, Route, Routes, useParams } from 'react-router-dom';
 import { AppShell } from '@/layout/AppShell';
-import TripsPage from '@/pages/app/Trips';
+import CalendarPage from '@/pages/app/Calendar';
+import IndividualPage from '@/pages/app/Individual';
 import TripDetail from '@/pages/app/trip/TripDetail';
 import ScheduleTab from '@/pages/app/trip/ScheduleTab';
+import FocusPage from '@/pages/app/Focus';
+import FocusDetail from '@/pages/app/FocusDetail';
+import PlansPage from '@/pages/app/Plans';
 import { useDB } from '@/state/store';
 import { DEMO_READY, enterReadOnly, type DemoViewKey } from './data';
 
-// قبل أول رسم: كل ما تكتبه الشاشات يُهمل، والمستخدم هو القائد العام
+// قبل أول رسم: كل ما تكتبه الشاشات يُهمل، والمستخدم هو المشارك
 enterReadOnly();
 
 const params = () => {
   const q = new URLSearchParams(window.location.hash.split('?')[1] ?? '');
-  return { view: (q.get('view') ?? 'list') as DemoViewKey, trip: q.get('trip') ?? '', seq: q.get('seq') ?? '0' };
+  return { view: (q.get('view') ?? 'calendar') as DemoViewKey, id: q.get('id') ?? '', seq: q.get('seq') ?? '0' };
 };
 
-const pathFor = (view: DemoViewKey, trip: string) =>
-  view === 'list' ? '/app/trips' : `/app/trips/${trip}?tab=${view === 'trip' ? 'overview' : view === 'plans' ? 'schedule' : view}`;
+const TRIP_TAB: Partial<Record<DemoViewKey, string>> = { trip: 'overview', docs: 'docs', plans: 'schedule', attendance: 'attendance', closure: 'closure' };
+
+export const pathFor = (view: DemoViewKey, id: string) => {
+  if (TRIP_TAB[view]) return `/app/trips/${id}?tab=${TRIP_TAB[view]}`;
+  if (view === 'focusDetail') return `/app/focus/${id}`;
+  return { calendar: '/app/calendar', individual: '/app/individual', focus: '/app/focus', plan: '/app/plans' }[view as 'calendar'] ?? '/app/calendar';
+};
 
 /** الخطتان أ وب جنباً إلى جنب: نسختان من شاشة الجدول الحقيقية، والثانية على الخطة ب */
 function PlansSplit() {
@@ -50,29 +59,33 @@ export default function DemoFrame() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
 
-  // بعد اكتمال الرسم والخطوط: نُبلغ النافذة الأم لتقيس العناصر وتحرّك الكاميرا
+  // بعد اكتمال الرسم والخطوط: نُبلغ النافذة الأم لتقيس العناصر وتحرّك الكاميرا.
+  // مؤقّت لا requestAnimationFrame: المتصفح قد يوقف إطارات الرسم في iframe مخفي أثناء الانتقال
   useEffect(() => {
-    // مؤقّت لا requestAnimationFrame: المتصفح قد يوقف إطارات الرسم في iframe مخفي (شفافيته صفر أثناء الانتقال)
     let t: ReturnType<typeof setTimeout>;
     let alive = true;
     document.fonts.ready.then(() => {
-      t = setTimeout(() => alive && window.parent.postMessage({ type: DEMO_READY, seq: p.seq }, window.location.origin), 40);
+      t = setTimeout(() => alive && window.parent.postMessage({ type: DEMO_READY, seq: p.seq }, window.location.origin), 60);
     });
     return () => {
       alive = false;
       clearTimeout(t);
     };
-  }, [p.seq, p.view, p.trip]);
+  }, [p.seq, p.view, p.id]);
 
   return (
     <div className="demo-frame">
       {/* شريط «الدخول كـ» للنموذج الأولي لا يظهر في العرض، ولا تُظهر الصفحة أشرطة تمرير */}
       <style>{`.demo-frame > div > :first-child{display:none!important} html,body{overflow:hidden!important} *{scrollbar-width:none} .demo-frame a, .demo-frame button{cursor:default}`}</style>
-      <MemoryRouter key={p.view + p.trip} initialEntries={[pathFor(p.view, p.trip)]}>
+      <MemoryRouter key={p.view + p.id} initialEntries={[pathFor(p.view, p.id)]}>
         <Routes>
           <Route path="/app" element={<AppShell />}>
-            <Route path="trips" element={<TripsPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
+            <Route path="individual" element={<IndividualPage />} />
             <Route path="trips/:id" element={p.view === 'plans' ? <PlansSplit /> : <TripDetail />} />
+            <Route path="focus" element={<FocusPage />} />
+            <Route path="focus/:id" element={<FocusDetail />} />
+            <Route path="plans" element={<PlansPage />} />
           </Route>
         </Routes>
       </MemoryRouter>

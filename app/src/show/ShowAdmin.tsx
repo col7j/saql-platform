@@ -2,13 +2,12 @@
 // كل تعديل يُحفظ فوراً في show-config ويُبث لشاشة العرض.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, Card, ConfirmHost, Icons, Input, MoreMenu, Modal, Toasts, askConfirm, cx } from '@/ui';
-import { buildSeed } from '@/data/seed';
 import { deleteLocalFile, listLocalFiles, type LocalFile } from './media';
-import { SEGMENT_LABELS, type MediaRef, type Segment, type SegmentType, type ShowConfig } from './model';
+import { DEMO_SCENE_LABELS, DEMO_STEP_LABELS, SEGMENT_LABELS, demoSteps, type MediaRef, type Segment, type SegmentType, type ShowConfig } from './model';
 import { addSegment, moveSegment, removeSegment, sortSegments, stepCount, updateSegment, type Pos } from './nav';
 import { exportConfig, loadRepoConfig, parseConfig, saveConfig } from './storage';
 import { useShowConfig, useSync } from './useShow';
-import { SegmentEditor, DEMO_STEP_LABELS } from './admin/Editors';
+import { SegmentEditor } from './admin/Editors';
 import { fmtSize, toast } from './admin/MediaPicker';
 
 const TYPE_ICON: Record<SegmentType, typeof Icons.Film> = { video: Icons.Film, slides: Icons.GalleryHorizontal, demo: Icons.MonitorPlay, names: Icons.ListOrdered, blank: Icons.Square };
@@ -26,7 +25,7 @@ const uid = () => `seg_${Date.now().toString(36)}${Math.random().toString(36).sl
 function stepLabel(seg: Segment, step: number) {
   if (seg.type === 'slides') return `الشريحة ${step + 1} من ${stepCount(seg)}`;
   if (seg.type === 'names') return step === 0 ? 'العنوان' : `${Math.min(seg.settings.names.length, step * seg.settings.perStep)} من ${seg.settings.names.length} اسماً`;
-  if (seg.type === 'demo') return DEMO_STEP_LABELS[seg.settings.steps[step]] ?? '';
+  if (seg.type === 'demo') { const d = demoSteps(seg.settings)[step]; return d ? `${DEMO_SCENE_LABELS[d.scene]} · ${DEMO_STEP_LABELS[d.key]}` : ''; }
   return '';
 }
 
@@ -113,7 +112,6 @@ export default function ShowAdmin() {
   const [filesOpen, setFilesOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
-  const demoTrips = useMemo(() => buildSeed().trips.map((t) => ({ id: t.id, title: t.title })), []);
 
   useEffect(() => {
     document.title = 'التحكم في العرض · صقل';
@@ -262,7 +260,7 @@ export default function ShowAdmin() {
             >
               <div className="grid gap-6 xl:grid-cols-[1fr_minmax(0,1.1fr)]">
                 <div className="min-w-0">
-                  <SegmentEditor key={seg.id} seg={seg} demoTrips={demoTrips} patch={(settings) => setSegments((x) => updateSegment(x, seg.id, { settings }))} />
+                  <SegmentEditor key={seg.id} seg={seg} patch={(settings) => setSegments((x) => updateSegment(x, seg.id, { settings }))} />
                 </div>
                 <div className="min-w-0">
                   <Preview seg={seg} step={step} />

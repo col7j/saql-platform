@@ -18,14 +18,56 @@ export interface SlidesSettings {
   slides: MediaRef[];
   fit: 'contain' | 'cover';
 }
-/** خطوات الديمو بالترتيب: قائمة الرحلات ← رحلة ← مكوناتها ← الخطتان ← الرجوع */
-export const DEMO_STEPS = ['list', 'focusTrip', 'trip', 'document', 'schedule', 'budget', 'plans', 'back'] as const;
-export type DemoStep = (typeof DEMO_STEPS)[number];
+/** مشاهد الديمو (من منظور المشارك) وخطوات كل مشهد بالترتيب */
+export const DEMO_SCENES = ['calendar', 'trips', 'focus', 'plan'] as const;
+export type DemoScene = (typeof DEMO_SCENES)[number];
+export const DEMO_SCENE_STEPS = {
+  calendar: ['month', 'day', 'event'],
+  trips: ['trip', 'docs', 'plans', 'attendance', 'evaluation'],
+  focus: ['list', 'detail', 'evaluation'],
+  plan: ['wheel', 'goals'],
+} as const satisfies Record<DemoScene, readonly string[]>;
+export type DemoStepKey = { [S in DemoScene]: `${S}.${(typeof DEMO_SCENE_STEPS)[S][number]}` }[DemoScene];
+
+export const DEMO_SCENE_LABELS: Record<DemoScene, string> = {
+  calendar: 'التقويم',
+  trips: 'الرحلات',
+  focus: 'لقاءات التركيز',
+  plan: 'الخطة الشخصية',
+};
+export const DEMO_STEP_LABELS: Record<DemoStepKey, string> = {
+  'calendar.month': 'الشهر كاملاً',
+  'calendar.day': 'يوم فيه أنشطة',
+  'calendar.event': 'تفاصيل نشاط',
+  'trips.trip': 'رحلة المجموعة',
+  'trips.docs': 'مكونات الرحلة',
+  'trips.plans': 'الخطتان أ وب',
+  'trips.attendance': 'الحضور',
+  'trips.evaluation': 'تقييم الرحلة',
+  'focus.list': 'قائمة اللقاءات',
+  'focus.detail': 'تفاصيل اللقاء',
+  'focus.evaluation': 'تقييم التقديم',
+  'plan.wheel': 'عجلة الحياة',
+  'plan.goals': 'الأهداف',
+};
+
 export interface DemoSettings {
-  /** معرّف الرحلة في البيانات التجريبية، وإلا تُختار أول رحلة مكتملة النماذج */
-  tripId?: string;
-  steps: DemoStep[];
+  scenes: DemoScene[];
 }
+
+/** الخطوات المسطّحة للديمو: لكل خطوة مشهدها وترتيب المشهد، وهل هي أول المشهد (يظهر عنوانه) */
+export function demoSteps(settings: DemoSettings) {
+  return settings.scenes.flatMap((scene, sceneIndex) =>
+    DEMO_SCENE_STEPS[scene].map((s, i) => ({ scene, sceneIndex, key: `${scene}.${s}` as DemoStepKey, first: i === 0 })),
+  );
+}
+
+/** أول خطوة في المشهد رقم n (من 0)، أو null إن لم يوجد */
+export function sceneStart(settings: DemoSettings, n: number): number | null {
+  if (n < 0 || n >= settings.scenes.length) return null;
+  return demoSteps(settings).findIndex((x) => x.sceneIndex === n);
+}
+
 export interface NamesSettings {
   heading?: string;
   names: string[];
@@ -71,7 +113,7 @@ export function defaultSettings(type: SegmentType): Segment['settings'] {
   switch (type) {
     case 'video': return { muted: false, showSkip: true, autoAdvance: true } satisfies VideoSettings;
     case 'slides': return { slides: [], fit: 'contain' } satisfies SlidesSettings;
-    case 'demo': return { steps: [...DEMO_STEPS] } satisfies DemoSettings;
+    case 'demo': return { scenes: [...DEMO_SCENES] } satisfies DemoSettings;
     case 'names': return { heading: '', names: [], perStep: 1, columns: 2 } satisfies NamesSettings;
     case 'blank': return { variant: 'logo' } satisfies BlankSettings;
   }
@@ -83,7 +125,7 @@ export const DEFAULT_CONFIG: ShowConfig = {
   updatedAt: '2026-01-01T00:00:00.000Z',
   segments: [
     { id: 'seg_intro', type: 'blank', title: 'الافتتاح', order: 0, settings: { variant: 'logo', caption: 'حفل برنامج صقل' } },
-    { id: 'seg_demo', type: 'demo', title: 'جولة في المنصة', order: 1, settings: { steps: [...DEMO_STEPS] } },
+    { id: 'seg_demo', type: 'demo', title: 'جولة في المنصة', order: 1, settings: { scenes: [...DEMO_SCENES] } },
     { id: 'seg_speaker', type: 'blank', title: 'كلمة', order: 2, settings: { variant: 'black' } },
   ],
 };

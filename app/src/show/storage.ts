@@ -1,6 +1,6 @@
 // تخزين إعدادات العرض بمفتاح خاص (show-config)، مستقل عن مفاتيح المنصة (saql.*) وعن DB_VERSION،
 // فلا يُمسح عند رفع نسخة البيانات التجريبية ولا عند «إعادة البيانات».
-import { DEFAULT_CONFIG, DEMO_STEPS, SHOW_SCHEMA_VERSION, defaultSettings, type MediaRef, type Segment, type SegmentType, type ShowConfig } from './model';
+import { DEFAULT_CONFIG, DEMO_SCENES, SHOW_SCHEMA_VERSION, defaultSettings, type MediaRef, type Segment, type SegmentType, type ShowConfig } from './model';
 import { normalize } from './nav';
 
 export const SHOW_KEY = 'show-config';
@@ -42,8 +42,9 @@ function segment(v: unknown, i: number): Segment {
       settings = { slides: (Array.isArray(s.slides) ? s.slides : []).map(media).filter(Boolean) as MediaRef[], fit: s.fit === 'cover' ? 'cover' : 'contain' };
       break;
     case 'demo': {
-      const steps = (Array.isArray(s.steps) ? s.steps : d.steps).filter((x: unknown) => (DEMO_STEPS as readonly unknown[]).includes(x));
-      settings = { tripId: str(s.tripId) || undefined, steps: steps.length ? steps : [...DEMO_STEPS] };
+      // الإعدادات القديمة (خطوات بصفة القائد) تتحول إلى المشاهد الأربعة
+      const scenes = (Array.isArray(s.scenes) ? s.scenes : []).filter((x: unknown, i: number, a: unknown[]) => (DEMO_SCENES as readonly unknown[]).includes(x) && a.indexOf(x) === i);
+      settings = { scenes: scenes.length ? scenes : [...DEMO_SCENES] };
       break;
     }
     case 'names':

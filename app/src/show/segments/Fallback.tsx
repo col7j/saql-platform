@@ -1,16 +1,32 @@
-// شاشة البديل: تظهر بدل الفقرة إذا فشل ملف أو حدث خطأ، والعرض يكمل بالتنقل عادياً.
+// الخلفية المشتركة، وشاشة البديل: تظهر بدل الفقرة إذا فشل ملف، بأسلوب شاشة عنوان لا رسالة خطأ.
 import { Component, type ReactNode } from 'react';
+
+export const LOGO_ONDARK = './brand/logo-vertical-ondark.svg';
+export const LOGO_MARK = './brand/logo-icon.svg';
+
+/** التدرّج العميق مع التوهّج خلف العنصر الرئيسي */
+export function Backdrop({ children, glow = true }: { children?: ReactNode; glow?: boolean }) {
+  return (
+    <div className="show-bg">
+      {glow && <div className="show-glow" />}
+      {children}
+    </div>
+  );
+}
 
 export function Fallback({ title, reason }: { title?: string; reason?: string }) {
   return (
-    <div className="show-dark show-fade absolute inset-0 grid place-items-center text-center">
-      <div>
-        <img src="./brand/logo-vertical.svg" alt="صقل" className="mx-auto h-[28vh] w-auto opacity-90" draggable={false} />
-        {title && <p className="mt-[4vh] text-[3.2vw] font-semibold leading-tight text-white">{title}</p>}
-        {/* سبب الخطأ للمقدّم بخط صغير، لا يلفت نظر الجمهور */}
-        {reason && <p className="show-chrome mt-4 text-xs text-white/40">{reason}</p>}
+    <Backdrop>
+      <div className="show-center">
+        {/* شاشة عنوان الفقرة نفسها، والشعار في زاويته الثابتة */}
+        <div className="flex flex-col items-center gap-[4vh]">
+          <h1 className="show-title show-in" style={{ ['--i' as string]: 0 }}>{title || 'برنامج صقل'}</h1>
+          <div className="show-rule show-in" style={{ ['--i' as string]: 1 }} />
+        </div>
       </div>
-    </div>
+      {/* سبب الخطأ للمقدّم فقط: يظهر مع حركة الفأرة ويختفي معها */}
+      {reason && <p className="show-chrome absolute bottom-[4vh] left-0 right-0 text-center text-sm text-white/45">{reason}</p>}
+    </Backdrop>
   );
 }
 

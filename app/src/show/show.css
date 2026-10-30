@@ -1,24 +1,100 @@
-/* حركات وضع العرض. تُحمَّل مع حزمة العرض فقط */
-.show-stage { position: fixed; inset: 0; overflow: hidden; background: #000; color: #fff; user-select: none; -webkit-user-select: none; touch-action: none; }
+/*
+ * اللغة البصرية لشاشات العرض (أسلوب المؤتمرات). تُحمَّل مع حزمة العرض فقط.
+ * كل الألوان من رموز src/tokens.css:
+ *   ink-900 = #0E2A33 (العمق)، brand-600 = #00728E (التدرّج)، brand-400 = #00B9D1 (التوهّج)،
+ *   accent-500 = #F79845 و accent-400 = #FBB42B للتوكيد على كلمة أو رقم واحد فقط.
+ * النص على الخلفيات الداكنة أبيض دائماً.
+ */
+@import '@fontsource/ibm-plex-sans-arabic/700.css';
+
+.show-stage {
+  --show-deep: rgb(var(--c-ink-900));
+  --show-brand: rgb(var(--c-brand-600));
+  --show-glow: rgb(var(--c-brand-400));
+  --show-em: rgb(var(--c-accent-400));
+  --show-em-2: rgb(var(--c-accent-500));
+  --show-ease: cubic-bezier(.2, .7, .2, 1);
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--show-deep);
+  color: #fff;
+  font-family: var(--font-sans);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
 .show-stage.hide-cursor, .show-stage.hide-cursor * { cursor: none !important; }
-.show-layer { position: absolute; inset: 0; transition: opacity 700ms cubic-bezier(.4, 0, .2, 1); }
-.show-layer.entering { opacity: 0; }
-.show-layer.leaving { opacity: 0; pointer-events: none; }
 
-.show-dark { background: radial-gradient(120% 90% at 50% 40%, rgb(var(--c-brand-800)) 0%, rgb(var(--c-brand-900)) 45%, #021c26 100%); }
+/* الخلفية: تدرّج عميق من ink-900 إلى brand-600 */
+.show-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: linear-gradient(155deg, var(--show-deep) 0%, var(--show-deep) 38%, rgb(var(--c-brand-800)) 72%, var(--show-brand) 120%);
+}
+/* توهّج شعاعي ناعم خلف العنصر الرئيسي، يتنفس ببطء */
+.show-glow {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 78vmax;
+  height: 78vmax;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(var(--c-brand-400) / .30), rgb(var(--c-brand-400) / .10) 45%, transparent 72%);
+  pointer-events: none;
+  animation: show-breathe 9s ease-in-out infinite alternate;
+}
+@keyframes show-breathe { from { opacity: .75; transform: translate(-50%, -50%) scale(.94); } to { opacity: 1; transform: translate(-50%, -50%) scale(1.04); } }
 
-@keyframes show-rise { from { opacity: 0; transform: translateY(24px) scale(.98); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
-.show-rise { animation: show-rise 900ms cubic-bezier(.2, .7, .2, 1) both; }
+/* الطباعة: عنوان 96–140px على 1080p، ووزن 700 (أثقل وزن في الخط) */
+.show-title { font-weight: 700; font-size: clamp(56px, min(6.4vw, 11.5vh), 140px); line-height: 1.12; letter-spacing: 0; color: #fff; text-wrap: balance; }
+.show-display { font-weight: 700; font-size: clamp(64px, min(7.3vw, 13vh), 140px); line-height: 1.1; color: #fff; text-wrap: balance; }
+.show-kicker { font-weight: 500; font-size: clamp(20px, min(1.6vw, 2.9vh), 30px); color: rgb(255 255 255 / .72); letter-spacing: .02em; }
+.show-body { font-weight: 500; font-size: clamp(24px, min(2.1vw, 3.7vh), 40px); color: rgb(255 255 255 / .88); }
+.show-em { color: var(--show-em); }
+.show-rule { height: 4px; width: clamp(64px, 6vw, 120px); border-radius: 999px; background: var(--show-em); }
+
+/* المحتوى في الوسط بمساحات واسعة */
+.show-center { position: absolute; inset: 0; display: grid; place-items: center; padding: 9vh 8vw; text-align: center; }
+
+/* الشعار: حجم وموقع ثابتان في كل الشاشات */
+.show-mark { position: absolute; inset-inline-start: 3.2vw; top: 4.2vh; z-index: 30; pointer-events: none; transition: opacity 600ms ease;
+  padding: clamp(8px, 1vh, 12px); border-radius: 18px; background: rgb(var(--c-ink-900) / .55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 0 0 1px rgb(255 255 255 / .08); }
+.show-mark img { display: block; height: clamp(36px, 5vh, 56px); width: auto; }
+
+/* ظهور متتابع: --i ترتيب العنصر */
+@keyframes show-rise { from { opacity: 0; transform: translateY(28px); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+.show-in { animation: show-rise 1000ms var(--show-ease) both; animation-delay: calc(var(--i, 0) * 140ms + 200ms); }
+
+/* ظهور سينمائي للاسم: تكبير خفيف مع زوال الضبابية */
+@keyframes show-reveal { from { opacity: 0; transform: scale(1.08); filter: blur(14px); letter-spacing: .04em; } to { opacity: 1; transform: none; filter: none; letter-spacing: 0; } }
+.show-reveal { animation: show-reveal 1300ms var(--show-ease) both; }
+
+/* الانتقال بين الفقرات: تلاشٍ مع تكبير خفيف. transform وopacity فقط لسلاسة بلا ارتعاش */
+.show-layer { position: absolute; inset: 0; will-change: opacity, transform; backface-visibility: hidden; }
+@keyframes show-enter { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+@keyframes show-leave { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.985); } }
+.show-layer.entering { animation: show-enter 900ms var(--show-ease) both; }
+.show-layer.leaving { animation: show-leave 700ms ease both; pointer-events: none; }
 
 @keyframes show-fade { from { opacity: 0; } to { opacity: 1; } }
-.show-fade { animation: show-fade 1200ms ease both; }
+.show-fade { animation: show-fade 900ms ease both; }
 
-.show-slide { position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 500ms ease; }
+/* إطار الوسائط (فيديو وشرائح): بلا حواف بيضاء، بظل ناعم */
+.show-media { display: block; max-width: 88vw; max-height: 82vh; border-radius: clamp(12px, 1.2vw, 24px); box-shadow: 0 30px 90px rgb(0 0 0 / .45), 0 0 0 1px rgb(255 255 255 / .06); background: var(--show-deep); }
+.show-slide { position: absolute; inset: 0; display: grid; place-items: center; transition: opacity 600ms ease, transform 800ms var(--show-ease); }
 
+/* زر زجاجي (تخطٍّ وتشغيل الصوت) */
+.show-glass { display: inline-flex; align-items: center; gap: .5em; border-radius: 999px; padding: .7em 1.4em; font-size: clamp(16px, 1.15vw, 22px); font-weight: 500; color: #fff; background: rgb(255 255 255 / .10); border: 1px solid rgb(255 255 255 / .18); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: background 200ms ease; }
+.show-glass:hover { background: rgb(255 255 255 / .18); }
+
+/* أدوات المقدّم تختفي مع المؤشر */
 .show-chrome { transition: opacity 400ms ease; }
 .show-stage.hide-cursor .show-chrome { opacity: 0; pointer-events: none; }
 
 @media (prefers-reduced-motion: reduce) {
-  .show-layer, .show-slide { transition-duration: 1ms; }
-  .show-rise, .show-fade { animation-duration: 1ms; }
+  .show-layer.entering, .show-layer.leaving, .show-in, .show-reveal, .show-fade { animation-duration: 1ms; animation-delay: 0ms; }
+  .show-glow { animation: none; }
 }

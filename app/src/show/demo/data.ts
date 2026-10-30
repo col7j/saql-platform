@@ -1,35 +1,90 @@
-// بيانات الديمو: لقطة ثابتة من البيانات التجريبية، والمتجر في وضع القراءة فقط داخل إطار الديمو.
+// بيانات الديمو: لقطة ثابتة من البيانات التجريبية بصفة مشارك، مُثراة في الذاكرة فقط،
+// والمتجر في وضع القراءة فقط داخل إطار الديمو.
 import { buildSeed } from '@/data/seed';
+import { eventsFor } from '@/domain/calendar';
 import { todayISO } from '@/domain/dates';
-import type { DB, Trip } from '@/domain/types';
+import { canViewTripPlans, getCapabilities } from '@/domain/permissions';
+import type { DB } from '@/domain/types';
 import { useStore } from '@/state/store';
+
+/** المشارك الذي يُعرض الديمو بصفته: يوسف الرحيلي من مجموعة أُحُد (ليس قائد المجموعة) */
+export const DEMO_PARTICIPANT = 'u2';
+
+/** المعرّفات التي تقف عندها الكاميرا */
+export interface DemoTargets {
+  personId: string;
+  tripId: string;
+  focusId: string;
+  /** أكثر يوم أنشطةً في الشهر الحالي (يظهر في التقويم) */
+  day: string;
+}
+
+const busiestDay = (db: DB, pid: string) => {
+  const month = todayISO().slice(0, 7);
+  const count = new Map<string, number>();
+  for (const e of eventsFor(db, pid)) if (e.date.startsWith(month) && !e.endDate) count.set(e.date, (count.get(e.date) ?? 0) + 1);
+  return [...count].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0];
+};
+
+export function demoTargets(db: DB): DemoTargets {
+  const personId = db.persons.some((p) => p.id === DEMO_PARTICIPANT && p.kind === 'participant') ? DEMO_PARTICIPANT : db.persons.find((p) => p.kind === 'participant')!.id;
+  const visible = db.trips.filter((t) => canViewTripPlans(db, personId, t));
+  // رحلة المجموعة المكتملة: لها خطتان بجدول وإغلاق، والمنتهية أولى لأن فيها الحضور والتقييم
+  const trip =
+    visible.find((t) => t.closure.publicReport && (t.schedule.plans[1]?.items.length ?? 0) > 0) ??
+    visible.find((t) => (t.schedule.plans[1]?.items.length ?? 0) > 0) ??
+    visible[0] ?? db.trips[0];
+  const group = getCapabilities(db, personId).group?.id;
+  const focus =
+    db.focusMeetings.find((f) => f.groupId === group && f.status === 'closed' && f.presenterIds.includes(personId)) ??
+    db.focusMeetings.find((f) => f.groupId === group && f.status === 'closed') ??
+    db.focusMeetings[0];
+  return { personId, tripId: trip.id, focusId: focus.id, day: busiestDay(db, personId) ?? todayISO() };
+}
+
+/** إثراء اللقطة (لا يمس بيانات المنصة): كل شاشة يمر بها الديمو فيها ما يُعرض */
+export function enrichDemo(db: DB): DB {
+  const { personId, tripId, focusId } = demoTargets(db);
+  const me = db.persons.find((p) => p.id === personId)!;
+  me.profileCompletedAt ??= `${todayISO()}T08:00:00.000Z`;
+
+  // الرحلة: المشارك محضّر الحضور فيها، فيرى تبويب الحضور كما يراه المحضّر فعلاً
+  const trip = db.trips.find((t) => t.id === tripId)!;
+  trip.attendanceTakerId ??= personId;
+
+  // لقاء التركيز: المشارك مقدّمه، وتقييم الميسّر له مكتمل
+  const f = db.focusMeetings.find((x) => x.id === focusId)!;
+  if (!f.presenterIds.includes(personId)) f.presenterIds = [...f.presenterIds, personId];
+  f.presenterAxes[personId] ??= 'إدارة الوقت للطالب الجامعي';
+  const scores = [5, 4, 5, 5, 4, 5];
+  f.presenterEvaluations[personId] ??= Object.fromEntries(db.settings.presentationCriteria.map((c, i) => [c.key, scores[i % scores.length]]));
+
+  // التقويم: لقاء فردي مع الميسّر في أكثر الأيام أنشطة، فيجتمع فيه العام والمجموعة والخاص
+  const day = busiestDay(db, personId);
+  const g = db.groups.find((x) => x.id === getCapabilities(db, personId).group?.id);
+  if (day && g?.facilitatorId && !db.individualMeetings.some((m) => m.participantId === personId && m.date === day && m.status !== 'cancelled')) {
+    // اليوم الماضي يظهر لقاءً منجزاً بملاحظاته، والقادم محجوزاً
+    const past = day < todayISO();
+    db.individualMeetings.push({
+      id: 'im_demo', facilitatorId: g.facilitatorId, participantId: personId, date: day, start: '19:30', end: '20:15', origin: 'personal_invite',
+      status: past ? 'done' : 'booked',
+      notesOnPlan: 'خطوات الجانب المهاري واضحة ومجدولة، والجانب الصحي يحتاج هدفاً قابلاً للقياس.',
+      notesOnMeeting: past ? 'لقاء مركّز، واتفقنا على مراجعة الخطة بعد الرحلة القادمة.' : undefined,
+    });
+  }
+  return db;
+}
 
 let snapshot: DB | null = null;
 /** لقطة واحدة تُبنى مرة في الذاكرة ولا تُحفظ في أي مخزن */
 export function demoSnapshot(): DB {
-  return (snapshot ??= buildSeed());
+  return (snapshot ??= enrichDemo(buildSeed()));
 }
 
-export const demoUserId = (db: DB) => (db.persons.find((p) => p.isGeneralLeader) ?? db.persons[0]).id;
-
-const filled = (db: DB, t: Trip) =>
-  (t.schedule.plans[0]?.items.length ?? 0) > 0 &&
-  (t.schedule.plans[1]?.items.length ?? 0) > 0 &&
-  db.docs.some((d) => d.tripId === t.id && d.kind === 'document') &&
-  db.budgetRequests.some((r) => r.ownerKind === 'trip' && r.ownerId === t.id);
-
-/** الرحلة المعروضة: المحددة إن وُجدت، وإلا أول رحلة مكتملة (وثيقة وخطتان وميزانية).
- *  القادمة أولى لأنها تظهر في تبويب «القادمة والجارية» الافتراضي في قائمة الرحلات، ثم الخارجية */
-export function pickDemoTrip(db: DB, preferred?: string): Trip | undefined {
-  const byId = db.trips.find((t) => t.id === preferred);
-  if (byId) return byId;
-  const today = todayISO();
-  const ok = db.trips.filter((t) => filled(db, t)).sort((a, b) => Number(b.endDate >= today) - Number(a.endDate >= today) || Number(b.type === 'external') - Number(a.type === 'external'));
-  return ok[0] ?? db.trips[0];
-}
+export const demoUserId = (db: DB) => demoTargets(db).personId;
 
 /** الشاشات التي يعرضها إطار الديمو، ورسالة جاهزيته للنافذة الأم */
-export type DemoViewKey = 'list' | 'trip' | 'docs' | 'schedule' | 'budget' | 'plans';
+export type DemoViewKey = 'calendar' | 'individual' | 'trip' | 'docs' | 'plans' | 'attendance' | 'closure' | 'focus' | 'focusDetail' | 'plan';
 export const DEMO_READY = 'saql-demo-ready';
 
 const noop = () => undefined;

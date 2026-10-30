@@ -2,7 +2,7 @@
 import { useRef, useState } from 'react';
 import { Button, Field, Icons, Input, Select, Textarea, Toggle, cx } from '@/ui';
 import { putLocalFile } from '../media';
-import { DEMO_STEPS, type DemoSegment, type DemoStep, type MediaRef, type NamesSegment, type Segment, type SlidesSegment, type VideoSegment, type BlankSegment } from '../model';
+import { DEMO_SCENES, DEMO_SCENE_LABELS, DEMO_SCENE_STEPS, DEMO_STEP_LABELS, type DemoSegment, type DemoStepKey, type MediaRef, type NamesSegment, type Segment, type SlidesSegment, type VideoSegment, type BlankSegment } from '../model';
 import { expandPattern, naturalCompare } from '../nav';
 import { useMediaUrl } from '../segments/useMedia';
 import { MediaPicker, toast } from './MediaPicker';
@@ -11,13 +11,13 @@ export type Patch = (settings: Partial<Segment['settings']>) => void;
 
 const REPO_HINT = 'ضع الملف في app/public/show-media واكتب مساره هنا. حد GitHub للملف 100 م.ب (يُفضّل أقل من 50)، والأكبر ارفعه من الجهاز.';
 
-export function SegmentEditor({ seg, patch, demoTrips }: { seg: Segment; patch: Patch; demoTrips: { id: string; title: string }[] }) {
+export function SegmentEditor({ seg, patch }: { seg: Segment; patch: Patch }) {
   switch (seg.type) {
     case 'video': return <VideoEditor seg={seg} patch={patch} />;
     case 'slides': return <SlidesEditor seg={seg} patch={patch} />;
     case 'names': return <NamesEditor seg={seg} patch={patch} />;
     case 'blank': return <BlankEditor seg={seg} patch={patch} />;
-    case 'demo': return <DemoEditor seg={seg} patch={patch} trips={demoTrips} />;
+    case 'demo': return <DemoEditor seg={seg} patch={patch} />;
   }
 }
 
@@ -150,33 +150,25 @@ function BlankEditor({ seg, patch }: { seg: BlankSegment; patch: Patch }) {
   );
 }
 
-export const DEMO_STEP_LABELS: Record<DemoStep, string> = {
-  list: 'قائمة الرحلات',
-  focusTrip: 'تقريب رحلة واحدة',
-  trip: 'صفحة الرحلة',
-  document: 'وثيقة الرحلة',
-  schedule: 'الجدول الزمني',
-  budget: 'الميزانية',
-  plans: 'الخطتان أ وب',
-  back: 'الرجوع للقائمة',
-};
-
-function DemoEditor({ seg, patch, trips }: { seg: DemoSegment; patch: Patch; trips: { id: string; title: string }[] }) {
-  const on = new Set(seg.settings.steps);
+function DemoEditor({ seg, patch }: { seg: DemoSegment; patch: Patch }) {
+  const on = new Set(seg.settings.scenes);
   return (
     <div className="space-y-4">
-      <Field label="الرحلة المعروضة" hint="من البيانات التجريبية الثابتة. الديمو للقراءة فقط ولا يكتب في بيانات المنصة">
-        <Select value={seg.settings.tripId ?? ''} onChange={(e) => patch({ tripId: e.target.value || undefined })} options={[{ value: '', label: 'تلقائي (أول رحلة مكتملة)' }, ...trips.map((t) => ({ value: t.id, label: t.title }))]} />
-      </Field>
-      <div>
-        <span className="label">الخطوات (نقرة لكل خطوة)</span>
-        <div className="flex flex-wrap gap-2">
-          {DEMO_STEPS.map((k, i) => (
-            <button key={k} onClick={() => { const steps = DEMO_STEPS.filter((x) => (x === k ? !on.has(k) : on.has(x))); if (steps.length) patch({ steps }); }}className={cx('chip border', on.has(k) ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-ink-200 text-ink-500 line-through')}>
-              {i + 1}. {DEMO_STEP_LABELS[k]}
-            </button>
-          ))}
-        </div>
+      <p className="text-xs text-ink-500">الديمو بصفة مشارك من البيانات التجريبية الثابتة، للقراءة فقط ولا يكتب في بيانات المنصة. في العرض: الأرقام 1–4 تقفز إلى أول كل مشهد.</p>
+      <div className="space-y-2">
+        {DEMO_SCENES.map((k, i) => (
+          <button
+            key={k}
+            onClick={() => { const scenes = DEMO_SCENES.filter((x) => (x === k ? !on.has(k) : on.has(x))); if (scenes.length) patch({ scenes }); }}
+            className={cx('flex w-full items-start gap-3 rounded-xl border p-3 text-start transition', on.has(k) ? 'border-brand-600/40 bg-brand-50' : 'border-ink-100 opacity-60 hover:opacity-100')}
+          >
+            <span className={cx('grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold num', on.has(k) ? 'bg-brand-600 text-white' : 'bg-ink-100 text-ink-500')}>{i + 1}</span>
+            <span>
+              <span className="block text-sm font-medium text-ink-900">{DEMO_SCENE_LABELS[k]}</span>
+              <span className="block text-xs text-ink-500">{DEMO_SCENE_STEPS[k].map((st) => DEMO_STEP_LABELS[`${k}.${st}` as DemoStepKey]).join(' ← ')}</span>
+            </span>
+          </button>
+        ))}
       </div>
     </div>
   );
