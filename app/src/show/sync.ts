@@ -7,9 +7,35 @@ export type ShowMessage =
   | { type: 'config'; config: ShowConfig } // الأدمن حفظ إعدادات جديدة
   | { type: 'goto'; pos: Pos } // الأدمن ينقل العرض
   | { type: 'nav'; dir: 'next' | 'prev' } // ريموت من الأدمن
-  | { type: 'state'; pos: Pos; started: boolean; paused?: boolean } // العرض يبلّغ موضعه وحالة الجولة
+  | { type: 'state'; pos: Pos; started: boolean; paused?: boolean; blackout?: boolean; outline?: OutlineItem[]; steps?: number; remote?: RemoteInfo } // العرض يبلّغ حالته
   | { type: 'tour'; action: 'toggle' | 'play' | 'pause' } // تشغيل جولة الديمو أو إيقافها
+  | { type: 'blackout' } // الشاشة السوداء (تبديل)
+  | { type: 'remote'; action: 'renew' } // رمز جديد للتحكم من الجوال (يفصل الأجهزة المتصلة)
   | { type: 'hello' }; // نافذة فُتحت وتطلب الحالة
+
+export interface OutlineItem {
+  title: string;
+  type: 'slide' | 'demo';
+}
+/** حالة التحكم من الجوال كما تراها شاشة العرض */
+export type RemoteStatus = 'off' | 'connecting' | 'online' | 'offline';
+export interface RemoteInfo {
+  status: RemoteStatus;
+  code?: string;
+  remotes: number;
+}
+
+/** ضم قناتين: ما يُرسل يذهب لكلتيهما، وما يصل من أي منهما يصل للمشتركين */
+export function combineSync(...all: ShowSync[]): ShowSync {
+  return {
+    send: (m) => all.forEach((s) => s.send(m)),
+    subscribe: (cb) => {
+      const offs = all.map((s) => s.subscribe(cb));
+      return () => offs.forEach((off) => off());
+    },
+    close: () => all.forEach((s) => s.close()),
+  };
+}
 
 export interface ShowSync {
   send(msg: ShowMessage): void;

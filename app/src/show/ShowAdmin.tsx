@@ -7,6 +7,7 @@ import { DEMO_DEFAULTS, DEMO_PAGE_LABELS, DEMO_SCENES, DEMO_SCENE_LABELS, THEMES
 import { insertSegment, moveSegment, removeSegment, replaceSegment, sortSegments, stepCount, type Pos } from './nav';
 import { exportConfig, loadRepoConfig, parseConfig, saveConfig } from './storage';
 import { useShowConfig, useSync } from './useShow';
+import type { RemoteInfo } from './sync';
 import { DemoEditor } from './admin/DemoEditor';
 import { toast } from './admin/MediaPicker';
 import { mediaUsage } from './editor/usage';
@@ -108,7 +109,7 @@ export default function ShowAdmin() {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [step, setStep] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [live, setLive] = useState<{ pos: Pos; started: boolean; paused?: boolean; at: number } | null>(null);
+  const [live, setLive] = useState<{ pos: Pos; started: boolean; paused?: boolean; remote?: RemoteInfo; at: number } | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -125,7 +126,7 @@ export default function ShowAdmin() {
 
   useEffect(() => {
     document.title = 'محرّر العرض · صقل';
-    const off = sync.subscribe((m) => m.type === 'state' && setLive({ pos: m.pos, started: m.started, paused: m.paused, at: Date.now() }));
+    const off = sync.subscribe((m) => m.type === 'state' && setLive({ pos: m.pos, started: m.started, paused: m.paused, remote: m.remote, at: Date.now() }));
     sync.send({ type: 'hello' });
     return off;
   }, [sync]);
@@ -297,6 +298,22 @@ export default function ShowAdmin() {
         </Badge>
         <Button size="sm" variant="secondary" disabled={!connected} title="السابق" onClick={() => sync.send({ type: 'nav', dir: 'prev' })}><Icons.ChevronRight className="h-4 w-4" /></Button>
         <Button size="sm" variant="secondary" disabled={!connected} title="التالي" onClick={() => sync.send({ type: 'nav', dir: 'next' })}><Icons.ChevronLeft className="h-4 w-4" /></Button>
+        {connected && live?.remote && live.remote.status !== 'off' && (
+          <span className="flex items-center gap-1.5 rounded-full border border-ink-100 px-2.5 py-1 text-xs text-ink-600" title="افتح #/show-remote على الجوال وأدخل الرمز">
+            <Icons.Smartphone className="h-3.5 w-3.5" />
+            {live.remote.code ? (
+              <>
+                الجوال <b className="num text-ink-900" dir="ltr">{live.remote.code}</b>
+                {live.remote.remotes > 0 && <span className="num">· {live.remote.remotes}</span>}
+              </>
+            ) : live.remote.status === 'offline' ? 'الجوال: بلا إنترنت' : 'الجوال: جارٍ الاتصال'}
+            {live.remote.code && (
+              <button className="ms-1 text-brand-700 hover:underline" onClick={() => askConfirm({ title: 'رمز جديد للتحكم من الجوال؟', body: 'تنفصل كل الأجهزة المتصلة الآن وتحتاج الرمز الجديد.', cta: 'رمز جديد', run: () => sync.send({ type: 'remote', action: 'renew' }) })}>
+                رمز جديد
+              </button>
+            )}
+          </span>
+        )}
         {liveSeg?.type === 'demo' && (
           <Button size="sm" variant="secondary" icon={live?.paused ? <Icons.Play className="h-4 w-4" /> : <Icons.Pause className="h-4 w-4" />} onClick={() => sync.send({ type: 'tour', action: 'toggle' })}>
             {live?.paused ? 'شغّل الجولة' : 'أوقف الجولة'}

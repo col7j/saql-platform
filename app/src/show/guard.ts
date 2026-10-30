@@ -2,7 +2,7 @@
 // يُركَّب قبل تحميل المنصة (أول استيراد في main.tsx) فيشمل حتى توليد البيانات التجريبية عند أول تحميل.
 
 export const PLATFORM_PREFIX = 'saql.';
-export const isShowHash = (hash: string) => /^#\/show(-admin)?(?=$|[/?])/.test(hash);
+export const isShowHash = (hash: string) => /^#\/show(-admin|-remote)?(?=$|[/?])/.test(hash);
 
 interface StorageProto {
   setItem(key: string, value: string): void;

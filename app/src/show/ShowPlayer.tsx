@@ -1,11 +1,42 @@
 // شاشة العرض (#/show): ملء الشاشة، كليكر وأسهم ولمس، انتقالات ناعمة، تحميل مسبق، وتزامن مع شاشة التحكم.
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Maximize } from 'lucide-react';
 import { sceneStart, type Segment, type ShowConfig } from './model';
 import { preload } from './media';
 import { clampPos, followSegment, next, prev, skipSegment, sortSegments, stepCount, type Pos } from './nav';
 import { keyAction, sceneKey, touchAction } from './keys';
 import type { DemoNav } from './demo/DemoView';
+import { useRemoteDisplay } from './remote/display';
+import { combineSync, type RemoteInfo, type ShowMessage } from './sync';
+
+const CODE_KEY = 'show-remote-code';
+const persistCode = (shown: boolean) => {
+  try {
+    localStorage.setItem(CODE_KEY, shown ? 'shown' : 'hidden');
+  } catch {
+    /* تفضيل على هذا الجهاز فقط */
+  }
+};
+
+const STATUS_LABEL: Record<RemoteInfo['status'], string> = { off: '', connecting: 'جارٍ الاتصال…', online: 'متصل', offline: 'بلا إنترنت' };
+
+/** شريحة صغيرة في الزاوية: رابط الريموت ورمزه وحالته وعدد الأجوال المتصلة */
+function RemoteChip({ info }: { info: RemoteInfo }) {
+  return (
+    <div className="show-code" role="status">
+      <span className="show-code-dot" data-status={info.status} />
+      {info.code ? (
+        <>
+          <span className="show-code-label">الريموت</span>
+          <span className="show-code-num num" dir="ltr">{info.code}</span>
+          <span className="show-code-label">{info.remotes ? (info.remotes === 1 ? 'جوال متصل' : `${info.remotes} أجهزة`) : '#/show-remote'}</span>
+        </>
+      ) : (
+        <span className="show-code-label">التحكم من الجوال: {STATUS_LABEL[info.status]}</span>
+      )}
+    </div>
+  );
+}
 import { SegmentView, hidesCornerMark } from './segments';
 import { Backdrop, heroLogo, markLogo } from './segments/Fallback';
 import { useShowConfig, useSync } from './useShow';
@@ -35,8 +66,18 @@ function toggleFullscreen() {
 }
 
 export default function ShowPlayer() {
-  const sync = useSync();
-  const [cfg, setCfg] = useShowConfig(sync);
+  const local = useSync();
+  const [cfg, setCfg] = useShowConfig(local);
+  // التحكم من الجوال (Firebase) قناة ثانية تُضم للمحلية؛ بلا إعداد أو بلا إنترنت تبقى المحلية وحدها
+  const remote = useRemoteDisplay();
+  const sync = useMemo(() => (remote.sync ? combineSync(local, remote.sync) : local), [local, remote.sync]);
+  const [codeShown, setCodeShown] = useState(() => {
+    try {
+      return localStorage.getItem(CODE_KEY) !== 'hidden';
+    } catch {
+      return true;
+    }
+  });
   const [pos, setPos] = useState<Pos>({ seg: 0, step: 0 });
   const [started, setStarted] = useState(false);
   const [blackout, setBlackout] = useState(false);
@@ -48,8 +89,8 @@ export default function ShowPlayer() {
   // الطبقات: الفقرة الحالية فوق، والسابقة تحتها حتى يكتمل الظهور التدريجي
   const [layers, setLayers] = useState<{ id: string; step: number; leaving: boolean }[]>([]);
 
-  const ref = useRef({ cfg, pos, started, paused });
-  ref.current = { cfg, pos, started, paused };
+  const ref = useRef({ cfg, pos, started, paused, blackout, remote: remote.info, renew: remote.renew });
+  ref.current = { cfg, pos, started, paused, blackout, remote: remote.info, renew: remote.renew };
 
   const list = cfg ? sortSegments(cfg.segments) : [];
   const current = list[pos.seg];
@@ -84,15 +125,23 @@ export default function ShowPlayer() {
     if (cfg && before && before !== cfg) setPos((p) => followSegment(before, cfg, p));
   }, [cfg]);
 
+  // الحالة لشاشة التحكم والجوال: الموضع، والجولة، والشاشة السوداء، وقائمة الفقرات، وحالة التحكم من الجوال
+  const stateMsg = (): ShowMessage => {
+    const { cfg, pos, started, paused, blackout } = ref.current;
+    const l = cfg ? sortSegments(cfg.segments) : [];
+    return { type: 'state', pos, started, paused, blackout, steps: l[pos.seg] ? stepCount(l[pos.seg]) : 1, outline: l.map((s) => ({ title: s.title, type: s.type })), remote: ref.current.remote };
+  };
   useEffect(() => {
     if (cfg) preloadAround(cfg, pos);
-    sync.send({ type: 'state', pos, started, paused });
-  }, [cfg, pos, started, paused, sync]);
+    sync.send(stateMsg());
+  }, [cfg, pos, started, paused, blackout, sync, remote.info]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(
     () =>
       sync.subscribe((m) => {
-        if (m.type === 'hello') sync.send({ type: 'state', pos: ref.current.pos, started: ref.current.started, paused: ref.current.paused });
+        if (m.type === 'hello') sync.send(stateMsg());
+        if (m.type === 'blackout') setBlackout((b) => !b);
+        if (m.type === 'remote' && m.action === 'renew') ref.current.renew();
         if (m.type === 'goto') go((c) => clampPos(c, m.pos));
         if (m.type === 'nav') nav(m.dir);
         if (m.type === 'tour') setPaused((p) => (m.action === 'toggle' ? !p : m.action === 'pause'));
@@ -142,6 +191,7 @@ export default function ShowPlayer() {
       else if (a === 'last') go((c) => ({ seg: c.segments.length - 1, step: 0 }));
       else if (a === 'fullscreen') toggleFullscreen();
       else if (a === 'blackout') setBlackout((b) => !b);
+      else if (a === 'code') setCodeShown((v) => (persistCode(!v), !v));
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -206,6 +256,9 @@ export default function ShowPlayer() {
         <img src={markLogo(cfg.theme)} alt="" draggable={false} />
       </div>
 
+      {/* رمز التحكم من الجوال: يُخفى ويظهر بـ C */}
+      {started && codeShown && remote.info.status !== 'off' && !blackout && <RemoteChip info={remote.info} />}
+
       <div className="show-off z-40" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none', transition: 'opacity 500ms ease' }} />
 
       {!started && (
@@ -229,7 +282,7 @@ export default function ShowPlayer() {
                 <p className="show-in show-help mt-[4vh]" style={{ ['--i' as string]: 3 }}>
                   {list.length} فقرات · التالي: → أو PageDown أو المسافة · السابق: ← أو PageUp
                   <br />
-                  F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · K تشغيل الجولة أو إيقافها · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
+                  F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · K تشغيل الجولة أو إيقافها · C رمز الريموت · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
                 </p>
               </div>
             </div>

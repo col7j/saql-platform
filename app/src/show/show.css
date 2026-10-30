@@ -111,6 +111,13 @@
 .show-dot { display: block; border-radius: 999px; transition: all 500ms ease; height: max(6px, calc(9 * var(--u))); width: max(6px, calc(9 * var(--u))); background: rgb(var(--t-fg) / .28); }
 .show-dot.done { background: rgb(var(--t-fg) / .8); }
 .show-dot.now { background: rgb(var(--t-em)); width: max(22px, calc(32 * var(--u))); }
+/* رمز التحكم من الجوال في الزاوية السفلى */
+.show-code { position: absolute; inset-inline-end: calc(var(--b-safe) * var(--u) * .5); bottom: calc(var(--b-safe) * var(--u) * .4); z-index: 30; display: flex; align-items: center; gap: .6em; padding: .45em 1em; border-radius: 999px; font-size: max(13px, calc(18 * var(--u))); background: rgb(var(--t-panel) / .72); color: rgb(var(--t-fg)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 0 0 1px rgb(var(--t-line) / .1); }
+.show-code-num { font-weight: var(--b-w-black); letter-spacing: .14em; font-size: 1.35em; color: rgb(var(--t-em)); }
+.show-code-label { color: rgb(var(--t-fg) / var(--t-fg-muted)); }
+.show-code-dot { width: .6em; height: .6em; border-radius: 999px; background: rgb(var(--b-grey)); }
+.show-code-dot[data-status='online'] { background: rgb(var(--b-sky)); }
+.show-code-dot[data-status='offline'] { background: rgb(var(--b-orange)); }
 /* حالة الجولة وشريط مدة الخطوة الحالية */
 .show-tour-state { display: block; height: max(12px, calc(16 * var(--u))); width: max(12px, calc(16 * var(--u))); color: rgb(var(--t-fg) / .8); }
 .show-tour-bar { position: relative; height: max(2px, calc(3 * var(--u))); border-radius: 999px; background: rgb(var(--t-fg) / .16); overflow: hidden; }

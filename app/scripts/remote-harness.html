@@ -1,0 +1,16 @@
+<!doctype html>
+<!-- تجربة الريموت على جهاز واحد (خادم التطوير فقط): شاشة العرض وجوال جنباً إلى جنب عبر الخادم المحلي ?remote=loopback -->
+<html lang="ar" dir="rtl">
+<meta charset="utf-8" />
+<title>تجربة الريموت</title>
+<style>
+  body { margin: 0; background: #111; height: 100vh; overflow: hidden; font: 14px system-ui; color: #ccc; }
+  #show { position: absolute; left: 24px; top: 140px; width: 1920px; height: 1080px; border: 0; transform: scale(.72); transform-origin: 0 0; border-radius: 12px; }
+  #phone { position: absolute; right: 40px; top: 60px; width: 390px; height: 844px; border: 10px solid #222; border-radius: 44px; }
+  p { position: absolute; margin: 0; }
+</style>
+<p style="left:24px;top:100px">شاشة العرض (#/show)</p>
+<p style="right:40px;top:30px">الجوال (#/show-remote)</p>
+<iframe id="show" src="/?remote=loopback#/show"></iframe>
+<iframe id="phone" src="/?remote=loopback#/show-remote"></iframe>
+</html>
