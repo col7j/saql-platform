@@ -164,7 +164,9 @@ export default function ShowPlayer() {
       {!list.length && <Backdrop />}
 
       {/* شعار الزاوية: حجم وموقع ثابتان، ويغيب حين يكون الشعار نفسه هو الشاشة */}
-      <img src={LOGO_MARK} alt="" className="show-mark" style={{ opacity: started && !hidesCornerMark(current) && !blackout ? 1 : 0 }} draggable={false} />
+      <div className="show-mark" style={{ opacity: started && !hidesCornerMark(current) && !blackout ? 1 : 0 }}>
+        <img src={LOGO_MARK} alt="" draggable={false} />
+      </div>
 
       <div className="absolute inset-0 z-40 bg-black" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none', transition: 'opacity 500ms ease' }} />
 

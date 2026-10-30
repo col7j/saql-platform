@@ -21,7 +21,8 @@ npm run dev
   - `model.ts` الفقرات وأنواعها، `nav.ts` الترتيب والتنقل (منطق نقي)، `storage.ts` مفتاح `show-config` واستيراد/تصدير وshow.json، `media.ts` الوسائط وIndexedDB والتحميل المسبق.
   - `sync.ts` واجهة `ShowSync` بتنفيذ BroadcastChannel. لاستبدالها بـ Firebase/Supabase اكتب تنفيذاً جديداً للواجهة وغيّر `useSync` في `useShow.ts` فقط.
   - `guard.ts` يمنع في نوافذ العرض أي كتابة على مفاتيح المنصة `saql.*`.
-  - `demo/` الديمو: `DemoFrame` يعرض شاشات المنصة الحقيقية في iframe (`#/show/demo`) فوق لقطة ثابتة ومتجر للقراءة فقط، و`DemoView` كاميرا بتحويلات CSS (`camera.ts`).
+  - `show.css` اللغة البصرية لشاشات العرض (متغيرات مبنية على `tokens.css` فقط)، و`segments/` مكونات الفقرات.
+  - `demo/` الديمو بصفة مشارك: `data.ts` اللقطة الثابتة وإثراؤها في الذاكرة ووضع القراءة فقط، `DemoFrame` شاشات المنصة الحقيقية في iframe (`#/show/demo`)، `DemoView` المشاهد وخطواتها والكاميرا، و`camera.ts` حساب التقريب المقروء (منطق نقي مختبَر).
 
 القرارات والافتراضات في `../ASSUMPTIONS.md`.
 

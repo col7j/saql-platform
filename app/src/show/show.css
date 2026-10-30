@@ -60,7 +60,9 @@
 .show-center { position: absolute; inset: 0; display: grid; place-items: center; padding: 9vh 8vw; text-align: center; }
 
 /* الشعار: حجم وموقع ثابتان في كل الشاشات */
-.show-mark { position: absolute; inset-inline-start: 3.2vw; top: 4.2vh; height: clamp(40px, 5.6vh, 64px); width: auto; z-index: 30; pointer-events: none; transition: opacity 600ms ease; }
+.show-mark { position: absolute; inset-inline-start: 3.2vw; top: 4.2vh; z-index: 30; pointer-events: none; transition: opacity 600ms ease;
+  padding: clamp(8px, 1vh, 12px); border-radius: 18px; background: rgb(var(--c-ink-900) / .55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 0 0 1px rgb(255 255 255 / .08); }
+.show-mark img { display: block; height: clamp(36px, 5vh, 56px); width: auto; }
 
 /* ظهور متتابع: --i ترتيب العنصر */
 @keyframes show-rise { from { opacity: 0; transform: translateY(28px); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
