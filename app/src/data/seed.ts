@@ -459,7 +459,7 @@ export function buildSeed(): DB {
   [...ids, ...persons.filter((p) => p.kind === 'staff').map((p) => p.id)].forEach((pid) => notify(pid, 'schedule_started', 'بدأ جدول رحلة قُباء الداخلية', '/app/trips/t4', 3));
   ids.forEach((pid) => notify(pid, 'trip_published', 'نُشرت رحلة سَلع الداخلية', '/app/trips/t5', 26, true));
   notify(LEADER_ID, 'budget_request', 'ميزانية رحلة العُلا تتجاوز المرصود وتنتظر قرارك', '/app/approvals', 5);
-  notify(LEADER_ID, 'committee_member_request', 'طلب إضافة "زياد العتيبي" للجنة الإعلامية', '/app/committees/c_media', 20);
+  notify(LEADER_ID, 'committee_member_request', 'طلب إضافة "عبدالعزيز عيسى الحاج" للجنة الإعلامية', '/app/committees/c_media', 20);
   notify(LEADER_ID, 'deadline_passed', 'فات موعد رفع الخطة المبسطة لرحلة العقيق الخارجية', '/app/trips/t10', 30);
   notify('s1', 'approval_submitted', 'رفع قائد أُحُد الخطة التفصيلية لرحلة العُلا', '/app/trips/t7', 22);
   notify('s5', 'budget_request', 'طلب ميزانية رحلة العقيق الداخلية (ضمن المرصود)', '/app/finance?tab=requests', 25);
@@ -505,7 +505,7 @@ export function buildSeed(): DB {
     ],
     committees,
     memberships,
-    memberRequests: [{ id: 'mr1', committeeId: 'c_media', personId: 'u13', requestedBy: 's2', note: 'لديه خبرة في التصوير والمونتاج', status: 'pending', at: iso(addDays(T, -1)) }],
+    memberRequests: [{ id: 'mr1', committeeId: 'c_media', personId: 'u13', requestedBy: 's6', note: 'لديه خبرة في التصوير والمونتاج', status: 'pending', at: iso(addDays(T, -1)) }],
     tasks,
     taskTemplates,
     trips,

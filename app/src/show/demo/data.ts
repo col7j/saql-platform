@@ -8,7 +8,7 @@ import { canViewTripPlans, getCapabilities } from '@/domain/permissions';
 import type { DB } from '@/domain/types';
 import { useStore } from '@/state/store';
 
-/** المشارك الذي يُعرض الديمو بصفته: يوسف الرحيلي من مجموعة أُحُد (ليس قائد المجموعة) */
+/** المشارك الذي يُعرض الديمو بصفته: أصيل نايف الجهني من مجموعة أُحُد (ليس قائد المجموعة) */
 export const DEMO_PARTICIPANT = 'u2';
 
 /** المعرّفات التي تقف عندها الكاميرا */
