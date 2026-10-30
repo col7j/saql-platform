@@ -202,7 +202,7 @@ export default function DemoView({ seg, step }: { seg: DemoSegment; step: number
   if (failed) return <Fallback title={seg.title} reason="تعذّر تحميل شاشات المنصة" />;
 
   return (
-    <div ref={root} className="show-dark absolute inset-0 overflow-hidden" onClick={onClick} onPointerUp={(e) => e.pointerType === 'mouse' && e.stopPropagation()}>
+    <div ref={root} className="show-bg absolute inset-0 overflow-hidden" onClick={onClick} onPointerUp={(e) => e.pointerType === 'mouse' && e.stopPropagation()}>
       <div
         className="absolute left-0 top-0 origin-top-left will-change-transform"
         style={{ width: PAGE_W, height: pageH, transform: camTransform(cam), transition: cam.instant ? 'none' : `transform ${CAM_MS}ms ${EASE}` }}

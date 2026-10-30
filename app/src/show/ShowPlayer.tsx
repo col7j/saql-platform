@@ -5,11 +5,12 @@ import type { Segment, ShowConfig } from './model';
 import { preload } from './media';
 import { clampPos, followSegment, next, prev, skipSegment, sortSegments, stepCount, type Pos } from './nav';
 import { keyAction, touchAction } from './keys';
-import { SegmentView } from './segments';
+import { SegmentView, hidesCornerMark } from './segments';
+import { Backdrop, LOGO_MARK, LOGO_ONDARK } from './segments/Fallback';
 import { useShowConfig, useSync } from './useShow';
 import './show.css';
 
-const FADE_MS = 700;
+const FADE_MS = 900;
 
 function preloadAround(cfg: ShowConfig, pos: Pos) {
   const list = sortSegments(cfg.segments);
@@ -91,6 +92,11 @@ export default function ShowPlayer() {
       const a = keyAction(e);
       if (!a) return;
       e.preventDefault();
+      // أول ضغطة على شاشة البداية تبدأ العرض فقط ولا تتخطى الفقرة الأولى
+      if (!ref.current.started && a !== 'fullscreen') {
+        if (a === 'next') setStarted(true);
+        return;
+      }
       if (a === 'next') go(next);
       else if (a === 'prev') go(prev);
       else if (a === 'first') go(() => ({ seg: 0, step: 0 }));
@@ -138,41 +144,49 @@ export default function ShowPlayer() {
         const seg = list.find((s) => s.id === l.id);
         if (!seg) return null;
         return (
-          <div key={l.id} className="show-layer" style={l.leaving ? undefined : { animation: `show-fade ${FADE_MS}ms ease both` }}>
+          <div key={l.id} className={`show-layer ${l.leaving ? 'leaving' : 'entering'}`}>
             <SegmentView seg={seg} step={Math.min(l.step, stepCount(seg) - 1)} active={started && !l.leaving} onSkip={skip} />
           </div>
         );
       })}
-      {!list.length && <div className="show-dark absolute inset-0" />}
+      {!list.length && <Backdrop />}
 
-      <div className="show-layer bg-black" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none' }} />
+      {/* شعار الزاوية: حجم وموقع ثابتان، ويغيب حين يكون الشعار نفسه هو الشاشة */}
+      <img src={LOGO_MARK} alt="" className="show-mark" style={{ opacity: started && !hidesCornerMark(current) && !blackout ? 1 : 0 }} draggable={false} />
+
+      <div className="absolute inset-0 z-40 bg-black" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none', transition: 'opacity 500ms ease' }} />
 
       {!started && (
-        <div className="absolute inset-0 grid place-items-center bg-black/70 text-center backdrop-blur-sm" onPointerUp={(e) => e.stopPropagation()}>
-          <div>
-            <p className="text-3xl font-semibold">{cfg.title}</p>
-            <p className="mt-2 text-sm text-white/60">{list.length} فقرات</p>
-            <button
-              autoFocus
-              className="mt-8 rounded-full bg-brand-600 px-10 py-4 text-lg font-medium text-white shadow-lg transition hover:bg-brand-500"
-              onClick={() => {
-                setStarted(true);
-                if (!document.fullscreenElement) toggleFullscreen();
-              }}
-            >
-              ابدأ العرض
-            </button>
-            <p className="mt-6 text-xs leading-loose text-white/50">
-              التالي: → أو PageDown أو المسافة · السابق: ← أو PageUp
-              <br />
-              F ملء الشاشة · B شاشة سوداء · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
-            </p>
-          </div>
+        <div className="absolute inset-0 z-50" onPointerUp={(e) => e.stopPropagation()}>
+          <Backdrop>
+            <div className="show-center">
+              <div className="flex flex-col items-center">
+                <img src={LOGO_ONDARK} alt="صقل" className="show-in h-[26vh] w-auto" style={{ ['--i' as string]: 0 }} draggable={false} />
+                <h1 className="show-title show-in mt-[4vh]" style={{ ['--i' as string]: 1, fontSize: 'clamp(40px, min(4.6vw, 8.5vh), 96px)' }}>{cfg.title}</h1>
+                <button
+                  autoFocus
+                  className="show-in mt-[5vh] rounded-full bg-brand-600 px-[2.6em] py-[.9em] text-[clamp(18px,1.4vw,26px)] font-bold text-white shadow-[0_20px_60px_rgb(0_185_209/.35)] ring-1 ring-white/15 transition hover:bg-brand-500"
+                  style={{ ['--i' as string]: 2 }}
+                  onClick={() => {
+                    setStarted(true);
+                    if (!document.fullscreenElement) toggleFullscreen();
+                  }}
+                >
+                  ابدأ العرض
+                </button>
+                <p className="show-in mt-[4vh] text-[clamp(13px,.85vw,16px)] leading-loose text-white/55" style={{ ['--i' as string]: 3 }}>
+                  {list.length} فقرات · التالي: → أو PageDown أو المسافة · السابق: ← أو PageUp
+                  <br />
+                  F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
+                </p>
+              </div>
+            </div>
+          </Backdrop>
         </div>
       )}
 
       {started && (
-        <button className="show-chrome absolute right-4 top-4 rounded-full bg-white/10 p-2.5 text-white/70 backdrop-blur hover:bg-white/20" title="ملء الشاشة (F)" onPointerUp={(e) => e.stopPropagation()} onClick={toggleFullscreen}>
+        <button className="show-chrome show-glass absolute end-[3.2vw] top-[4.2vh] z-30 !p-[.7em]" title="ملء الشاشة (F)" onPointerUp={(e) => e.stopPropagation()} onClick={toggleFullscreen}>
           <Maximize className="h-5 w-5" />
         </button>
       )}

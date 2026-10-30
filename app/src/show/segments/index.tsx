@@ -1,8 +1,8 @@
-// عرض كل نوع فقرة. كل مكوّن يأخذ الخطوة الحالية فقط، والتنقل نفسه في nav.ts.
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+// عرض كل نوع فقرة بأسلوب المؤتمرات. كل مكوّن يأخذ الخطوة الحالية فقط، والتنقل نفسه في nav.ts.
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ChevronsLeft, Volume2 } from 'lucide-react';
 import type { BlankSegment, NamesSegment, Segment, SlidesSegment, VideoSegment } from '../model';
-import { Fallback, SegmentBoundary } from './Fallback';
+import { Backdrop, Fallback, LOGO_ONDARK, SegmentBoundary } from './Fallback';
 import { useMediaUrl } from './useMedia';
 
 const DemoView = lazy(() => import('../demo/DemoView'));
@@ -14,6 +14,11 @@ export interface SegProps<S extends Segment = Segment> {
   active: boolean;
   onSkip: () => void;
 }
+
+/** الفقرات التي يكون الشعار فيها هو العنصر الرئيسي أو الشاشة سوداء: لا يظهر شعار الزاوية */
+export const hidesCornerMark = (seg?: Segment) => seg?.type === 'blank';
+
+const order = (i: number) => ({ ['--i' as string]: i }) as CSSProperties;
 
 export function SegmentView(p: SegProps) {
   return (
@@ -31,7 +36,7 @@ function Inner(p: SegProps) {
     case 'blank': return <BlankView {...(p as SegProps<BlankSegment>)} />;
     case 'demo':
       return (
-        <Suspense fallback={<div className="show-dark absolute inset-0" />}>
+        <Suspense fallback={<Backdrop />}>
           <DemoView seg={p.seg} step={p.step} active={p.active} />
         </Suspense>
       );
@@ -63,41 +68,51 @@ function VideoView({ seg, active, onSkip }: SegProps<VideoSegment>) {
 
   if (error || failed) return <Fallback title={seg.title} reason={error ?? failed} />;
   return (
-    <div className="absolute inset-0 bg-black">
-      {url && (
-        <video
-          ref={ref}
-          src={url}
-          className="h-full w-full object-contain"
-          playsInline
-          preload="auto"
-          onEnded={() => active && seg.settings.autoAdvance && onSkip()}
-          onError={() => setFailed('تعذّر تشغيل ملف الفيديو')}
-        />
-      )}
-      <div className="show-chrome absolute bottom-6 left-6 flex gap-2" onPointerDown={stop} onPointerUp={stop}>
+    <Backdrop>
+      <div className="show-center">
+        {url && (
+          <video
+            ref={ref}
+            src={url}
+            className="show-media show-fade h-auto w-auto"
+            playsInline
+            preload="auto"
+            onEnded={() => active && seg.settings.autoAdvance && onSkip()}
+            onError={() => setFailed('تعذّر تشغيل ملف الفيديو')}
+          />
+        )}
+      </div>
+      <div className="show-chrome absolute bottom-[4.5vh] left-[3.2vw] z-20 flex gap-3" onPointerDown={stop} onPointerUp={stop}>
         {forcedMute && (
-          <button className="rounded-full bg-white/15 px-4 py-2 text-sm backdrop-blur hover:bg-white/25" onClick={() => { if (ref.current) ref.current.muted = false; setForcedMute(false); }}>
-            <Volume2 className="inline h-4 w-4" /> تشغيل الصوت
+          <button className="show-glass" onClick={() => { if (ref.current) ref.current.muted = false; setForcedMute(false); }}>
+            <Volume2 className="h-[1.1em] w-[1.1em]" /> تشغيل الصوت
           </button>
         )}
         {seg.settings.showSkip && (
-          <button className="rounded-full bg-white/15 px-4 py-2 text-sm backdrop-blur hover:bg-white/25" onClick={onSkip}>
-            تخطٍّ <ChevronsLeft className="inline h-4 w-4" />
+          <button className="show-glass" onClick={onSkip}>
+            تخطٍّ <ChevronsLeft className="h-[1.1em] w-[1.1em]" />
           </button>
         )}
       </div>
-    </div>
+    </Backdrop>
   );
 }
 
-function Slide({ src, fit, visible }: { src: SlidesSegment['settings']['slides'][number]; fit: string; visible: boolean }) {
+function Slide({ src, fit, visible, title }: { src: SlidesSegment['settings']['slides'][number]; fit: string; visible: boolean; title: string }) {
   const { url, error } = useMediaUrl(src);
   const [failed, setFailed] = useState(false);
-  if (error || failed) return visible ? <Fallback reason={error ?? 'تعذّر تحميل الشريحة'} /> : null;
-  return url ? (
-    <img src={url} alt="" draggable={false} decoding="async" onError={() => setFailed(true)} className="show-slide" style={{ objectFit: fit as 'contain', opacity: visible ? 1 : 0 }} />
-  ) : null;
+  if (error || failed) return visible ? <Fallback title={title} reason={error ?? 'تعذّر تحميل الشريحة'} /> : null;
+  if (!url) return null;
+  // «تملأ الشاشة» حتى الحواف، و«كاملة» على نفس الخلفية الداكنة بلا حواف بيضاء
+  return (
+    <div className="show-slide" style={{ opacity: visible ? 1 : 0, transform: visible ? 'none' : 'scale(.985)' }}>
+      {fit === 'cover' ? (
+        <img src={url} alt="" draggable={false} decoding="async" onError={() => setFailed(true)} className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <img src={url} alt="" draggable={false} decoding="async" onError={() => setFailed(true)} className="show-media h-auto w-auto" />
+      )}
+    </div>
+  );
 }
 
 function SlidesView({ seg, step }: SegProps<SlidesSegment>) {
@@ -105,49 +120,62 @@ function SlidesView({ seg, step }: SegProps<SlidesSegment>) {
   if (!slides.length) return <Fallback title={seg.title} reason="لا توجد شرائح في هذه الفقرة" />;
   // الشريحة الحالية وجارتاها فقط في الصفحة: انتقال ناعم بلا تحميل كل الملفات في الذاكرة
   return (
-    <div className="absolute inset-0 bg-black">
-      {slides.map((s, i) => (Math.abs(i - step) <= 1 ? <Slide key={i} src={s} fit={fit} visible={i === step} /> : null))}
-    </div>
+    <Backdrop glow={fit !== 'cover'}>
+      {slides.map((s, i) => (Math.abs(i - step) <= 1 ? <Slide key={i} src={s} fit={fit} visible={i === step} title={seg.title} /> : null))}
+    </Backdrop>
   );
 }
 
+/** الأسماء: شاشة العنوان أولاً، ثم اسم ضخم واحد في المنتصف (أو دفعة صغيرة) مع عدّاد */
 function NamesView({ seg, step }: SegProps<NamesSegment>) {
-  const { names, perStep, columns, heading } = seg.settings;
-  const shown = Math.min(names.length, step * perStep);
-  const latest = Math.max(0, shown - perStep);
-  const cols = Math.min(columns, Math.max(1, names.length));
-  const rows = Math.max(1, Math.ceil(names.length / cols));
-  // حجم الخط يتناسب مع عدد الصفوف والأعمدة ليتسع الكل في الشاشة دون تمرير
-  const size = `min(${(6.4 / cols).toFixed(2)}vw, ${(62 / rows).toFixed(2)}vh, 72px)`;
+  const { names, perStep, heading } = seg.settings;
+  const title = heading || seg.title;
+  if (step === 0 || !names.length) {
+    return (
+      <Backdrop>
+        <div className="show-center">
+          <div className="flex flex-col items-center gap-[4vh]">
+            <h1 className="show-title show-in" style={order(0)}>{title}</h1>
+            <div className="show-rule show-in" style={order(1)} />
+            {names.length > 0 && <p className="show-kicker show-in" style={order(2)}>{names.length} {names.length > 10 ? 'اسماً' : 'أسماء'}</p>}
+          </div>
+        </div>
+      </Backdrop>
+    );
+  }
+  const from = (step - 1) * perStep;
+  const batch = names.slice(from, from + perStep);
+  const last = Math.min(names.length, from + perStep);
   return (
-    <div className="show-dark absolute inset-0 flex flex-col items-center px-[6vw] py-[6vh]">
-      <h1 className="show-rise text-center font-semibold leading-tight text-white" style={{ fontSize: 'min(4.4vw, 9vh)' }}>
-        {heading || seg.title}
-      </h1>
-      <div className="mt-[1.5vh] h-[3px] w-[10vw] rounded-full bg-accent-400" />
-      <ol className="mt-[5vh] grid w-full flex-1 content-center gap-x-[4vw] gap-y-[1.6vh]" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
-        {names.map((n, i) => (
-          <li
-            key={i}
-            className={i < shown ? 'show-rise text-center font-medium' : 'invisible text-center'}
-            style={{ fontSize: size, lineHeight: 1.35, color: i >= latest && i < shown ? 'rgb(var(--c-accent-300))' : 'white', transition: 'color 1.2s ease' }}
-          >
-            {n}
-          </li>
-        ))}
-      </ol>
-    </div>
+    <Backdrop>
+      <p className="show-kicker show-fade absolute left-0 right-0 top-[6vh] text-center">{title}</p>
+      <div className="show-center">
+        <div key={step} className="flex flex-col items-center gap-[3vh]">
+          {batch.map((n, i) => (
+            <div key={n + i} className="show-display show-reveal" style={{ animationDelay: `${i * 260}ms`, fontSize: batch.length > 1 ? 'clamp(48px, min(5vw, 9vh), 96px)' : undefined }}>
+              {n}
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* العدّاد: الرقم الحالي وحده بلون التوكيد */}
+      <p className="show-kicker absolute bottom-[5vh] left-0 right-0 text-center num">
+        <span className="show-em font-bold">{last}</span> / {names.length}
+      </p>
+    </Backdrop>
   );
 }
 
 function BlankView({ seg }: SegProps<BlankSegment>) {
   if (seg.settings.variant === 'black') return <div className="absolute inset-0 bg-black" />;
   return (
-    <div className="show-dark absolute inset-0 grid place-items-center text-center">
-      <div className="show-rise">
-        <img src="./brand/logo-vertical.svg" alt="صقل" className="mx-auto h-[36vh] w-auto" draggable={false} />
-        {seg.settings.caption && <p className="mt-[5vh] font-semibold text-white" style={{ fontSize: 'min(3.6vw, 7vh)' }}>{seg.settings.caption}</p>}
+    <Backdrop>
+      <div className="show-center">
+        <div className="flex flex-col items-center">
+          <img src={LOGO_ONDARK} alt="صقل" className="show-in h-[38vh] w-auto" style={order(0)} draggable={false} />
+          {seg.settings.caption && <p className="show-title show-in mt-[5vh]" style={{ ...order(1), fontSize: 'clamp(40px, min(4.4vw, 8vh), 96px)' }}>{seg.settings.caption}</p>}
+        </div>
       </div>
-    </div>
+    </Backdrop>
   );
 }
