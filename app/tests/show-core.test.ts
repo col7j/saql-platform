@@ -2,9 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { DB_VERSION } from '@/data/seed';
 import { DEFAULT_CONFIG, DEMO_SCENES, type Segment, type ShowConfig } from '@/show/model';
-import { addSegment, clampPos, followSegment, isEnd, moveSegment, next, normalize, prev, removeSegment, skipSegment, sortSegments, stepCount, updateSegment } from '@/show/nav';
+import { insertSegment, clampPos, followSegment, isEnd, moveSegment, next, normalize, prev, removeSegment, skipSegment, sortSegments, stepCount, updateSegment } from '@/show/nav';
 import { SHOW_KEY, clearSavedConfig, exportConfig, loadInitialConfig, loadSavedConfig, parseConfig, saveConfig } from '@/show/storage';
 import { guardPlatformWrites, isShowHash } from '@/show/guard';
+import { makeElement } from '@/show/slides/model';
+import { templateSegment } from '@/show/slides/templates';
 import { createLocalSync, type ShowMessage } from '@/show/sync';
 
 class MemStorage {
@@ -15,10 +17,11 @@ class MemStorage {
   clear() { this.m.clear(); }
 }
 
-const seg = (id: string, order: number, extra: Partial<Segment> = {}): Segment => ({ id, type: 'blank', title: id, order, settings: { variant: 'black' }, ...extra }) as Segment;
+const seg = (id: string, order: number, extra: Partial<Segment> = {}): Segment => ({ id, type: 'slide', title: id, order, settings: { bg: { kind: 'black' }, mark: false, elements: [] }, ...extra }) as Segment;
 const cfgOf = (segments: Segment[]): ShowConfig => ({ ...DEFAULT_CONFIG, segments });
-const slides = (id: string, order: number, n: number): Segment => ({ id, type: 'slides', title: id, order, settings: { fit: 'contain', slides: Array.from({ length: n }, (_, i) => ({ kind: 'url' as const, src: `s${i}.png` })) } });
-const names = (id: string, order: number, list: string[], perStep: number): Segment => ({ id, type: 'names', title: id, order, settings: { heading: '', names: list, perStep, columns: 2 } });
+/** شريحة فيها n خطوات: عنصر يظهر مع كل نقرة */
+const slides = (id: string, order: number, n: number): Segment => ({ id, type: 'slide', title: id, order, settings: { bg: { kind: 'theme', glow: true }, mark: true, elements: Array.from({ length: Math.max(0, n) }, (_, i) => makeElement('text', `${id}_${i}`, { step: i })) } });
+const names = (id: string, order: number, list: string[], perStep: number): Segment => templateSegment('names', id, order, { title: id, names: list, perStep });
 
 describe('ترتيب الفقرات', () => {
   it('يرتّب حسب order ويثبّت المتساوي بترتيب الإدخال', () => {
@@ -34,14 +37,16 @@ describe('ترتيب الفقرات', () => {
     expect(sortSegments(moveSegment(list, 'b', -3)).map((s) => s.id)).toEqual(['b', 'a', 'c']);
     expect(moveSegment(list, 'zz', 0).map((s) => s.id)).toEqual(['a', 'b', 'c']);
   });
-  it('الإضافة في الآخر بإعدادات افتراضية، والحذف يعيد الترقيم', () => {
-    const added = addSegment([seg('a', 0), seg('b', 3)], 'demo', 'ديمو', 'd');
-    expect(added[added.length - 1]).toMatchObject({ id: 'd', order: 2, settings: { scenes: [...DEMO_SCENES] } });
+  it('الإدراج بعد فقرة أو في الآخر، والحذف يعيد الترقيم', () => {
+    const demo = { id: 'd', type: 'demo', title: 'ديمو', order: 0, settings: { scenes: [...DEMO_SCENES] } } as Segment;
+    const added = insertSegment([seg('a', 0), seg('b', 3)], demo);
+    expect(added[added.length - 1]).toMatchObject({ id: 'd', order: 2 });
+    expect(insertSegment([seg('a', 0), seg('b', 1)], demo, 'a').map((s) => s.id)).toEqual(['a', 'd', 'b']);
     expect(removeSegment(added, 'b').map((s) => [s.id, s.order])).toEqual([['a', 0], ['d', 1]]);
   });
   it('تعديل الاسم والإعدادات لا يمس بقية الفقرات', () => {
-    const out = updateSegment([seg('a', 0), seg('b', 1)], 'b', { title: 'جديد', settings: { caption: 'كلمة' } });
-    expect(out[1]).toMatchObject({ title: 'جديد', settings: { variant: 'black', caption: 'كلمة' } });
+    const out = updateSegment([seg('a', 0), seg('b', 1)], 'b', { title: 'جديد', settings: { mark: true } });
+    expect(out[1]).toMatchObject({ title: 'جديد', settings: { bg: { kind: 'black' }, mark: true } });
     expect(out[0].title).toBe('a');
   });
 });
@@ -50,9 +55,11 @@ describe('التنقل بين الفقرات والخطوات', () => {
   const cfg = cfgOf([seg('open', 0), slides('sl', 1, 3), names('nm', 2, ['أ', 'ب', 'ج', 'د', 'هـ'], 2), seg('end', 3)]);
   it('عدد الخطوات لكل نوع', () => {
     expect(stepCount(slides('x', 0, 0))).toBe(1);
+    expect(stepCount(seg('x', 0))).toBe(1);
     expect(stepCount(slides('x', 0, 3))).toBe(3);
     expect(stepCount(names('x', 0, ['أ', 'ب', 'ج', 'د', 'هـ'], 2))).toBe(4); // العنوان ثم 2+2+1
-    expect(stepCount({ ...seg('d', 0), type: 'demo', settings: { scenes: ['calendar', 'plan'] } } as Segment)).toBe(3 + 2);
+    // الديمو: خطوة لكل صفحة (التقويم ولقاءاتي، والخطة)، وبطاقات الصفحة داخلها تتولاها الجولة
+    expect(stepCount({ ...seg('d', 0), type: 'demo', settings: { scenes: ['calendar', 'plan'] } } as Segment)).toBe(2 + 1);
   });
   it('التالي يمر على كل الخطوات ثم يقف في الآخر', () => {
     let p = { seg: 0, step: 0 };
@@ -109,9 +116,12 @@ describe('التخزين المنفصل عن المنصة', () => {
     expect(parseConfig(exportConfig(cfg)).segments).toEqual(cfg.segments);
   });
   it('الاستيراد يكمل الناقص ويرفض غير الصالح', () => {
+    // فقرات الإصدار 1 تتحول إلى شرائح من القوالب
     const c = parseConfig({ segments: [{ type: 'video', title: 'مقدمة', settings: { media: 'show-media/intro.mp4' } }, { type: 'names', settings: { names: [' أ ', '', 'ب'], perStep: 0 } }] });
-    expect(c.segments[0].settings).toMatchObject({ media: { kind: 'url', src: 'show-media/intro.mp4' }, showSkip: true, autoAdvance: true });
-    expect(c.segments[1].settings).toMatchObject({ names: ['أ', 'ب'], perStep: 1 });
+    const video = c.segments[0].type === 'slide' ? c.segments[0].settings.elements.find((e) => e.type === 'video') : undefined;
+    expect(video?.props).toMatchObject({ media: { kind: 'url', src: 'show-media/intro.mp4' }, showSkip: true, autoAdvance: true });
+    const list = c.segments[1].type === 'slide' ? c.segments[1].settings.elements.find((e) => e.type === 'names') : undefined;
+    expect(list?.props).toMatchObject({ names: ['أ', 'ب'], perStep: 1 });
     expect(() => parseConfig({ foo: 1 })).toThrow(/segments/);
     expect(() => parseConfig({ segments: [{ type: 'x' }] })).toThrow(/غير معروف/);
     expect(() => parseConfig({ schemaVersion: 99, segments: [] })).toThrow(/أحدث/);
@@ -203,24 +213,24 @@ describe('أدوات الشرائح', () => {
 });
 
 describe('مشاهد الديمو', () => {
-  it('الخطوات بترتيب المشاهد، وأول كل مشهد معلَّم لعنوانه', async () => {
+  it('الصفحات بترتيب المشاهد، وأول كل مشهد معلَّم لعنوانه', async () => {
     const { demoSteps } = await import('@/show/model');
     const steps = demoSteps({ scenes: ['calendar', 'trips', 'focus', 'plan'] });
-    expect(steps.map((s) => s.key)).toEqual(['calendar.month', 'calendar.day', 'calendar.event', 'trips.trip', 'trips.docs', 'trips.plans', 'trips.attendance', 'trips.evaluation', 'focus.list', 'focus.detail', 'focus.evaluation', 'plan.wheel', 'plan.goals']);
+    expect(steps.map((s) => s.page)).toEqual(['calendar', 'individual', 'trip', 'docs', 'plans', 'attendance', 'closure', 'focus', 'focusDetail', 'plan']);
     expect(steps.filter((s) => s.first).map((s) => s.scene)).toEqual(['calendar', 'trips', 'focus', 'plan']);
   });
   it('القفز بالأرقام إلى أول المشهد، وخارج المشاهد لا شيء', async () => {
     const { sceneStart } = await import('@/show/model');
     const all = { scenes: [...DEMO_SCENES] };
-    expect([0, 1, 2, 3].map((n) => sceneStart(all, n))).toEqual([0, 3, 8, 11]);
-    expect(sceneStart({ scenes: ['focus', 'plan'] }, 1)).toBe(3);
+    expect([0, 1, 2, 3].map((n) => sceneStart(all, n))).toEqual([0, 2, 7, 9]);
+    expect(sceneStart({ scenes: ['focus', 'plan'] }, 1)).toBe(2);
     expect(sceneStart({ scenes: ['focus', 'plan'] }, 2)).toBeNull();
   });
   it('الإعدادات القديمة (خطوات القائد) تتحول إلى المشاهد الأربعة، والمكرر يُحذف', () => {
     const old = parseConfig({ segments: [{ type: 'demo', title: 'ديمو', settings: { tripId: 't4', steps: ['list', 'focusTrip', 'budget'] } }] });
-    expect(old.segments[0].settings).toEqual({ scenes: [...DEMO_SCENES] });
-    const picked = parseConfig({ segments: [{ type: 'demo', settings: { scenes: ['plan', 'calendar', 'plan', 'x'] } }] });
-    expect(picked.segments[0].settings).toEqual({ scenes: ['plan', 'calendar'] });
+    expect(old.segments[0].settings).toEqual({ scenes: [...DEMO_SCENES], autoplay: true, dwell: 5, durations: {} });
+    const picked = parseConfig({ segments: [{ type: 'demo', settings: { scenes: ['plan', 'calendar', 'plan', 'x'], autoplay: false, dwell: 7, durations: { 'plan|الصفحة': 0, 'plan|x': 3, bad: 'x', far: 500 } } }] });
+    expect(picked.segments[0].settings).toEqual({ scenes: ['plan', 'calendar'], autoplay: false, dwell: 7, durations: { 'plan|الصفحة': 0, 'plan|x': 3 } });
   });
   it('الأرقام 1–4 بلوحتي المفاتيح العربية والإنجليزية', async () => {
     const { sceneKey } = await import('@/show/keys');

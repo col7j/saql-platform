@@ -4,6 +4,7 @@ import { Badge, Button, Icons, Input } from '@/ui';
 import { useStore } from '@/state/store';
 import { putLocalFile } from '../media';
 import type { MediaRef } from '../model';
+import { useMediaPick } from '../editor/MediaLibrary';
 
 export const fmtSize = (b: number) => (b > 1e6 ? `${(b / 1e6).toFixed(1)} م.ب` : `${Math.ceil(b / 1e3)} ك.ب`);
 export const toast = (text: string, tone: 'ok' | 'error' = 'ok') => useStore.getState().toast(text, tone);
@@ -11,6 +12,8 @@ export const toast = (text: string, tone: 'ok' | 'error' = 'ok') => useStore.get
 export function MediaPicker({ value, onChange, accept, placeholder }: { value?: MediaRef; onChange: (m?: MediaRef) => void; accept: string; placeholder: string }) {
   const file = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const pick = useMediaPick();
+  const kind = accept.startsWith('video') ? 'video' : 'image';
   const upload = async (f?: File) => {
     if (!f) return;
     setBusy(true);
@@ -39,6 +42,11 @@ export function MediaPicker({ value, onChange, accept, placeholder }: { value?: 
         <Button size="sm" variant="secondary" disabled={busy} icon={<Icons.Upload className="h-4 w-4" />} onClick={() => file.current?.click()}>
           {busy ? 'جارٍ الرفع…' : 'رفع من الجهاز'}
         </Button>
+        {pick && (
+          <Button size="sm" variant="secondary" icon={<Icons.Library className="h-4 w-4" />} onClick={async () => { const m = await pick(kind); if (m) onChange(m); }}>
+            من المكتبة
+          </Button>
+        )}
         <input ref={file} type="file" accept={accept} hidden onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ''))} />
       </div>
     </div>

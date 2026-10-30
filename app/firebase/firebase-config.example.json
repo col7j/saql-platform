@@ -1,0 +1,7 @@
+{
+  "apiKey": "انسخ القيم من إعدادات مشروع Firebase ← تطبيقات الويب",
+  "authDomain": "your-project.firebaseapp.com",
+  "databaseURL": "https://your-project-default-rtdb.europe-west1.firebasedatabase.app",
+  "projectId": "your-project",
+  "appId": "1:000000000000:web:0000000000000000"
+}

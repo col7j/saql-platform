@@ -1,10 +1,12 @@
 // تخزين إعدادات العرض بمفتاح خاص (show-config)، مستقل عن مفاتيح المنصة (saql.*) وعن DB_VERSION،
 // فلا يُمسح عند رفع نسخة البيانات التجريبية ولا عند «إعادة البيانات».
-import { DEFAULT_CONFIG, DEMO_SCENES, SHOW_SCHEMA_VERSION, defaultSettings, type MediaRef, type Segment, type SegmentType, type ShowConfig } from './model';
+import { DEFAULT_CONFIG, DEMO_DEFAULTS, DEMO_SCENES, SHOW_SCHEMA_VERSION, type LegacySegment, type LegacySegmentType, type MediaRef, type Segment, type ShowConfig } from './model';
 import { normalize } from './nav';
+import { media, slideSettings } from './slides/sanitize';
+import { migrateLegacy } from './slides/templates';
 
 export const SHOW_KEY = 'show-config';
-const TYPES: SegmentType[] = ['video', 'slides', 'demo', 'names', 'blank'];
+const LEGACY: LegacySegmentType[] = ['video', 'slides', 'names', 'blank'];
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 const local = (): KV | null => {
@@ -19,47 +21,46 @@ const isObj = (v: unknown): v is Record<string, any> => typeof v === 'object' &&
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
 const bool = (v: unknown, d: boolean) => (typeof v === 'boolean' ? v : d);
 
-function media(v: unknown): MediaRef | undefined {
-  if (typeof v === 'string' && v) return { kind: 'url', src: v };
-  if (!isObj(v)) return undefined;
-  if (v.kind === 'local' && typeof v.id === 'string') return { kind: 'local', id: v.id, name: str(v.name) || undefined };
-  if (typeof v.src === 'string' && v.src) return { kind: 'url', src: v.src };
-  return undefined;
-}
-
-function segment(v: unknown, i: number): Segment {
-  if (!isObj(v)) throw new Error(`الفقرة ${i + 1} ليست كائناً صالحاً`);
-  const type = v.type as SegmentType;
-  if (!TYPES.includes(type)) throw new Error(`نوع الفقرة ${i + 1} غير معروف: ${String(v.type)}`);
+/** فقرة من الإصدار 1 بعد التحقق من إعداداتها */
+function legacy(type: LegacySegmentType, v: Record<string, any>, id: string, title: string, order: number): LegacySegment {
   const s = isObj(v.settings) ? v.settings : {};
-  const d = defaultSettings(type) as any;
-  let settings: Segment['settings'];
   switch (type) {
     case 'video':
-      settings = { media: media(s.media), muted: bool(s.muted, d.muted), showSkip: bool(s.showSkip, d.showSkip), autoAdvance: bool(s.autoAdvance, d.autoAdvance) };
-      break;
+      return { id, type, title, order, settings: { media: media(s.media), muted: bool(s.muted, false), showSkip: bool(s.showSkip, true), autoAdvance: bool(s.autoAdvance, true) } };
     case 'slides':
-      settings = { slides: (Array.isArray(s.slides) ? s.slides : []).map(media).filter(Boolean) as MediaRef[], fit: s.fit === 'cover' ? 'cover' : 'contain' };
-      break;
-    case 'demo': {
-      // الإعدادات القديمة (خطوات بصفة القائد) تتحول إلى المشاهد الأربعة
-      const scenes = (Array.isArray(s.scenes) ? s.scenes : []).filter((x: unknown, i: number, a: unknown[]) => (DEMO_SCENES as readonly unknown[]).includes(x) && a.indexOf(x) === i);
-      settings = { scenes: scenes.length ? scenes : [...DEMO_SCENES] };
-      break;
-    }
+      return { id, type, title, order, settings: { slides: (Array.isArray(s.slides) ? s.slides : []).map(media).filter(Boolean) as MediaRef[], fit: s.fit === 'cover' ? 'cover' : 'contain' } };
     case 'names':
-      settings = {
-        heading: str(s.heading),
-        names: (Array.isArray(s.names) ? s.names : []).map((n: unknown) => str(n).trim()).filter(Boolean),
-        perStep: Math.max(1, Math.floor(Number(s.perStep) || 1)),
-        columns: ([1, 2, 3].includes(Number(s.columns)) ? Number(s.columns) : d.columns) as 1 | 2 | 3,
+      return {
+        id, type, title, order,
+        settings: { heading: str(s.heading), names: (Array.isArray(s.names) ? s.names : []).map((n: unknown) => str(n).trim()).filter(Boolean), perStep: Math.max(1, Math.floor(Number(s.perStep) || 1)), columns: 2 },
       };
-      break;
     case 'blank':
-      settings = { variant: s.variant === 'black' ? 'black' : 'logo', caption: str(s.caption) || undefined };
-      break;
+      return { id, type, title, order, settings: { variant: s.variant === 'black' ? 'black' : 'logo', caption: str(s.caption) || undefined } };
   }
-  return { id: str(v.id) || `seg_${i}_${type}`, type, title: str(v.title) || 'فقرة', order: Number.isFinite(v.order) ? v.order : i, settings } as Segment;
+}
+
+function readSegment(v: unknown, i: number): Segment[] {
+  if (!isObj(v)) throw new Error(`الفقرة ${i + 1} ليست كائناً صالحاً`);
+  const type = v.type;
+  const id = str(v.id) || `seg_${i}_${String(type)}`;
+  const title = str(v.title) || 'فقرة';
+  const order = Number.isFinite(v.order) ? v.order : i;
+  if (type === 'slide') return [{ id, type, title, order, settings: slideSettings(v.settings, id) }];
+  if (type === 'demo') {
+    const s = isObj(v.settings) ? v.settings : {};
+    // الإعدادات القديمة (خطوات بصفة القائد) تتحول إلى المشاهد الأربعة
+    const scenes = (Array.isArray(s.scenes) ? s.scenes : []).filter((x: unknown, k: number, a: unknown[]) => (DEMO_SCENES as readonly unknown[]).includes(x) && a.indexOf(x) === k);
+    const durations: Record<string, number> = {};
+    if (isObj(s.durations)) for (const [k, v] of Object.entries(s.durations)) if (typeof v === 'number' && v >= 0 && v <= 120) durations[k] = v; // 0 = تخطّي الخطوة
+    return [{ id, type, title, order, settings: {
+      scenes: scenes.length ? scenes : [...DEMO_SCENES],
+      autoplay: bool(s.autoplay, DEMO_DEFAULTS.autoplay),
+      dwell: typeof s.dwell === 'number' && s.dwell >= 1 && s.dwell <= 120 ? s.dwell : DEMO_DEFAULTS.dwell,
+      durations,
+    } }];
+  }
+  if (LEGACY.includes(type)) return migrateLegacy(legacy(type, v, id, title, order));
+  throw new Error(`نوع الفقرة ${i + 1} غير معروف: ${String(type)}`);
 }
 
 /** يتحقق من ملف إعدادات (مستورد أو مخزّن) ويكمل الناقص بالقيم الافتراضية. يرمي خطأً بالعربية إن كان غير صالح */
@@ -67,13 +68,13 @@ export function parseConfig(raw: unknown): ShowConfig {
   const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
   if (!isObj(v) || !Array.isArray(v.segments)) throw new Error('الملف لا يحوي إعدادات عرض (segments)');
   if (Number(v.schemaVersion) > SHOW_SCHEMA_VERSION) throw new Error('الملف من نسخة أحدث من هذه الشاشة');
-  const segments = normalize(v.segments.map(segment));
+  const segments = normalize(v.segments.flatMap(readSegment));
   const ids = new Set<string>();
   for (const s of segments) {
     if (ids.has(s.id)) s.id = `${s.id}_${s.order}`;
     ids.add(s.id);
   }
-  return { schemaVersion: SHOW_SCHEMA_VERSION, title: str(v.title, DEFAULT_CONFIG.title), segments, updatedAt: str(v.updatedAt, new Date(0).toISOString()) };
+  return { schemaVersion: SHOW_SCHEMA_VERSION, title: str(v.title, DEFAULT_CONFIG.title), theme: v.theme === 'light' ? 'light' : 'dark', segments, updatedAt: str(v.updatedAt, new Date(0).toISOString()) };
 }
 
 export function loadSavedConfig(store: KV | null = local()): ShowConfig | null {

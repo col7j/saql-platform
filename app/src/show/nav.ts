@@ -1,5 +1,6 @@
 // منطق نقي لترتيب الفقرات والتنقل بينها: لا يعرف الواجهة ولا التخزين.
-import { defaultSettings, demoSteps, type Segment, type SegmentType, type ShowConfig } from './model';
+import { demoSteps, type Segment, type ShowConfig } from './model';
+import { slideStepCount } from './slides/model';
 
 /** موضع العرض: الفقرة (بترتيبها) والخطوة داخلها (شريحة، دفعة أسماء، خطوة ديمو) */
 export interface Pos {
@@ -25,9 +26,12 @@ export function moveSegment(segments: Segment[], id: string, toIndex: number): S
   return list.map((s, i) => ({ ...s, order: i }));
 }
 
-export function addSegment(segments: Segment[], type: SegmentType, title: string, id: string): Segment[] {
-  const list = normalize(segments);
-  return [...list, { id, type, title, order: list.length, settings: defaultSettings(type) } as Segment];
+/** يضيف فقرة جاهزة بعد الفقرة after (أو في النهاية) */
+export function insertSegment(segments: Segment[], seg: Segment, after?: string): Segment[] {
+  const list = sortSegments(segments);
+  const at = after ? list.findIndex((s) => s.id === after) + 1 : list.length;
+  list.splice(at > 0 ? at : list.length, 0, seg);
+  return list.map((s, i) => ({ ...s, order: i }));
 }
 
 export function removeSegment(segments: Segment[], id: string): Segment[] {
@@ -38,15 +42,13 @@ export function updateSegment(segments: Segment[], id: string, patch: Partial<Pi
   return segments.map((s) => (s.id === id ? ({ ...s, ...patch, settings: { ...s.settings, ...patch.settings } } as Segment) : s));
 }
 
+/** يستبدل فقرة كاملة بمعرّفها */
+export const replaceSegment = (segments: Segment[], seg: Segment): Segment[] => segments.map((s) => (s.id === seg.id ? seg : s));
+
 /** عدد الخطوات داخل الفقرة */
 export function stepCount(seg: Segment): number {
-  switch (seg.type) {
-    case 'slides': return Math.max(1, seg.settings.slides.length);
-    // الخطوة 0 العنوان وحده، ثم دفعة أسماء مع كل نقرة
-    case 'names': return 1 + Math.ceil(seg.settings.names.length / Math.max(1, seg.settings.perStep));
-    case 'demo': return Math.max(1, demoSteps(seg.settings).length);
-    default: return 1;
-  }
+  // الشريحة: نقرة لكل عنصر يظهر لاحقاً أو دفعة أسماء. الديمو: خطوة لكل لقطة
+  return seg.type === 'demo' ? Math.max(1, demoSteps(seg.settings).length) : slideStepCount(seg.settings);
 }
 
 export function clampPos(cfg: ShowConfig, pos: Pos): Pos {

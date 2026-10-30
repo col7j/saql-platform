@@ -1,39 +1,33 @@
 /*
- * اللغة البصرية لشاشات العرض (أسلوب المؤتمرات). تُحمَّل مع حزمة العرض فقط.
- * كل الألوان من رموز src/tokens.css:
- *   ink-900 = #0E2A33 (العمق)، brand-600 = #00728E (التدرّج)، brand-400 = #00B9D1 (التوهّج)،
- *   accent-500 = #F79845 و accent-400 = #FBB42B للتوكيد على كلمة أو رقم واحد فقط.
- * النص على الخلفيات الداكنة أبيض دائماً.
+ * اللغة البصرية لشاشات العرض. تُحمَّل مع حزمة العرض فقط.
+ * كل لون وخط وحجم من src/show/brand/tokens.css (هوية البرنامج): لا قيم مباشرة هنا.
+ * الأحجام بوحدة --u: بكسل لوحة 1920×1080، فتبقى النسب نفسها على أي شاشة.
  */
-@import '@fontsource/ibm-plex-sans-arabic/700.css';
+@import './brand/tokens.css';
 
 .show-stage {
-  --show-deep: rgb(var(--c-ink-900));
-  --show-brand: rgb(var(--c-brand-600));
-  --show-glow: rgb(var(--c-brand-400));
-  --show-em: rgb(var(--c-accent-400));
-  --show-em-2: rgb(var(--c-accent-500));
-  --show-ease: cubic-bezier(.2, .7, .2, 1);
+  --u: min(calc(100vw / 1920), calc(100vh / 1080));
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: var(--show-deep);
-  color: #fff;
-  font-family: var(--font-sans);
+  background: rgb(var(--t-bg));
+  color: rgb(var(--t-fg));
+  font-family: var(--b-font);
+  font-weight: var(--b-w-regular);
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
 }
 .show-stage.hide-cursor, .show-stage.hide-cursor * { cursor: none !important; }
 
-/* الخلفية: تدرّج عميق من ink-900 إلى brand-600 */
+/* الخلفية: لون القالب مع تدرّج خفيف نحو التيل الداكن */
 .show-bg {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  background: linear-gradient(155deg, var(--show-deep) 0%, var(--show-deep) 38%, rgb(var(--c-brand-800)) 72%, var(--show-brand) 120%);
+  background: var(--t-bg-image);
 }
-/* توهّج شعاعي ناعم خلف العنصر الرئيسي، يتنفس ببطء */
+/* توهّج شعاعي ناعم بالسماوي خلف العنصر الرئيسي، يتنفس ببطء */
 .show-glow {
   position: absolute;
   left: 50%;
@@ -42,57 +36,93 @@
   height: 78vmax;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(var(--c-brand-400) / .30), rgb(var(--c-brand-400) / .10) 45%, transparent 72%);
+  background: radial-gradient(closest-side, rgb(var(--t-glow) / var(--t-glow-alpha)), rgb(var(--t-glow) / calc(var(--t-glow-alpha) * .3)) 45%, transparent 72%);
   pointer-events: none;
   animation: show-breathe 9s ease-in-out infinite alternate;
 }
 @keyframes show-breathe { from { opacity: .75; transform: translate(-50%, -50%) scale(.94); } to { opacity: 1; transform: translate(-50%, -50%) scale(1.04); } }
 
-/* الطباعة: عنوان 96–140px على 1080p، ووزن 700 (أثقل وزن في الخط) */
-.show-title { font-weight: 700; font-size: clamp(56px, min(6.4vw, 11.5vh), 140px); line-height: 1.12; letter-spacing: 0; color: #fff; text-wrap: balance; }
-.show-display { font-weight: 700; font-size: clamp(64px, min(7.3vw, 13vh), 140px); line-height: 1.1; color: #fff; text-wrap: balance; }
-.show-kicker { font-weight: 500; font-size: clamp(20px, min(1.6vw, 2.9vh), 30px); color: rgb(255 255 255 / .72); letter-spacing: .02em; }
-.show-body { font-weight: 500; font-size: clamp(24px, min(2.1vw, 3.7vh), 40px); color: rgb(255 255 255 / .88); }
-.show-em { color: var(--show-em); }
-.show-rule { height: 4px; width: clamp(64px, 6vw, 120px); border-radius: 999px; background: var(--show-em); }
+/* الطباعة: تسلسل العناوين من ملف الهوية */
+.show-title { font-weight: var(--b-w-black); font-size: calc(var(--b-fs-title) * var(--u)); line-height: var(--b-lh-title); color: rgb(var(--t-head)); text-wrap: balance; }
+.show-display { font-weight: var(--b-w-black); font-size: calc(var(--b-fs-display) * var(--u)); line-height: var(--b-lh-title); color: rgb(var(--t-head)); text-wrap: balance; }
+.show-subtitle { font-weight: var(--b-w-bold); font-size: calc(var(--b-fs-subtitle) * var(--u)); line-height: var(--b-lh-subtitle); color: rgb(var(--t-head)); text-wrap: balance; }
+.show-body { font-weight: var(--b-w-regular); font-size: calc(var(--b-fs-body) * var(--u)); line-height: var(--b-lh-body); color: rgb(var(--t-fg) / var(--t-fg-soft)); }
+.show-kicker { font-weight: var(--b-w-medium); font-size: calc(var(--b-fs-caption) * var(--u)); color: rgb(var(--t-fg) / var(--t-fg-muted)); }
+.show-note { font-size: calc(18 * var(--u)); color: rgb(var(--t-fg) / var(--t-fg-faint)); }
+.show-em { color: rgb(var(--t-em)); font-weight: var(--b-w-bold); }
+.show-rule { height: calc(7 * var(--u)); width: calc(140 * var(--u)); border-radius: 999px; background: var(--b-grad-gold); }
 
-/* المحتوى في الوسط بمساحات واسعة */
-.show-center { position: absolute; inset: 0; display: grid; place-items: center; padding: 9vh 8vw; text-align: center; }
+/* المحتوى في الوسط داخل الهامش الآمن */
+.show-center { position: absolute; inset: 0; display: grid; place-items: center; padding: calc(var(--b-safe) * var(--u)); text-align: center; }
+.show-stack { display: flex; flex-direction: column; align-items: center; gap: calc(var(--b-space-3) * var(--u)); }
+.show-stack-tight { display: flex; flex-direction: column; align-items: center; gap: calc(var(--b-space-2) * var(--u)); }
 
-/* الشعار: حجم وموقع ثابتان في كل الشاشات */
-.show-mark { position: absolute; inset-inline-start: 3.2vw; top: 4.2vh; z-index: 30; pointer-events: none; transition: opacity 600ms ease;
-  padding: clamp(8px, 1vh, 12px); border-radius: 18px; background: rgb(var(--c-ink-900) / .55); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 0 0 1px rgb(255 255 255 / .08); }
-.show-mark img { display: block; height: clamp(36px, 5vh, 56px); width: auto; }
+/* الشعار في الزاوية: داخل الهامش الآمن، بحجم أكبر من الحد الأدنى للأيقونة (40px)، بلا ظل ولا شفافية */
+.show-mark { position: absolute; inset-inline-start: calc(var(--b-safe) * var(--u) * .6); top: calc(var(--b-safe) * var(--u) * .5); z-index: 30; pointer-events: none; transition: opacity 600ms ease;
+  padding: calc(var(--b-space-1) * var(--u)); border-radius: calc(var(--b-r-sm) * var(--u) * 1.5); background: rgb(var(--t-panel) / .7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.show-mark img { display: block; height: max(44px, calc(56 * var(--u))); width: auto; }
+
+/* شعار البرنامج الكبير في شاشات البداية والشعار */
+.show-logo-hero { height: calc(380 * var(--u)); width: auto; }
+.show-logo-start { height: calc(280 * var(--u)); width: auto; }
 
 /* ظهور متتابع: --i ترتيب العنصر */
 @keyframes show-rise { from { opacity: 0; transform: translateY(28px); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
-.show-in { animation: show-rise 1000ms var(--show-ease) both; animation-delay: calc(var(--i, 0) * 140ms + 200ms); }
+.show-in { animation: show-rise 1000ms var(--b-ease) both; animation-delay: calc(var(--i, 0) * 140ms + 200ms); }
 
 /* ظهور سينمائي للاسم: تكبير خفيف مع زوال الضبابية */
 @keyframes show-reveal { from { opacity: 0; transform: scale(1.08); filter: blur(14px); letter-spacing: .04em; } to { opacity: 1; transform: none; filter: none; letter-spacing: 0; } }
-.show-reveal { animation: show-reveal 1300ms var(--show-ease) both; }
+.show-reveal { animation: show-reveal 1300ms var(--b-ease) both; }
 
 /* الانتقال بين الفقرات: تلاشٍ مع تكبير خفيف. transform وopacity فقط لسلاسة بلا ارتعاش */
 .show-layer { position: absolute; inset: 0; will-change: opacity, transform; backface-visibility: hidden; }
 @keyframes show-enter { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
 @keyframes show-leave { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(.985); } }
-.show-layer.entering { animation: show-enter 900ms var(--show-ease) both; }
+.show-layer.entering { animation: show-enter 900ms var(--b-ease) both; }
 .show-layer.leaving { animation: show-leave 700ms ease both; pointer-events: none; }
 
 @keyframes show-fade { from { opacity: 0; } to { opacity: 1; } }
 .show-fade { animation: show-fade 900ms ease both; }
 
 /* إطار الوسائط (فيديو وشرائح): بلا حواف بيضاء، بظل ناعم */
-.show-media { display: block; max-width: 88vw; max-height: 82vh; border-radius: clamp(12px, 1.2vw, 24px); box-shadow: 0 30px 90px rgb(0 0 0 / .45), 0 0 0 1px rgb(255 255 255 / .06); background: var(--show-deep); }
-.show-slide { position: absolute; inset: 0; display: grid; place-items: center; transition: opacity 600ms ease, transform 800ms var(--show-ease); }
+.show-media { display: block; max-width: 88vw; max-height: 82vh; border-radius: calc(var(--b-r-md) * var(--u)); box-shadow: var(--b-shadow-media), 0 0 0 1px rgb(var(--t-line) / .06); background: rgb(var(--t-bg)); }
+.show-slide { position: absolute; inset: 0; display: grid; place-items: center; transition: opacity 600ms ease, transform 800ms var(--b-ease); }
 
-/* زر زجاجي (تخطٍّ وتشغيل الصوت) */
-.show-glass { display: inline-flex; align-items: center; gap: .5em; border-radius: 999px; padding: .7em 1.4em; font-size: clamp(16px, 1.15vw, 22px); font-weight: 500; color: #fff; background: rgb(255 255 255 / .10); border: 1px solid rgb(255 255 255 / .18); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: background 200ms ease; }
-.show-glass:hover { background: rgb(255 255 255 / .18); }
+/* الشاشة السوداء (B) والفيديو بلا خلفية */
+.show-off { position: absolute; inset: 0; background: rgb(var(--b-off)); }
+
+/* زر الدعوة الرئيسي (ابدأ العرض) */
+.show-cta { border-radius: 999px; padding: .9em 2.6em; font-size: max(18px, calc(28 * var(--u))); font-weight: var(--b-w-bold); color: rgb(var(--b-white)); background: rgb(var(--t-primary)); box-shadow: var(--b-shadow-cta), 0 0 0 1px rgb(var(--b-white) / .15); transition: background 200ms ease; }
+.show-cta:hover { background: rgb(var(--t-primary-hover)); }
+.show-help { font-size: max(13px, calc(17 * var(--u))); line-height: 2; color: rgb(var(--t-fg) / .55); }
+
+/* زر زجاجي (تخطٍّ وتشغيل الصوت وملء الشاشة) */
+.show-glass { display: inline-flex; align-items: center; gap: .5em; border-radius: 999px; padding: .7em 1.4em; font-size: max(15px, calc(20 * var(--u))); font-weight: var(--b-w-medium); color: rgb(var(--t-fg)); background: rgb(var(--t-fg) / .10); border: 1px solid rgb(var(--t-fg) / .18); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: background 200ms ease; }
+.show-glass:hover { background: rgb(var(--t-fg) / .18); }
 
 /* أدوات المقدّم تختفي مع المؤشر */
 .show-chrome { transition: opacity 400ms ease; }
 .show-stage.hide-cursor .show-chrome { opacity: 0; pointer-events: none; }
+
+/* الديمو: لوح المنصة العائم، وحلقة الإضاءة، ومؤشر التقدّم */
+.show-demo-panel { border-radius: 18px; background: rgb(var(--b-white)); box-shadow: var(--b-shadow-panel), 0 0 0 1px rgb(var(--t-line) / .06); }
+.show-demo-ring { border-radius: 20px; box-shadow: 0 0 0 3px rgb(var(--t-glow) / .85), 0 0 40px rgb(var(--t-glow) / .35); }
+.show-dots { border-radius: 999px; background: rgb(var(--t-panel) / .7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.show-dot { display: block; border-radius: 999px; transition: all 500ms ease; height: max(6px, calc(9 * var(--u))); width: max(6px, calc(9 * var(--u))); background: rgb(var(--t-fg) / .28); }
+.show-dot.done { background: rgb(var(--t-fg) / .8); }
+.show-dot.now { background: rgb(var(--t-em)); width: max(22px, calc(32 * var(--u))); }
+/* رمز التحكم من الجوال في الزاوية السفلى */
+.show-code { position: absolute; inset-inline-end: calc(var(--b-safe) * var(--u) * .5); bottom: calc(var(--b-safe) * var(--u) * .4); z-index: 30; display: flex; align-items: center; gap: .6em; padding: .45em 1em; border-radius: 999px; font-size: max(13px, calc(18 * var(--u))); background: rgb(var(--t-panel) / .72); color: rgb(var(--t-fg)); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 0 0 1px rgb(var(--t-line) / .1); }
+.show-code-num { font-weight: var(--b-w-black); letter-spacing: .14em; font-size: 1.35em; color: rgb(var(--t-em)); }
+.show-code-label { color: rgb(var(--t-fg) / var(--t-fg-muted)); }
+.show-code-dot { width: .6em; height: .6em; border-radius: 999px; background: rgb(var(--b-grey)); }
+.show-code-dot[data-status='online'] { background: rgb(var(--b-sky)); }
+.show-code-dot[data-status='offline'] { background: rgb(var(--b-orange)); }
+/* حالة الجولة وشريط مدة الخطوة الحالية */
+.show-tour-state { display: block; height: max(12px, calc(16 * var(--u))); width: max(12px, calc(16 * var(--u))); color: rgb(var(--t-fg) / .8); }
+.show-tour-bar { position: relative; height: max(2px, calc(3 * var(--u))); border-radius: 999px; background: rgb(var(--t-fg) / .16); overflow: hidden; }
+.show-tour-bar > span { position: absolute; inset: 0; transform-origin: right; background: rgb(var(--t-em)); animation-name: show-tour-fill; animation-timing-function: linear; animation-fill-mode: both; }
+@keyframes show-tour-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 @media (prefers-reduced-motion: reduce) {
   .show-layer.entering, .show-layer.leaving, .show-in, .show-reveal, .show-fade { animation-duration: 1ms; animation-delay: 0ms; }

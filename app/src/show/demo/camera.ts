@@ -37,6 +37,8 @@ export interface FocusOpts {
   min?: number;
   /** أقصى تكبير بوحدة شاشة 1920 */
   max?: number;
+  /** بكسلات شاشة محجوزة عند الحافة اليمنى (شعار الزاوية) حين نُظهر الجانب الأيمن من منطقة عريضة */
+  end?: number;
 }
 
 /**
@@ -50,7 +52,7 @@ export function focus(r: Rect, view: View, pageH: number, opts: FocusOpts = {}):
   const s = Math.max((opts.min ?? 0) * k, Math.min(fit, (opts.max ?? 3) * k));
   const visW = view.w / s;
   const visH = view.h / s;
-  let tx = r.w + pad * 2 <= visW ? view.w / 2 - s * (r.x + r.w / 2) : view.w - s * (r.x + r.w + pad);
+  let tx = r.w + pad * 2 <= visW ? view.w / 2 - s * (r.x + r.w / 2) : view.w - (opts.end ?? 0) - s * (r.x + r.w + pad);
   let ty = r.h + pad * 2 <= visH ? view.h / 2 - s * (r.y + r.h / 2) : -s * (r.y - pad);
   // لا فراغ خارج الصفحة حين تملأ الشاشة
   if (s * PAGE_W >= view.w) tx = Math.min(0, Math.max(view.w - s * PAGE_W, tx));

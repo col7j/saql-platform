@@ -1,5 +1,6 @@
 // بيانات الديمو: لقطة ثابتة من البيانات التجريبية بصفة مشارك، مُثراة في الذاكرة فقط،
 // والمتجر في وضع القراءة فقط داخل إطار الديمو.
+import type { DemoPage } from '../model';
 import { buildSeed } from '@/data/seed';
 import { eventsFor } from '@/domain/calendar';
 import { todayISO } from '@/domain/dates';
@@ -84,7 +85,7 @@ export function demoSnapshot(): DB {
 export const demoUserId = (db: DB) => demoTargets(db).personId;
 
 /** الشاشات التي يعرضها إطار الديمو، ورسالة جاهزيته للنافذة الأم */
-export type DemoViewKey = 'calendar' | 'individual' | 'trip' | 'docs' | 'plans' | 'attendance' | 'closure' | 'focus' | 'focusDetail' | 'plan';
+export type DemoViewKey = DemoPage;
 export const DEMO_READY = 'saql-demo-ready';
 
 const noop = () => undefined;
