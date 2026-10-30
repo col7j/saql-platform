@@ -2,9 +2,10 @@
 import { describe, expect, it } from 'vitest';
 import { ACCESS_DENIED, homeFor, navFor, routeAccess } from '@/domain/access';
 import { buildSeed } from '@/data/seed';
+import { fixtureSeed } from './helpers/fixture';
 import { harness } from './helpers/harness';
 
-const db = buildSeed();
+const db = fixtureSeed();
 const keysOf = (pid: string) => navFor(db, pid).all.map((i) => i.key);
 
 describe('الرفض عند كتابة العنوان يدوياً', () => {

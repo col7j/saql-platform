@@ -8,26 +8,30 @@ export const TECH_LEAD_ID = 's6';
 export const DEMO_PASSWORD = 'saql2026';
 
 const staffRaw: [string, string, string][] = [
-  ['s1', 'خالد العمري', 'ميسّر مجموعة أُحُد'],
-  ['s2', 'فيصل الجهني', 'ميسّر مجموعة قُباء · عضو اللجنة الإعلامية'],
-  ['s3', 'أنس المطيري', 'ميسّر مجموعة سَلع · عضو اللجنة المالية'],
-  ['s4', 'سلمان الأحمدي', 'ميسّر مجموعة العقيق · عضو اللجنة الإعلامية'],
-  ['s5', 'ماجد الصاعدي', 'مسؤول المالية'],
-  ['s6', 'طارق السهلي', 'مسؤول اللجنة التقنية · مسؤول اللجنة الإعلامية'],
-  ['s7', 'عادل الرفاعي', 'متابع الرحلات · عضو اللجنة التقنية'],
+  ['s1', 'أنس طلال الأحمدي', 'ميسّر مجموعة أُحُد'],
+  ['s2', 'محمد دبور', 'ميسّر مجموعة قُباء'],
+  ['s3', 'عثمان وائل الشريف', 'ميسّر مجموعة سَلع'],
+  ['s4', 'هود الشنقيطي', 'ميسّر مجموعة العقيق'],
+  ['s5', 'حمزة النهادي', 'مسؤول اللجنة المالية'],
+  ['s6', 'محمد الحاج', 'مسؤول اللجنة الإعلامية والتقنية'],
+  ['s7', 'أحمد عمران', 'متابع الرحلات'],
 ];
 
+/** المشاركون: u1..u24 ست لكل مجموعة كما كانت، ثم u25..u28 واحد لكل مجموعة (سبعة في كل مجموعة) */
 const participantNames = [
-  'عمر الحربي', 'يوسف الرحيلي', 'عبدالرحمن السناني', 'إبراهيم الجهني', 'سعد المحمدي', 'محمد الأنصاري',
-  'أحمد العوفي', 'مهند الصبحي', 'بدر الشريف', 'ريان القرشي', 'نواف الزهراني', 'حمزة البلوي',
-  'زياد العتيبي', 'مشعل الغامدي', 'تركي السلمي', 'عبدالعزيز الحازمي', 'ياسر الشهري', 'معاذ اليوبي',
-  'عبدالإله الفايدي', 'سلطان الردادي', 'راكان المغامسي', 'هشام البدراني', 'وليد التميمي', 'أسامة العنزي',
+  'أحمد منير أحمد حامد', 'أصيل نايف الجهني', 'عبدالعزيز محمد الأنصاري', 'عبدالله ناير معيض الرشيدي', 'الليث عبدالرحمن الخالد', 'محمد عمر الحربي',
+  'براء عبدالهادي حمدي', 'محمود يحيى الحاج', 'حسان محمد عالم', 'أحمد محمد بارود', 'عبادة بن صلاح قطب', 'محمد ناصر الشريف',
+  'عبدالعزيز عيسى الحاج', 'عمر عيسى الحاج', 'عبدالرحمن وليد الأحمدي', 'سليمان عبده لعبان', 'حامد محمد سرور', 'الفيصل عامر الحوراني',
+  'يامن إبراهيم الهندي', 'يحيى محمد أبولبن', 'محمد سالم باوزير', 'عبدالسلام عبدالشكور عبدالله', 'زياد محمد بن محفوظ', 'معتز خالد الأنصاري',
+  'عثمان عبدالرحمن الخالد', 'عبدالرحمن عبدالله الموسى', 'محمد رائد الجاروشة', 'البراء بشير شيخ النجارين',
 ];
+/** المشارك الذي لم يكمل ملفه بعد (لتجربة أول دخول) */
+const ONBOARDING_ID = 'u24';
 const universities = ['الجامعة الإسلامية', 'جامعة طيبة', 'جامعة طيبة', 'الجامعة الإسلامية', 'كليات الريان', 'جامعة طيبة'];
 const majors = ['هندسة برمجيات', 'إدارة أعمال', 'شريعة', 'طب', 'محاسبة', 'علوم حاسب', 'لغة عربية', 'هندسة مدنية', 'صيدلة', 'نظم معلومات'];
 
 export function buildPeople(): Person[] {
-  const leader: Person = { id: LEADER_ID, name: 'عبدالله الحربي', kind: 'staff', isGeneralLeader: true, email: 'leader@saql.example', phone: '0550000001', title: 'القائد العام للبرنامج' };
+  const leader: Person = { id: LEADER_ID, name: 'أحمد يحيى الحاج', kind: 'staff', isGeneralLeader: true, email: 'leader@saql.example', phone: '0550000001', title: 'القائد العام للبرنامج' };
   const staff: Person[] = staffRaw.map(([id, name, title], i) => ({ id, name, kind: 'staff', email: `${id}@saql.example`, phone: `05500000${10 + i}`, title }));
   const participants: Person[] = participantNames.map((name, i) => ({
     id: `u${i + 1}`,
@@ -37,8 +41,8 @@ export function buildPeople(): Person[] {
     phone: `05611${String(1000 + i)}`,
     university: universities[i % universities.length],
     major: majors[i % majors.length],
-    // أكملوا ملفاتهم أول دخول، إلا الأخير (لتجربة أول دخول)
-    ...(i < participantNames.length - 1 ? { bank: { iban: `SA03800000006080101${String(67500 + i).padStart(5, '0')}`, bankName: ['الراجحي', 'الأهلي', 'الإنماء'][i % 3] }, profileCompletedAt: new Date(Date.now() - 55 * 86400000).toISOString() } : {}),
+    // أكملوا ملفاتهم أول دخول، إلا واحداً (لتجربة أول دخول)
+    ...(`u${i + 1}` !== ONBOARDING_ID ? { bank: { iban: `SA03800000006080101${String(67500 + i).padStart(5, '0')}`, bankName: ['الراجحي', 'الأهلي', 'الإنماء'][i % 3] }, profileCompletedAt: new Date(Date.now() - 55 * 86400000).toISOString() } : {}),
   }));
   return [leader, ...staff, ...participants];
 }
@@ -51,7 +55,7 @@ export function buildGroups(): Group[] {
     ['g4', 'مجموعة العقيق', '#6b6fc9', 's4'],
   ];
   return defs.map(([id, name, color, fac], gi) => {
-    const memberIds = Array.from({ length: 6 }, (_, k) => `u${gi * 6 + k + 1}`);
+    const memberIds = [...Array.from({ length: 6 }, (_, k) => `u${gi * 6 + k + 1}`), `u${25 + gi}`];
     return { id, name, color, facilitatorId: fac, leaderId: memberIds[0], memberIds };
   });
 }
@@ -81,13 +85,10 @@ export function buildCommittees(): { committees: Committee[]; memberships: Commi
   const memberships: CommitteeMembership[] = [
     // مسؤول المالية بلا أي صفة ثانية (قواعد التعارض في defaults.ts)
     { ...m('c_fin', 's5', 'leader', true), financePerms: ['view_budget', 'manage_categories', 'approve_within', 'disburse', 'review_invoices', 'close_custody'] },
-    { ...m('c_fin', 's3', 'member', false), financePerms: [] }, // بلا صلاحيات مفوّضة: لا يرى أزرار الصرف
+    // الميسّرون ميسّرون فقط، ومتابع الرحلات بلا لجنة
     m('c_media', 's6', 'leader', false),
-    m('c_media', 's2', 'member', false),
-    m('c_media', 's4', 'member', false),
     m('c_media', 'u9', 'member', false), // مشارك ضمن الإعلامية بموافقة القائد العام
     m('c_tech', 's6', 'leader', false),
-    m('c_tech', 's7', 'member', false),
     m('c_gen', LEADER_ID, 'leader', false),
     ...['s1', 's2', 's3', 's4', 's5', 's6', 's7'].map((id) => m('c_gen', id, 'member', false)),
   ];

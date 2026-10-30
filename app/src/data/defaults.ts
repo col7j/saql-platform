@@ -3,7 +3,7 @@ import type { BudgetCategory, CapacityRule, ProgramBudget, Settings, TaskTemplat
 
 export function defaultSettings(startDate: string, endDate: string): Settings {
   return {
-    program: { name: 'صقل', cohort: 'الدفعة الأولى', startDate, endDate, participantsCount: 24 },
+    program: { name: 'صقل', cohort: 'الدفعة الأولى', startDate, endDate, participantsCount: 28 },
     split: { individual: 50, group: 50 },
     groupTripSplit: { internal: 40, external: 60 },
     // القالب الافتراضي للتقييم (وثيقة القرارات + س9 وس10). يضبطه القائد العام ثم يُقفل

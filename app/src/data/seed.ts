@@ -10,7 +10,7 @@ import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, de
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 
-export const DB_VERSION = 12;
+export const DB_VERSION = 13;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -385,10 +385,10 @@ export function buildSeed(): DB {
   }];
 
   const audit: AuditEntry[] = [
-    { id: 'au1', at: iso(addDays(T, -60)), byId: 's5', action: 'منح صلاحية', detail: 'عرض الميزانية — خالد العمري' },
-    { id: 'au2', at: iso(addDays(T, -60)), byId: 's5', action: 'منح صلاحية', detail: 'الموافقة ضمن المرصود — خالد العمري' },
-    { id: 'au3', at: iso(addDays(T, -60)), byId: 's5', action: 'منح صلاحية', detail: 'مراجعة الفواتير — خالد العمري' },
-    { id: 'au4', at: iso(addDays(T, -8)), byId: 's5', action: 'تحويل دفعة', detail: 'رحلة قُباء الداخلية — 2000 ر.س إلى يوسف' },
+    { id: 'au1', at: iso(addDays(T, -60)), byId: 's5', action: 'اعتماد الموازنة العامة', detail: 'حُفظت الموازنة وقُفلت' },
+    { id: 'au2', at: iso(addDays(T, -60)), byId: 's5', action: 'إضافة تصنيف', detail: 'تذاكر ودخول' },
+    { id: 'au3', at: iso(addDays(T, -60)), byId: 's5', action: 'تعديل الإعدادات المالية', detail: 'تنبيه التجزئة' },
+    { id: 'au4', at: iso(addDays(T, -8)), byId: 's5', action: 'تحويل دفعة', detail: 'رحلة قُباء الداخلية — 2000 ر.س لقائد المجموعة' },
     { id: 'au5', at: iso(addDays(T, -2)), byId: 's5', action: 'موافقة على طلب ميزانية', detail: 'رحلة سَلع الداخلية — 3240 ر.س' },
   ];
 
