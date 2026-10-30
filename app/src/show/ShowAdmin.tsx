@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, ConfirmHost, Icons, Input, MoreMenu, Modal, Toasts, askConfirm, cx } from '@/ui';
 import { CANVAS } from './brand/brand';
-import { deleteLocalFile, listLocalFiles, type LocalFile } from './media';
-import { DEMO_SCENES, DEMO_SCENE_LABELS, DEMO_STEP_LABELS, demoSteps, type DemoSegment, type MediaRef, type Segment, type ShowConfig, type SlideSegment } from './model';
+import { DEMO_SCENES, DEMO_SCENE_LABELS, DEMO_STEP_LABELS, THEMES, demoSteps, type DemoSegment, type MediaRef, type Segment, type ShowConfig, type ShowTheme } from './model';
 import { insertSegment, moveSegment, removeSegment, replaceSegment, sortSegments, stepCount, type Pos } from './nav';
 import { exportConfig, loadRepoConfig, parseConfig, saveConfig } from './storage';
 import { useShowConfig, useSync } from './useShow';
 import { DemoEditor } from './admin/DemoEditor';
-import { fmtSize, toast } from './admin/MediaPicker';
+import { toast } from './admin/MediaPicker';
+import { mediaUsage } from './editor/usage';
+import { MediaLibraryHost, uploadFiles, type MediaKind } from './editor/MediaLibrary';
 import { ELEMENT_LABELS, makeElement, type ElementType, type SlideElement, type SlideSettings } from './slides/model';
 import { FitStage, SlideCanvas } from './slides/SlideView';
-import { TEMPLATES, cloneElements, newId, templateSegment, type TemplateKey } from './slides/templates';
+import { TEMPLATES, cloneElements, newId, templateSegment, templateSettings, type TemplateKey } from './slides/templates';
 import EditorCanvas from './editor/Canvas';
 import { ElementInspector, SlideInspector, type ElPatch } from './editor/Inspector';
 import { align, distribute, reorder, round, type AlignMode } from './editor/geometry';
@@ -28,20 +29,6 @@ function stepLabel(seg: Segment, step: number) {
   }
   const n = stepCount(seg);
   return n > 1 ? `النقرة ${step} من ${n - 1}` : '';
-}
-
-export function collectLocalIds(cfg: ShowConfig) {
-  const ids = new Set<string>();
-  const add = (m?: MediaRef) => m?.kind === 'local' && ids.add(m.id);
-  for (const s of cfg.segments) {
-    if (s.type !== 'slide') continue;
-    if (s.settings.bg.kind === 'media') add(s.settings.bg.media);
-    for (const el of s.settings.elements) {
-      if (el.type === 'image' || el.type === 'video') add(el.props.media);
-      if (el.type === 'logoGrid') el.props.tiers.forEach((t) => t.logos.forEach(add));
-    }
-  }
-  return ids;
 }
 
 function download(name: string, text: string) {
@@ -80,37 +67,9 @@ function LivePreview({ seg, step }: { seg: Segment; step: number }) {
   );
 }
 
-function LocalFilesModal({ open, onClose, used }: { open: boolean; onClose: () => void; used: Set<string> }) {
-  const [files, setFiles] = useState<LocalFile[] | null>(null);
-  const load = () => listLocalFiles().then(setFiles, () => setFiles([]));
-  useEffect(() => {
-    if (open) load();
-  }, [open]);
-  const total = (files ?? []).reduce((a, f) => a + f.size, 0);
-  return (
-    <Modal open={open} onClose={onClose} title="الملفات المرفوعة على هذا الجهاز" wide>
-      <p className="mb-3 text-xs text-ink-500">تُحفظ في متصفح هذا الجهاز فقط (IndexedDB) ولا تُنشر مع الموقع. المجموع: {fmtSize(total)}</p>
-      {!files ? null : !files.length ? (
-        <p className="py-6 text-center text-sm text-ink-500">لا توجد ملفات</p>
-      ) : (
-        <ul className="divide-y divide-ink-100">
-          {files.map((f) => (
-            <li key={f.id} className="flex items-center gap-3 py-2 text-sm">
-              <span className="min-w-0 flex-1 truncate" dir="ltr">{f.name}</span>
-              <span className="text-xs text-ink-500">{fmtSize(f.size)}</span>
-              {used.has(f.id) ? <Badge tone="green">مستخدم</Badge> : <Badge>غير مستخدم</Badge>}
-              <Button size="sm" variant="danger" onClick={() => askConfirm({ title: `حذف «${f.name}»؟`, body: used.has(f.id) ? 'الملف مستخدم في شريحة وسيختفي منها.' : undefined, cta: 'احذف', danger: true, run: () => deleteLocalFile(f.id).then(load) })}>حذف</Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Modal>
-  );
-}
-
 const THUMB_W = 168;
 
-function Thumb({ seg }: { seg: Segment }) {
+function Thumb({ seg, theme }: { seg: Segment; theme: ShowTheme }) {
   if (seg.type === 'demo') {
     return (
       <div className="grid h-full w-full place-items-center bg-gradient-to-br from-brand-700 to-brand-500 text-white">
@@ -118,7 +77,7 @@ function Thumb({ seg }: { seg: Segment }) {
       </div>
     );
   }
-  return <FitStage scale={THUMB_W / CANVAS.w}>{(s) => <SlideCanvas settings={seg.settings} step={0} mode="thumb" scale={s} />}</FitStage>;
+  return <FitStage scale={THUMB_W / CANVAS.w}>{(s) => <SlideCanvas settings={seg.settings} theme={theme} step={0} mode="thumb" scale={s} />}</FitStage>;
 }
 
 const ADD_TOOLS: { type: ElementType; label: string; icon: keyof typeof Icons; props?: Record<string, unknown> }[] = [
@@ -150,7 +109,8 @@ export default function ShowAdmin() {
   const [step, setStep] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [live, setLive] = useState<{ pos: Pos; started: boolean; at: number } | null>(null);
-  const [filesOpen, setFilesOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [dropping, setDropping] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -221,6 +181,20 @@ export default function ShowAdmin() {
     setElements([...slide.settings.elements, el]);
     setSelection(new Set([el.id]));
   };
+  /** إدراج صورة أو فيديو من المكتبة أو بالسحب: يملأ العنصر المحدد إن كان من نفس النوع، وإلا عنصراً جديداً */
+  const insertMedia = (items: { ref: MediaRef; kind: MediaKind }[]) => {
+    if (!slide || !items.length) return;
+    const sel = selectedEls.length === 1 ? selectedEls[0] : null;
+    if (sel && items.length === 1 && sel.type === items[0].kind) return patchSelected((e) => ({ ...e, props: { ...e.props, media: items[0].ref } }) as SlideElement);
+    if (sel?.type === 'logoGrid' && items.every((i) => i.kind === 'image'))
+      return patchSelected((e) => (e.type === 'logoGrid' ? { ...e, props: { ...e.props, tiers: e.props.tiers.map((t, i) => (i === 0 ? { ...t, logos: [...t.logos, ...items.map((x) => x.ref)] } : t)) } } : e));
+    const els = items.map((it, i) => {
+      const el = newElement(it.kind, { media: it.ref }, curStep);
+      return { ...el, x: el.x + i * 32, y: el.y + i * 32 };
+    });
+    setElements([...slide.settings.elements, ...els]);
+    setSelection(new Set(els.map((e) => e.id)));
+  };
   const deleteSelected = () => slide && selection.size && (setElements(slide.settings.elements.filter((e) => !selection.has(e.id))), setSelection(new Set()));
   const paste = (els: SlideElement[]) => {
     if (!slide || !els.length) return;
@@ -242,7 +216,7 @@ export default function ShowAdmin() {
   const keys = useRef<(e: KeyboardEvent) => void>(() => undefined);
   keys.current = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement;
-    if (t.closest('input, textarea, select, [contenteditable="true"]') || filesOpen || previewOpen) return;
+    if (t.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]') || libraryOpen || previewOpen || addOpen) return;
     const mod = e.metaKey || e.ctrlKey;
     const k = e.key.toLowerCase();
     if (mod && (k === 'z' || e.code === 'KeyZ')) return e.preventDefault(), e.shiftKey ? doRedo() : doUndo();
@@ -273,7 +247,7 @@ export default function ShowAdmin() {
 
   const addSlide = (key: TemplateKey | 'demo') => {
     const id = segId();
-    const s: Segment = key === 'demo' ? ({ id, type: 'demo', title: 'جولة في المنصة', order: 0, settings: { scenes: [...DEMO_SCENES] } } as DemoSegment) : templateSegment(key, id, 0);
+    const s: Segment = key === 'demo' ? ({ id, type: 'demo', title: 'جولة في المنصة', order: 0, settings: { scenes: [...DEMO_SCENES] } } as DemoSegment) : templateSegment(key, id, 0, key === 'opening' ? { title: cfg.title } : {});
     setSegments((x) => insertSegment(x, s, seg?.id));
     selectSeg(id);
     setAddOpen(false);
@@ -300,6 +274,7 @@ export default function ShowAdmin() {
   const liveSeg = connected ? list[live!.pos.seg] : undefined;
 
   return (
+    <MediaLibraryHost usage={mediaUsage(cfg)} onInsert={(ref, kind) => insertMedia([{ ref, kind }])} open={libraryOpen} setOpen={setLibraryOpen}>
     <div className="flex h-screen flex-col bg-ink-50">
       <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-ink-100 bg-white px-4 py-2">
         <img src="./brand/logo-icon.svg" alt="" className="h-8 w-auto" />
@@ -308,6 +283,14 @@ export default function ShowAdmin() {
           <button className="rounded-lg p-2 text-ink-600 hover:bg-ink-50 disabled:opacity-30" disabled={!hist?.past.length} title="تراجع (Ctrl+Z)" onClick={doUndo}><Icons.Undo2 className="h-4 w-4" /></button>
           <button className="rounded-lg p-2 text-ink-600 hover:bg-ink-50 disabled:opacity-30" disabled={!hist?.future.length} title="إعادة (Ctrl+Shift+Z)" onClick={doRedo}><Icons.Redo2 className="h-4 w-4" /></button>
         </div>
+        <div className="ms-2 flex rounded-xl border border-ink-200 p-0.5" role="group" aria-label="القالب">
+          {(Object.keys(THEMES) as ShowTheme[]).map((t) => (
+            <button key={t} onClick={() => commit({ ...cfg, theme: t })} className={cx('flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs', cfg.theme === t ? 'bg-brand-600 text-white' : 'text-ink-600 hover:bg-ink-50')}>
+              {t === 'dark' ? <Icons.Moon className="h-3.5 w-3.5" /> : <Icons.Sun className="h-3.5 w-3.5" />} {THEMES[t]}
+            </button>
+          ))}
+        </div>
+        <Button size="sm" variant="secondary" icon={<Icons.Library className="h-4 w-4" />} onClick={() => setLibraryOpen(true)}>المكتبة</Button>
         <div className="flex-1" />
         <Badge tone={connected ? 'green' : 'gray'} icon={<span className={cx('h-2 w-2 rounded-full', connected ? 'bg-ok-500' : 'bg-ink-300')} />}>
           {connected ? (liveSeg ? `على الشاشة: ${liveSeg.title}` : 'شاشة العرض متصلة') : 'شاشة العرض غير مفتوحة'}
@@ -321,7 +304,7 @@ export default function ShowAdmin() {
             { label: 'تصدير الإعدادات (JSON)', onClick: () => download('show.json', exportConfig(cfg)) },
             { label: 'استيراد إعدادات…', onClick: () => importRef.current?.click() },
             { label: 'استعادة show.json من المستودع', onClick: restoreRepo },
-            { label: 'الملفات المرفوعة على هذا الجهاز', onClick: () => setFilesOpen(true) },
+
           ]}
         />
         <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={(e) => (onImport(e.target.files?.[0]), (e.target.value = ''))} />
@@ -349,7 +332,7 @@ export default function ShowAdmin() {
                     {liveSeg?.id === s.id && <span className="h-2 w-2 rounded-full bg-accent-500" title="على الشاشة" />}
                   </span>
                   <span className={cx('relative block overflow-hidden rounded-lg ring-1', seg?.id === s.id ? 'ring-[3px] ring-brand-600' : 'ring-ink-200 group-hover:ring-ink-300')} style={{ width: THUMB_W, height: (THUMB_W * CANVAS.h) / CANVAS.w }}>
-                    <Thumb seg={s} />
+                    <Thumb seg={s} theme={cfg.theme} />
                     {stepCount(s) > 1 && <span className="absolute bottom-1 start-1 rounded bg-black/60 px-1 text-[10px] text-white num">{stepCount(s)}</span>}
                   </span>
                 </button>
@@ -363,20 +346,6 @@ export default function ShowAdmin() {
           </ol>
           <div className="relative border-t border-ink-100 p-3">
             <Button className="w-full" icon={<Icons.Plus className="h-4 w-4" />} onClick={() => setAddOpen((v) => !v)}>شريحة</Button>
-            {addOpen && (
-              <div className="absolute bottom-full start-3 z-30 mb-2 w-72 rounded-2xl border border-ink-100 bg-white p-2 shadow-lift">
-                {(Object.keys(TEMPLATES) as TemplateKey[]).map((k) => (
-                  <button key={k} onClick={() => addSlide(k)} className="block w-full rounded-xl px-3 py-2 text-start hover:bg-ink-50">
-                    <span className="block text-sm font-medium text-ink-900">{TEMPLATES[k].label}</span>
-                    <span className="block text-xs text-ink-500">{TEMPLATES[k].hint}</span>
-                  </button>
-                ))}
-                <button onClick={() => addSlide('demo')} className="block w-full rounded-xl px-3 py-2 text-start hover:bg-ink-50">
-                  <span className="block text-sm font-medium text-ink-900">ديمو المنصة</span>
-                  <span className="block text-xs text-ink-500">جولة متحركة في شاشات المنصة</span>
-                </button>
-              </div>
-            )}
           </div>
         </aside>
 
@@ -396,10 +365,22 @@ export default function ShowAdmin() {
               <Button size="sm" variant="ghost" icon={<Icons.Play className="h-4 w-4" />} onClick={() => setPreviewOpen(true)}>معاينة بالحركة</Button>
             </div>
           )}
-          <div className="min-h-0 flex-1 p-2" onPointerDown={(e) => e.target === e.currentTarget && setSelection(new Set())}>
+          <div
+            className={cx('relative min-h-0 flex-1 p-2', dropping && 'ring-4 ring-inset ring-brand-600/40')}
+            onPointerDown={(e) => e.target === e.currentTarget && setSelection(new Set())}
+            onDragOver={(e) => slide && e.dataTransfer.types.includes('Files') && (e.preventDefault(), setDropping(true))}
+            onDragLeave={() => setDropping(false)}
+            onDrop={async (e) => {
+              if (!slide || !e.dataTransfer.files.length) return;
+              e.preventDefault();
+              setDropping(false);
+              insertMedia(await uploadFiles([...e.dataTransfer.files]));
+            }}
+          >
             {slide ? (
               <EditorCanvas
                 key={slide.id}
+                theme={cfg.theme}
                 settings={slide.settings}
                 step={curStep}
                 selection={selection}
@@ -470,14 +451,39 @@ export default function ShowAdmin() {
         </aside>
       </div>
 
+      <Modal open={addOpen} onClose={() => setAddOpen(false)} title="شريحة جديدة" wide>
+        <ul className="grid max-h-[65vh] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
+          {(Object.keys(TEMPLATES) as TemplateKey[]).map((k) => (
+            <li key={k}>
+              <button onClick={() => addSlide(k)} className="group block w-full text-start">
+                <span className="relative block overflow-hidden rounded-xl ring-1 ring-ink-200 transition group-hover:ring-[3px] group-hover:ring-brand-600" style={{ aspectRatio: '16 / 9' }}>
+                  <FitStage>{(sc) => <SlideCanvas settings={templateSettings(k, 'tpl_' + k, k === 'opening' ? { title: cfg.title } : k === 'names' ? { names: ['الاسم الأول'] } : {})} theme={cfg.theme} step={0} mode="thumb" scale={sc} />}</FitStage>
+                </span>
+                <span className="mt-1.5 block text-sm font-medium text-ink-900">{TEMPLATES[k].label}</span>
+                <span className="block text-xs text-ink-500">{TEMPLATES[k].hint}</span>
+              </button>
+            </li>
+          ))}
+          <li>
+            <button onClick={() => addSlide('demo')} className="group block w-full text-start">
+              <span className="relative block overflow-hidden rounded-xl ring-1 ring-ink-200 transition group-hover:ring-[3px] group-hover:ring-brand-600" style={{ aspectRatio: '16 / 9' }}>
+                <Thumb seg={{ id: 'x', type: 'demo', title: '', order: 0, settings: { scenes: [...DEMO_SCENES] } }} theme={cfg.theme} />
+              </span>
+              <span className="mt-1.5 block text-sm font-medium text-ink-900">ديمو المنصة</span>
+              <span className="block text-xs text-ink-500">جولة متحركة في شاشات المنصة بصفة مشارك</span>
+            </button>
+          </li>
+        </ul>
+      </Modal>
       <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title={seg ? `معاينة «${seg.title}»` : 'معاينة'} wide>
         {seg && previewOpen && <LivePreview seg={seg} step={curStep} />}
         <p className="mt-2 text-xs text-ink-500">المعاينة من الخطوة الحالية؛ غيّر الخطوة من شريط النقرات أسفل اللوحة.</p>
       </Modal>
-      <LocalFilesModal open={filesOpen} onClose={() => setFilesOpen(false)} used={collectLocalIds(cfg)} />
+
       <ConfirmHost />
       <Toasts />
     </div>
+    </MediaLibraryHost>
   );
 }
 

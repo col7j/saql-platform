@@ -102,9 +102,14 @@ export type NamesSegment = Base<'names', NamesSettings>;
 export type BlankSegment = Base<'blank', BlankSettings>;
 export type LegacySegment = VideoSegment | SlidesSegment | NamesSegment | BlankSegment;
 
+/** القالب: غامق (خلفية ‎#044554) أو فاتح (أبيض)، ويطبّق على كل الشرائح عبر رموز --t-* */
+export type ShowTheme = 'dark' | 'light';
+export const THEMES: Record<ShowTheme, string> = { dark: 'غامق', light: 'فاتح' };
+
 export interface ShowConfig {
   schemaVersion: number;
   title: string;
+  theme: ShowTheme;
   segments: Segment[];
   updatedAt: string;
 }
@@ -117,6 +122,7 @@ export const SEGMENT_LABELS: Record<SegmentType, string> = {
 export const DEFAULT_CONFIG: ShowConfig = {
   schemaVersion: SHOW_SCHEMA_VERSION,
   title: 'حفل برنامج صقل',
+  theme: 'dark',
   updatedAt: '2026-01-01T00:00:00.000Z',
   segments: [
     { id: 'seg_demo', type: 'demo', title: 'جولة في المنصة', order: 0, settings: { scenes: [...DEMO_SCENES] } },

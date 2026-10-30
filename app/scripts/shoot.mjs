@@ -58,7 +58,7 @@ for (const s of plan) {
       await evaluate('localStorage.clear(); indexedDB.databases?.().then(d => Promise.all(d.map(x => new Promise(r => { const q = indexedDB.deleteDatabase(x.name); q.onsuccess = q.onerror = q.onblocked = r; }))))');
     }
     // setup: نص JS أو ملف (setupFile) يُنفَّذ في صفحة من نفس الأصل قبل فتح الرابط (لتجهيز التخزين)
-    const setup = s.setupFile ? readFileSync(s.setupFile, 'utf8') : s.setup;
+    const setup = [s.setup, s.setupFile && readFileSync(s.setupFile, 'utf8')].filter(Boolean).join(';\n');
     if (setup) {
       await send('Page.navigate', { url: new URL(s.url).origin + '/show-media/README.md' });
       await sleep(500);

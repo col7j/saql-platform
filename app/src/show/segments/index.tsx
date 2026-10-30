@@ -1,6 +1,6 @@
 // عرض الفقرة: شريحة حرّة (slides/SlideView) أو ديمو المنصة. كل مكوّن يأخذ الخطوة الحالية فقط، والتنقل في nav.ts.
 import { lazy, Suspense } from 'react';
-import type { Segment, SlideSegment } from '../model';
+import type { Segment, ShowTheme, SlideSegment } from '../model';
 import { FitStage, SlideCanvas } from '../slides/SlideView';
 import { Backdrop, SegmentBoundary } from './Fallback';
 
@@ -12,6 +12,9 @@ export interface SegProps<S extends Segment = Segment> {
   /** الفقرة المعروضة الآن (لا الخارجة في الانتقال أو المعاينة المتوقفة) */
   active: boolean;
   onSkip: () => void;
+  theme: ShowTheme;
+  /** حركات الدخول (افتراضياً تعمل) */
+  animate?: boolean;
 }
 
 /** شرائح الشعار الكبير والشاشة السوداء: لا يظهر شعار الزاوية */
@@ -31,10 +34,10 @@ export function SegmentView(p: SegProps) {
   );
 }
 
-function SlidePlayer({ seg, step, active, onSkip }: SegProps<SlideSegment>) {
+function SlidePlayer({ seg, step, active, onSkip, theme, animate = true }: SegProps<SlideSegment>) {
   return (
     <div className="absolute inset-0" style={{ background: 'rgb(var(--t-bg))' }}>
-      <FitStage>{(scale) => <SlideCanvas settings={seg.settings} step={step} mode="play" active={active} scale={scale} onSkip={onSkip} />}</FitStage>
+      <FitStage>{(scale) => <SlideCanvas settings={seg.settings} theme={theme} step={step} mode="play" active={active} animate={animate} scale={scale} onSkip={onSkip} />}</FitStage>
     </div>
   );
 }

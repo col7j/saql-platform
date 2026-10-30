@@ -7,6 +7,7 @@ export { CANVAS };
 
 /** أدوار القالب (تتبدل مع الغامق والفاتح) وألوان الهوية الثابتة */
 export const THEME_ROLES = {
+  head: 'عناوين القالب',
   fg: 'نص القالب',
   em: 'توكيد القالب',
   em2: 'توكيد ثانٍ',
@@ -24,7 +25,7 @@ export const GRADIENT_FILLS = { gradTeal: 'تدرّج التيل', gradGold: 'ت
 export const SHADOWS = { none: 'بلا ظل', soft: 'ناعم', lift: 'مرتفع', glow: 'توهّج' } as const;
 export type Shadow = keyof typeof SHADOWS;
 
-export const ANIMS = { none: 'بلا حركة', fade: 'تلاشٍ', up: 'صعود', down: 'نزول', start: 'من اليمين', end: 'من اليسار', scale: 'تكبير' } as const;
+export const ANIMS = { none: 'بلا حركة', fade: 'تلاشٍ', up: 'صعود', down: 'نزول', start: 'من اليمين', end: 'من اليسار', scale: 'تكبير', wipe: 'رسم من المنتصف' } as const;
 export type AnimType = keyof typeof ANIMS;
 export interface Anim {
   type: AnimType;
@@ -62,7 +63,8 @@ export interface ImageProps {
 }
 export interface LogoProps {
   kind: LogoKind;
-  variant: 'color' | 'white';
+  /** auto: البيضاء على القالب الغامق والملونة على الفاتح */
+  variant: 'auto' | 'color' | 'white';
 }
 export interface VideoProps {
   media?: MediaRef;
@@ -168,7 +170,7 @@ export const LOGO_RATIO: Record<LogoKind, number> = {
   vertical: 322.12 / 318.03,
   icon: 284.12 / 486.95,
 };
-export const logoSrc = (p: LogoProps) => LOGOS[p.kind][p.variant];
+export const logoSrc = (p: LogoProps, theme: 'dark' | 'light' = 'dark') => LOGOS[p.kind][p.variant === 'auto' ? (theme === 'light' ? 'color' : 'white') : p.variant];
 
 const NO_ANIM: Anim = { type: 'none', delay: 0, duration: 800 };
 export const DEFAULT_ANIM: Anim = { type: 'up', delay: 0, duration: 900 };
@@ -179,7 +181,7 @@ export function defaultProps(type: ElementType): SlideElement['props'] {
   switch (type) {
     case 'text': return text();
     case 'image': return { fit: 'contain', radius: 24 } satisfies ImageProps;
-    case 'logo': return { kind: 'vertical', variant: 'white' } satisfies LogoProps;
+    case 'logo': return { kind: 'vertical', variant: 'auto' } satisfies LogoProps;
     case 'video': return { fit: 'contain', radius: 24, muted: false, autoAdvance: true, showSkip: true } satisfies VideoProps;
     case 'shape': return { shape: 'rect', fill: 'primary', stroke: 'none', strokeWidth: 4, radius: 24 } satisfies ShapeProps;
     case 'logoGrid': return { tiers: [{ title: 'شريك النجاح', size: 'lg', logos: [] }], titleColor: 'em' } satisfies LogoGridProps;

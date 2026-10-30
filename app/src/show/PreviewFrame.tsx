@@ -25,8 +25,8 @@ export default function PreviewFrame() {
   if (!cfg || !p) return <div className="show-stage" />;
   const seg = sortSegments(cfg.segments).find((s) => s.id === p.id);
   return (
-    <div className="show-stage">
-      {seg ? <SegmentView seg={seg} step={Math.min(p.step, stepCount(seg) - 1)} active={false} onSkip={() => undefined} /> : <Fallback reason="الفقرة غير موجودة" />}
+    <div className="show-stage" data-show-theme={cfg.theme}>
+      {seg ? <SegmentView seg={seg} theme={cfg.theme} step={Math.min(p.step, stepCount(seg) - 1)} active={false} onSkip={() => undefined} /> : <Fallback reason="الفقرة غير موجودة" />}
     </div>
   );
 }

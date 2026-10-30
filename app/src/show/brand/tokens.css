@@ -80,6 +80,7 @@
   --t-bg-image: linear-gradient(155deg, rgb(var(--b-night)) 0%, rgb(var(--b-night)) 55%, rgb(var(--b-teal-deep)) 130%);
   --t-glow: var(--b-sky);
   --t-fg: var(--b-white);
+  --t-head: var(--b-white);  /* العناوين */
   --t-fg-soft: .88;   /* شفافية النص الثانوي */
   --t-fg-muted: .72;  /* شفافية التمهيد والعدّاد */
   --t-fg-faint: .45;  /* ملاحظات المقدّم */
@@ -89,5 +90,30 @@
   --t-primary-hover: var(--b-teal-deep);
   --t-panel: var(--b-night);
   --t-line: var(--b-white);
-  --t-logo: white;    /* نسخة الشعار المناسبة للخلفية */
+  --t-glow-alpha: .26;
+  --t-card-ring: 0;   /* إطار بطاقات الشعارات (غير لازم على الغامق) */
+}
+
+/*
+ * القالب الفاتح: الأبيض خلفيةً (الخلفية الأساسية في ملف الهوية)، والعناوين بالتيل الداكن،
+ * والنص الطويل بالنص الداكن ‎#1E2E33، والتوكيد بالتيل لأن الذهبي على الأبيض لا يقرأ (يبقى للخطوط الفاصلة).
+ * يأتي بعد الغامق فيغلبه حين يُحدَّد data-show-theme="light" على شاشة العرض.
+ */
+[data-show-theme='light'] {
+  --t-bg: var(--b-white);
+  --t-bg-image: linear-gradient(160deg, transparent 0%, transparent 58%, rgb(var(--b-sky) / .12) 130%) rgb(var(--b-white));
+  --t-glow: var(--b-sky);
+  --t-fg: var(--b-ink);
+  --t-head: var(--b-teal-deep);
+  --t-fg-soft: .9;
+  --t-fg-muted: .75;
+  --t-fg-faint: .55;
+  --t-em: var(--b-teal);
+  --t-em-2: var(--b-orange);
+  --t-primary: var(--b-teal);
+  --t-primary-hover: var(--b-teal-deep);
+  --t-panel: var(--b-white);
+  --t-line: var(--b-ink);
+  --t-glow-alpha: .14;
+  --t-card-ring: 1;
 }

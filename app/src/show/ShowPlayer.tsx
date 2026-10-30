@@ -6,7 +6,7 @@ import { preload } from './media';
 import { clampPos, followSegment, next, prev, skipSegment, sortSegments, stepCount, type Pos } from './nav';
 import { keyAction, sceneKey, touchAction } from './keys';
 import { SegmentView, hidesCornerMark } from './segments';
-import { Backdrop, LOGO_MARK, LOGO_ONDARK } from './segments/Fallback';
+import { Backdrop, heroLogo, markLogo } from './segments/Fallback';
 import { useShowConfig, useSync } from './useShow';
 import './show.css';
 
@@ -157,13 +157,13 @@ export default function ShowPlayer() {
   if (!cfg) return <div className="show-stage" />;
 
   return (
-    <div className={`show-stage ${idle && started ? 'hide-cursor' : ''}`} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
+    <div className={`show-stage ${idle && started ? 'hide-cursor' : ''}`} data-show-theme={cfg.theme} onPointerDown={onPointerDown} onPointerUp={onPointerUp}>
       {layers.map((l) => {
         const seg = list.find((s) => s.id === l.id);
         if (!seg) return null;
         return (
           <div key={l.id} className={`show-layer ${l.leaving ? 'leaving' : 'entering'}`}>
-            <SegmentView seg={seg} step={Math.min(l.step, stepCount(seg) - 1)} active={started && !l.leaving} onSkip={skip} />
+            <SegmentView seg={seg} theme={cfg.theme} step={Math.min(l.step, stepCount(seg) - 1)} active={started && !l.leaving} animate={started} onSkip={skip} />
           </div>
         );
       })}
@@ -171,7 +171,7 @@ export default function ShowPlayer() {
 
       {/* شعار الزاوية: حجم وموقع ثابتان، ويغيب حين يكون الشعار نفسه هو الشاشة */}
       <div className="show-mark" style={{ opacity: started && !hidesCornerMark(current) && !blackout ? 1 : 0 }}>
-        <img src={LOGO_MARK} alt="" draggable={false} />
+        <img src={markLogo(cfg.theme)} alt="" draggable={false} />
       </div>
 
       <div className="show-off z-40" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none', transition: 'opacity 500ms ease' }} />
@@ -181,7 +181,7 @@ export default function ShowPlayer() {
           <Backdrop>
             <div className="show-center">
               <div className="flex flex-col items-center">
-                <img src={LOGO_ONDARK} alt="صقل" className="show-in show-logo-start" style={{ ['--i' as string]: 0 }} draggable={false} />
+                <img src={heroLogo(cfg.theme)} alt="صقل" className="show-in show-logo-start" style={{ ['--i' as string]: 0 }} draggable={false} />
                 <h1 className="show-subtitle show-in mt-[4vh]" style={{ ['--i' as string]: 1 }}>{cfg.title}</h1>
                 <button
                   autoFocus

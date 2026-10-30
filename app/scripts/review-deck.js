@@ -1,7 +1,9 @@
 // عرض مراجعة فيه كل أنواع الشرائح والعناصر، للقطات 1920×1080 (يُنفَّذ في صفحة من خادم التطوير عبر shoot.mjs).
 // يولّد صورة وفيديو تجريبيين بالمتصفح نفسه ويحفظهما محلياً مثل الرفع من المحرّر، ثم يحفظ العرض في show-config.
 (async () => {
-  const { putLocalFile } = await import('/src/show/media.ts');
+  const { putLocalFile, listLocalFiles, deleteLocalFile } = await import('/src/show/media.ts');
+  // مكتبة نظيفة في كل تشغيل
+  for (const f of await listLocalFiles()) await deleteLocalFile(f.id);
   const { saveConfig, loadRepoConfig } = await import('/src/show/storage.ts');
   const { templateSegment } = await import('/src/show/slides/templates.ts');
   const { makeElement } = await import('/src/show/slides/model.ts');
@@ -52,29 +54,31 @@
   await done;
   const video = await putLocalFile(new File([new Blob(chunks, { type: 'video/webm' })], 'intro.webm', { type: 'video/webm' }));
 
+  // شعار جمعية تجريبي: شارة دائرية بحروف، كأنه ملف رفعه المستخدم
+  const lc = document.createElement('canvas');
+  lc.width = 800;
+  lc.height = 500;
+  g = lc.getContext('2d');
+  g.fillStyle = C.teal; g.beginPath(); g.arc(400, 210, 170, 0, 7); g.fill();
+  g.fillStyle = C.gold; g.beginPath(); g.arc(400, 210, 110, 0, 7); g.fill();
+  g.fillStyle = C.white; g.font = '900 120px "Thmanyah Sans"'; g.textAlign = 'center'; g.fillText('ج', 400, 255);
+  g.fillStyle = C.teal; g.font = '700 54px "Thmanyah Sans"'; g.fillText('جمعية تجريبية', 400, 460);
+  const orgPng = await new Promise((r) => lc.toBlob(r, 'image/png'));
+  const orgLogo = await putLocalFile(new File([orgPng], 'org-logo.png', { type: 'image/png' }));
+  const partner = (src) => ({ kind: 'url', src });
+
   const repo = await loadRepoConfig();
   const demo = repo.segments.find((s) => s.type === 'demo');
   let n = 0;
   const id = () => `rv_${++n}`;
   const seg = (k, input, title) => ({ ...templateSegment(k, id(), 0, input), title: title ?? input?.title });
 
-  const counter = seg('title', { title: 'أثر البرنامج', sub: '' }, 'عدّاد');
-  counter.settings.elements = [
-    makeElement('text', 'c1', { x: 96, y: 170, w: 1728, h: 130, props: { text: 'أثر البرنامج بالأرقام', size: 96, weight: 900 } }),
-    makeElement('counter', 'c2', { x: 160, y: 400, w: 700, h: 260, props: { from: 0, to: 120, suffix: '+', size: 200 } }),
-    makeElement('text', 'c3', { x: 160, y: 680, w: 700, h: 70, anim: { type: 'up', delay: 300, duration: 900 }, props: { text: 'مشاركاً', size: 44, weight: 400 } }),
-    makeElement('counter', 'c4', { x: 1060, y: 400, w: 700, h: 260, anim: { type: 'up', delay: 200, duration: 900 }, props: { from: 0, to: 36, size: 200, color: 'sky' } }),
-    makeElement('text', 'c5', { x: 1060, y: 680, w: 700, h: 70, anim: { type: 'up', delay: 500, duration: 900 }, props: { text: 'رحلة ولقاء', size: 44, weight: 400 } }),
-  ];
-
-  const partners = seg('blank', {}, 'شركاء النجاح');
-  partners.settings.elements = [
-    makeElement('text', 'p1', { x: 96, y: 80, w: 1728, h: 130, props: { text: 'شركاء النجاح', size: 96, weight: 900 } }),
-    makeElement('logoGrid', 'p2', { x: 160, y: 260, w: 1600, h: 720, props: { tiers: [
-      { title: 'الشريك الذهبي', size: 'lg', logos: [{ kind: 'url', src: './brand/logo-horizontal.svg' }] },
-      { title: 'الداعمون', size: 'md', logos: [{ kind: 'url', src: './brand/logo-vertical.svg' }, { kind: 'url', src: './brand/logo-icon.svg' }, { kind: 'url', src: './brand/logo-horizontal.svg' }] },
-    ] } }),
-  ];
+  const counter = seg('counters', { title: 'أثر البرنامج بالأرقام' }, 'عدّاد');
+  const partners = seg('partners', { tiers: [
+    { title: 'الشريك الذهبي', size: 'lg', logos: [partner('./brand/logo-horizontal.svg')] },
+    { title: 'الشركاء', size: 'md', logos: [partner('./brand/logo-vertical.svg'), partner('./brand/logo-horizontal.svg'), partner('./brand/logo-icon.svg')] },
+    { title: 'الداعمون', size: 'sm', logos: Array.from({ length: 7 }, (_, i) => partner(i % 2 ? './brand/logo-icon.svg' : './brand/logo-horizontal.svg')) },
+  ] }, 'شركاء النجاح');
 
   const shapes = seg('blank', {}, 'أشكال');
   shapes.settings.elements = [
@@ -88,7 +92,8 @@
   ];
 
   const segments = [
-    seg('logo', { title: 'حفل برنامج صقل' }, 'الافتتاح'),
+    seg('opening', { title: 'حفل ختام برنامج صقل', org: 'جمعية تجريبية للتنمية', orgLogo }, 'الافتتاح'),
+    seg('logo', { title: 'حفل برنامج صقل' }, 'الشعار'),
     seg('title', { title: 'عرض البرنامج', sub: 'برنامج تدريبي وتطويري يصقل المهارات ويبني الثقة' }, 'عنوان'),
     seg('image', { media: img }, 'صورة بإطار'),
     seg('image', { media: img, cover: true }, 'صورة بملء الشاشة'),
@@ -100,6 +105,6 @@
     seg('black', {}, 'شاشة سوداء'),
     ...(demo ? [demo] : []),
   ].map((s, i) => ({ ...s, order: i }));
-  saveConfig({ ...repo, title: 'عرض المراجعة', segments });
+  saveConfig({ ...repo, title: 'عرض المراجعة', theme: globalThis.REVIEW_THEME === 'light' ? 'light' : 'dark', segments });
   return segments.length;
 })();

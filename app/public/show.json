@@ -1,6 +1,7 @@
 {
   "schemaVersion": 2,
   "title": "حفل برنامج صقل",
+  "theme": "dark",
   "segments": [
     {
       "id": "seg_opening",
@@ -32,7 +33,7 @@
             "step": 0,
             "props": {
               "kind": "vertical",
-              "variant": "white"
+              "variant": "auto"
             }
           },
           {
@@ -56,7 +57,7 @@
               "font": "Thmanyah Sans",
               "weight": 700,
               "size": 60,
-              "color": "fg",
+              "color": "head",
               "align": "center",
               "line": 1.25
             }
@@ -97,7 +98,7 @@
               "font": "Thmanyah Sans",
               "weight": 900,
               "size": 96,
-              "color": "fg",
+              "color": "head",
               "align": "center",
               "line": 1.15
             }
@@ -113,8 +114,8 @@
             "opacity": 1,
             "shadow": "none",
             "anim": {
-              "type": "scale",
-              "delay": 200,
+              "type": "wipe",
+              "delay": 250,
               "duration": 900
             },
             "step": 0,
@@ -129,10 +130,10 @@
           {
             "id": "seg_intro_e9",
             "type": "video",
-            "x": 115,
-            "y": 97,
-            "w": 1690,
-            "h": 886,
+            "x": 168,
+            "y": 94.5,
+            "w": 1584,
+            "h": 891,
             "rot": 0,
             "opacity": 1,
             "shadow": "lift",
@@ -203,7 +204,7 @@
               "font": "Thmanyah Sans",
               "weight": 900,
               "size": 96,
-              "color": "fg",
+              "color": "head",
               "align": "center",
               "line": 1.15
             }
@@ -219,8 +220,8 @@
             "opacity": 1,
             "shadow": "none",
             "anim": {
-              "type": "scale",
-              "delay": 200,
+              "type": "wipe",
+              "delay": 250,
               "duration": 900
             },
             "step": 0,
@@ -282,7 +283,7 @@
               "font": "Thmanyah Sans",
               "weight": 900,
               "size": 96,
-              "color": "fg",
+              "color": "head",
               "align": "center",
               "line": 1.15
             },
@@ -299,8 +300,8 @@
             "opacity": 1,
             "shadow": "none",
             "anim": {
-              "type": "scale",
-              "delay": 200,
+              "type": "wipe",
+              "delay": 250,
               "duration": 900
             },
             "step": 0,
@@ -393,7 +394,7 @@
               "font": "Thmanyah Sans",
               "weight": 900,
               "size": 110,
-              "color": "fg",
+              "color": "head",
               "counter": true
             }
           }
@@ -430,7 +431,7 @@
             "step": 0,
             "props": {
               "kind": "vertical",
-              "variant": "white"
+              "variant": "auto"
             }
           },
           {
@@ -454,7 +455,7 @@
               "font": "Thmanyah Sans",
               "weight": 700,
               "size": 60,
-              "color": "fg",
+              "color": "head",
               "align": "center",
               "line": 1.25
             }
@@ -463,5 +464,5 @@
       }
     }
   ],
-  "updatedAt": "2026-10-30T08:11:01.960Z"
+  "updatedAt": "2026-10-30T08:24:44.908Z"
 }

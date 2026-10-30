@@ -4,10 +4,12 @@ import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { LOGOS } from '../brand/brand';
 import { CANVAS, type SlideElement, type SlideSettings } from '../slides/model';
 import { SlideCanvas } from '../slides/SlideView';
+import type { ShowTheme } from '../model';
 import { HANDLES, bounds, resizeElement, rotation, round, snapMove, snapResize, snapTargets, unionRect, type Guide, type Handle, type Rect } from './geometry';
 
 interface Props {
   settings: SlideSettings;
+  theme: ShowTheme;
   step: number;
   selection: Set<string>;
   onSelect: (ids: Set<string>) => void;
@@ -26,7 +28,7 @@ type Drag =
 const CURSOR: Record<Handle, string> = { n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', ne: 'nesw-resize', sw: 'nesw-resize', nw: 'nwse-resize', se: 'nwse-resize' };
 const HANDLE_POS: Record<Handle, [number, number]> = { nw: [0, 0], n: [0.5, 0], ne: [1, 0], e: [1, 0.5], se: [1, 1], s: [0.5, 1], sw: [0, 1], w: [0, 0.5] };
 
-export default function EditorCanvas({ settings, step, selection, onSelect, onChange, editingId, onEdit, onTextCommit }: Props) {
+export default function EditorCanvas({ settings, theme, step, selection, onSelect, onChange, editingId, onEdit, onTextCommit }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -170,7 +172,7 @@ export default function EditorCanvas({ settings, step, selection, onSelect, onCh
           onPointerCancel={onPointerUp}
           onDoubleClick={onDoubleClick}
         >
-          <SlideCanvas settings={shown} step={step} mode="edit" scale={s} dimHidden editingId={editingId} onTextCommit={onTextCommit}>
+          <SlideCanvas settings={shown} theme={theme} step={step} mode="edit" scale={s} dimHidden editingId={editingId} onTextCommit={onTextCommit}>
             {/* الطبقة فوق العناصر بإحداثيات اللوحة */}
             <div className="pointer-events-none absolute inset-0" style={{ zIndex: 10000 }}>
               {selected.map((el) => (

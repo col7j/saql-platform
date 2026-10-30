@@ -1,6 +1,6 @@
 // لوحة الخصائص: الشريحة إن لم يُحدَّد شيء، وخصائص العنصر المحدد، ومحاذاة العناصر المتعددة.
 // الخطوط والألوان المعروضة هنا من ملف الهوية حصراً (brand.ts).
-import type { ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Button, Field, Icons, Input, Select, Textarea, Toggle, cx } from '@/ui';
 import { BRAND_COLORS, BRAND_FONTS, LOGOS, LOGO_RULES, TYPE_SCALE } from '../brand/brand';
 import { MediaPicker } from '../admin/MediaPicker';
@@ -11,6 +11,7 @@ import {
 } from '../slides/model';
 import { cssColor, cssFill } from '../slides/SlideView';
 import type { AlignMode } from './geometry';
+import { uploadFiles, useMediaPick } from './MediaLibrary';
 
 export type ElPatch = (fn: (el: SlideElement) => SlideElement, key?: string) => void;
 
@@ -95,6 +96,26 @@ function FontFields({ font, weight, size, onChange, k }: { font: string; weight:
   );
 }
 
+/** إضافة شعارات لفئة: رفع عدة ملفات، أو من المكتبة، أو رابط في show-media */
+function TierAdd({ onAdd }: { onAdd: (m: MediaRef[]) => void }) {
+  const pick = useMediaPick();
+  const file = useRef<HTMLInputElement>(null);
+  const [url, setUrl] = useState('');
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-wrap gap-1.5">
+        <Button size="sm" variant="secondary" icon={<Icons.Upload className="h-4 w-4" />} onClick={() => file.current?.click()}>رفع شعارات</Button>
+        {pick && <Button size="sm" variant="secondary" icon={<Icons.Library className="h-4 w-4" />} onClick={async () => { const m = await pick('image'); if (m) onAdd([m]); }}>من المكتبة</Button>}
+        <input ref={file} type="file" accept="image/*" multiple hidden onChange={async (e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; onAdd((await uploadFiles(fs)).map((x) => x.ref)); }} />
+      </div>
+      <div className="flex gap-1.5">
+        <Input dir="ltr" className="!min-h-0 !py-1.5 text-left" value={url} placeholder="show-media/partners/logo.png" onChange={(e) => setUrl(e.target.value)} />
+        <Button size="sm" variant="secondary" disabled={!url.trim()} onClick={() => (onAdd([{ kind: 'url', src: url.trim() }]), setUrl(''))}>أضف</Button>
+      </div>
+    </div>
+  );
+}
+
 function TiersEditor({ tiers, onChange }: { tiers: LogoTier[]; onChange: (t: LogoTier[]) => void }) {
   const set = (i: number, t: Partial<LogoTier>) => onChange(tiers.map((x, k) => (k === i ? { ...x, ...t } : x)));
   return (
@@ -112,7 +133,7 @@ function TiersEditor({ tiers, onChange }: { tiers: LogoTier[]; onChange: (t: Log
               <button type="button" className="p-1 text-ink-400 hover:text-bad-600" aria-label="إزالة" onClick={() => set(i, { logos: t.logos.filter((_, j) => j !== k) })}><Icons.X className="h-3.5 w-3.5" /></button>
             </div>
           ))}
-          <MediaPicker accept="image/*" placeholder="show-media/partners/logo.png" onChange={(m) => m && set(i, { logos: [...t.logos, m] })} />
+          <TierAdd onAdd={(ms) => set(i, { logos: [...t.logos, ...ms] })} />
         </div>
       ))}
       <Button size="sm" variant="secondary" icon={<Icons.Plus className="h-4 w-4" />} onClick={() => onChange([...tiers, { title: '', size: 'md', logos: [] }])}>فئة</Button>
@@ -166,7 +187,7 @@ function ElementFields({ el, patch }: { el: SlideElement; patch: ElPatch }) {
               <Select className="!min-h-0 !py-1.5" value={el.props.kind} onChange={(e) => patch((x) => (x.type === 'logo' ? { ...x, props: { ...x.props, kind: e.target.value as typeof x.props.kind }, h: x.w / LOGO_RATIO[e.target.value as typeof x.props.kind] } : x), `${el.id}:kind`)} options={Object.entries(LOGOS).map(([k, l]) => ({ value: k, label: l.label }))} />
             </Field>
             <Field label="النسخة">
-              <Select className="!min-h-0 !py-1.5" value={el.props.variant} onChange={(e) => props({ variant: e.target.value }, 'variant')} options={[{ value: 'color', label: 'الملونة' }, { value: 'white', label: 'البيضاء (على التيل)' }]} />
+              <Select className="!min-h-0 !py-1.5" value={el.props.variant} onChange={(e) => props({ variant: e.target.value }, 'variant')} options={[{ value: 'auto', label: 'حسب القالب' }, { value: 'color', label: 'الملونة' }, { value: 'white', label: 'البيضاء (على التيل)' }]} />
             </Field>
           </div>
           <p className="text-[11px] leading-relaxed text-ink-500">قواعد ملف الهوية: لا مد ولا ضغط ولا تدوير ولا شفافية ولا ظل، ومساحة آمنة خُمس الارتفاع، وأصغر عرض {LOGOS[el.props.kind].minWidth}px.</p>

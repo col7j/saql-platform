@@ -46,7 +46,7 @@ function props(type: ElementType, v: unknown): SlideElement['props'] {
     case 'image':
       return { media: media(p.media), fit: oneOf(p.fit, ['contain', 'cover'] as const, d.fit), radius: num(p.radius, d.radius, 0, 999) };
     case 'logo':
-      return { kind: oneOf(p.kind, Object.keys(LOGO_RATIO) as LogoKind[], d.kind), variant: oneOf(p.variant, ['color', 'white'] as const, d.variant) };
+      return { kind: oneOf(p.kind, Object.keys(LOGO_RATIO) as LogoKind[], d.kind), variant: oneOf(p.variant, ['auto', 'color', 'white'] as const, d.variant) };
     case 'video':
       return { media: media(p.media), fit: oneOf(p.fit, ['contain', 'cover'] as const, d.fit), radius: num(p.radius, d.radius, 0, 999), muted: bool(p.muted, d.muted), autoAdvance: bool(p.autoAdvance, d.autoAdvance), showSkip: bool(p.showSkip, d.showSkip) };
     case 'shape':

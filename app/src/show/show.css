@@ -36,16 +36,16 @@
   height: 78vmax;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(var(--t-glow) / .26), rgb(var(--t-glow) / .08) 45%, transparent 72%);
+  background: radial-gradient(closest-side, rgb(var(--t-glow) / var(--t-glow-alpha)), rgb(var(--t-glow) / calc(var(--t-glow-alpha) * .3)) 45%, transparent 72%);
   pointer-events: none;
   animation: show-breathe 9s ease-in-out infinite alternate;
 }
 @keyframes show-breathe { from { opacity: .75; transform: translate(-50%, -50%) scale(.94); } to { opacity: 1; transform: translate(-50%, -50%) scale(1.04); } }
 
 /* الطباعة: تسلسل العناوين من ملف الهوية */
-.show-title { font-weight: var(--b-w-black); font-size: calc(var(--b-fs-title) * var(--u)); line-height: var(--b-lh-title); color: rgb(var(--t-fg)); text-wrap: balance; }
-.show-display { font-weight: var(--b-w-black); font-size: calc(var(--b-fs-display) * var(--u)); line-height: var(--b-lh-title); color: rgb(var(--t-fg)); text-wrap: balance; }
-.show-subtitle { font-weight: var(--b-w-bold); font-size: calc(var(--b-fs-subtitle) * var(--u)); line-height: var(--b-lh-subtitle); color: rgb(var(--t-fg)); text-wrap: balance; }
+.show-title { font-weight: var(--b-w-black); font-size: calc(var(--b-fs-title) * var(--u)); line-height: var(--b-lh-title); color: rgb(var(--t-head)); text-wrap: balance; }
+.show-display { font-weight: var(--b-w-black); font-size: calc(var(--b-fs-display) * var(--u)); line-height: var(--b-lh-title); color: rgb(var(--t-head)); text-wrap: balance; }
+.show-subtitle { font-weight: var(--b-w-bold); font-size: calc(var(--b-fs-subtitle) * var(--u)); line-height: var(--b-lh-subtitle); color: rgb(var(--t-head)); text-wrap: balance; }
 .show-body { font-weight: var(--b-w-regular); font-size: calc(var(--b-fs-body) * var(--u)); line-height: var(--b-lh-body); color: rgb(var(--t-fg) / var(--t-fg-soft)); }
 .show-kicker { font-weight: var(--b-w-medium); font-size: calc(var(--b-fs-caption) * var(--u)); color: rgb(var(--t-fg) / var(--t-fg-muted)); }
 .show-note { font-size: calc(18 * var(--u)); color: rgb(var(--t-fg) / var(--t-fg-faint)); }

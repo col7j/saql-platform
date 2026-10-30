@@ -67,7 +67,7 @@ export function parseConfig(raw: unknown): ShowConfig {
     if (ids.has(s.id)) s.id = `${s.id}_${s.order}`;
     ids.add(s.id);
   }
-  return { schemaVersion: SHOW_SCHEMA_VERSION, title: str(v.title, DEFAULT_CONFIG.title), segments, updatedAt: str(v.updatedAt, new Date(0).toISOString()) };
+  return { schemaVersion: SHOW_SCHEMA_VERSION, title: str(v.title, DEFAULT_CONFIG.title), theme: v.theme === 'light' ? 'light' : 'dark', segments, updatedAt: str(v.updatedAt, new Date(0).toISOString()) };
 }
 
 export function loadSavedConfig(store: KV | null = local()): ShowConfig | null {

@@ -7,11 +7,13 @@ import {
   CANVAS, isVisibleAt, logoSrc, nameBatches, THEME_ROLES,
   type ColorRef, type CounterEl, type Fill, type ImageEl, type LogoGridEl, type NamesEl, type SlideBg, type SlideElement, type SlideSettings, type TextEl, type VideoEl,
 } from './model';
+import { fitLogoGrid } from './layout';
+import type { ShowTheme } from '../model';
 import './slides.css';
 
 export type SlideMode = 'play' | 'edit' | 'thumb';
 
-const ROLE_VAR: Record<keyof typeof THEME_ROLES, string> = { fg: '--t-fg', em: '--t-em', em2: '--t-em-2', primary: '--t-primary', glow: '--t-glow' };
+const ROLE_VAR: Record<keyof typeof THEME_ROLES, string> = { head: '--t-head', fg: '--t-fg', em: '--t-em', em2: '--t-em-2', primary: '--t-primary', glow: '--t-glow' };
 const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => '-' + c.toLowerCase());
 
 /** لون من الهوية أو دور القالب كقيمة CSS */
@@ -67,10 +69,14 @@ function Background({ bg, mode }: { bg: SlideBg; mode: SlideMode }) {
 
 export interface SlideCanvasProps {
   settings: SlideSettings;
+  /** القالب الغامق أو الفاتح (من إعدادات العرض) */
+  theme?: ShowTheme;
   step: number;
   mode: SlideMode;
   /** الشريحة المعروضة الآن في العرض (الفيديو يعمل والعدّاد يعدّ) */
   active?: boolean;
+  /** حركات الدخول تعمل (في العرض: بعد «ابدأ العرض» فقط، فلا تنتهي خلف شاشة البداية) */
+  animate?: boolean;
   scale: number;
   onSkip?: () => void;
   /** المحرّر: عنصر قيد تحرير النص، وإشعار بانتهاء التحرير */
@@ -82,14 +88,14 @@ export interface SlideCanvasProps {
 }
 
 /** اللوحة نفسها بحجمها الحقيقي 1920×1080 مُصغّرة بـ scale */
-export function SlideCanvas({ settings, step, mode, active = false, scale, onSkip, editingId, onTextCommit, dimHidden, children }: SlideCanvasProps) {
+export function SlideCanvas({ settings, theme = 'dark', step, mode, active = false, animate = true, scale, onSkip, editingId, onTextCommit, dimHidden, children }: SlideCanvasProps) {
   return (
-    <div className="sl-canvas" data-show-theme="dark" style={{ transform: `scale(${scale})` }}>
+    <div className="sl-canvas" data-show-theme={theme} style={{ transform: `scale(${scale})` }}>
       <Background bg={settings.bg} mode={mode} />
       {settings.elements.map((el, z) => {
         const visible = isVisibleAt(el, step);
         if (!visible && !(dimHidden && mode === 'edit')) return null;
-        return <ElementView key={el.id} el={el} z={z} step={step} mode={mode} active={active} visible={visible} onSkip={onSkip} editing={editingId === el.id} onTextCommit={onTextCommit} />;
+        return <ElementView key={el.id} el={el} z={z} theme={theme} anim={mode === 'play' && animate} step={step} mode={mode} active={active} visible={visible} onSkip={onSkip} editing={editingId === el.id} onTextCommit={onTextCommit} />;
       })}
       {children}
     </div>
@@ -109,6 +115,9 @@ export const elementBox = (el: SlideElement, z: number): CSSProperties => ({
 
 interface ElProps {
   el: SlideElement;
+  theme: ShowTheme;
+  /** تعمل حركات الدخول */
+  anim: boolean;
   z: number;
   step: number;
   mode: SlideMode;
@@ -121,7 +130,7 @@ interface ElProps {
 
 function ElementView(p: ElProps) {
   const { el, mode, visible } = p;
-  const play = mode === 'play' && el.anim.type !== 'none';
+  const play = p.anim && el.anim.type !== 'none';
   return (
     <div className={`sl-el ${!visible ? 'dim' : ''} ${el.shadow !== 'none' ? `sl-shadow-${el.shadow}` : ''}`} style={elementBox(el, p.z)} data-el={el.id}>
       <div
@@ -141,7 +150,7 @@ function Body(p: ElProps) {
   switch (el.type) {
     case 'text': return <TextBody {...p} el={el} />;
     case 'image': return <ImageBody el={el} mode={p.mode} />;
-    case 'logo': return <img className="sl-img" src={logoSrc(el.props)} alt="شعار برنامج صقل" draggable={false} style={{ objectFit: 'contain' }} />;
+    case 'logo': return <img className="sl-img" src={logoSrc(el.props, p.theme)} alt="شعار برنامج صقل" draggable={false} style={{ objectFit: 'contain' }} />;
     case 'video': return <VideoBody {...p} el={el} />;
     case 'shape': {
       const s = el.props;
@@ -157,9 +166,9 @@ function Body(p: ElProps) {
         />
       );
     }
-    case 'logoGrid': return <LogoGridBody el={el} mode={p.mode} />;
+    case 'logoGrid': return <LogoGridBody el={el} mode={p.mode} anim={p.anim} />;
     case 'counter': return <CounterBody el={el} mode={p.mode} active={p.active} />;
-    case 'names': return <NamesBody el={el} step={p.step} mode={p.mode} />;
+    case 'names': return <NamesBody el={el} step={p.step} mode={p.mode} anim={p.anim} />;
   }
 }
 
@@ -257,20 +266,25 @@ function VideoChrome({ el, forcedMute, showSkip, onUnmute, onSkip }: { el: Video
   );
 }
 
-const TIER_H = { lg: 170, md: 125, sm: 90 } as const;
-
-function LogoGridBody({ el, mode }: { el: LogoGridEl; mode: SlideMode }) {
+/** شبكة الشعارات بتنسيق تلقائي: أكبر بطاقات تتسع معها كل الفئات في صندوق العنصر، وتدخل البطاقات تباعاً */
+function LogoGridBody({ el, mode, anim }: { el: LogoGridEl; mode: SlideMode; anim: boolean }) {
   const tiers = el.props.tiers;
-  if (!tiers.some((t) => t.logos.length)) return mode === 'play' ? null : <div className="sl-placeholder">أضف شعارات الشركاء</div>;
+  if (!tiers.some((t) => t.logos.length)) return mode === 'play' ? null : <div className="sl-placeholder">أضف شعارات الشركاء من لوحة الخصائص</div>;
+  const g = fitLogoGrid(tiers.map((t) => ({ size: t.size, count: t.logos.length, hasTitle: !!t.title })), el.w, el.h);
+  let n = 0;
   return (
-    <div className="sl-grid">
+    <div className="sl-grid" style={{ gap: g.tierGap }}>
       {tiers.map((t, i) =>
         t.logos.length ? (
-          <div key={i} className="sl-tier">
-            {t.title && <div className="sl-tier-title" style={{ color: cssColor(el.props.titleColor) }}>{t.title}</div>}
-            <div className="sl-tier-logos">
+          <div key={i} className="sl-tier" style={{ gap: g.gap }}>
+            {t.title && <div className="sl-tier-title" style={{ color: cssColor(el.props.titleColor), fontSize: g.titleSize }}>{t.title}</div>}
+            <div className="sl-tier-logos" style={{ gap: g.gap, maxWidth: g.tiers[i].perRow * (g.tiers[i].cardW + g.gap) - g.gap }}>
               {t.logos.map((m, k) => (
-                <div key={k} className="sl-logo-card" style={{ height: TIER_H[t.size], width: TIER_H[t.size] * 2 }}>
+                <div
+                  key={k}
+                  className={`sl-logo-card ${anim ? 'sl-anim sl-a-up' : ''}`}
+                  style={{ height: g.tiers[i].cardH, width: g.tiers[i].cardW, ['--d' as string]: '700ms', ['--dl' as string]: `${el.anim.delay + 120 * n++}ms` } as CSSProperties}
+                >
                   <GridLogo media={m} />
                 </div>
               ))}
@@ -313,7 +327,7 @@ function CounterBody({ el, mode, active }: { el: CounterEl; mode: SlideMode; act
   );
 }
 
-function NamesBody({ el, step, mode }: { el: NamesEl; step: number; mode: SlideMode }) {
+function NamesBody({ el, step, mode, anim }: { el: NamesEl; step: number; mode: SlideMode; anim: boolean }) {
   const n = el.props;
   const batch = Math.max(0, Math.min(nameBatches(n) - 1, step - el.step));
   if (!n.names.length) return mode === 'play' ? null : <div className="sl-placeholder">أضف الأسماء</div>;
@@ -327,7 +341,7 @@ function NamesBody({ el, step, mode }: { el: NamesEl; step: number; mode: SlideM
         {list.map((name, i) => (
           <div
             key={name + i}
-            className={mode === 'play' ? 'sl-anim sl-a-scale' : undefined}
+            className={anim ? 'sl-anim sl-a-scale' : undefined}
             style={{ ['--d' as string]: '1300ms', ['--dl' as string]: `${i * 260}ms`, fontFamily: n.font, fontWeight: n.weight, fontSize: size, lineHeight: 1.15, color: cssColor(n.color), textAlign: 'center', textWrap: 'balance' } as CSSProperties}
           >
             {name}
