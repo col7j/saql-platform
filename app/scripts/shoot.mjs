@@ -49,6 +49,8 @@ async function press(key) {
 await send('Page.enable');
 await send('Runtime.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 1920, height: 1080, deviceScaleFactor: 1, mobile: false });
+// التنزيلات (تصدير الملفات) إلى مجلد اللقطات
+await send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: outDir, eventsEnabled: true }).catch(() => send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: outDir }));
 const results = [];
 for (const s of plan) {
   if (s.url) {
@@ -69,6 +71,13 @@ for (const s of plan) {
     await evaluate('document.fonts.ready.then(() => true)');
   }
   for (const k of s.keys ?? []) { await press(k); await sleep(s.keyGap ?? 300); }
+  // upload: { selector, file } يضع ملفاً في حقل ملف (كاختيار المستخدم)
+  if (s.upload) {
+    const { root } = await send('DOM.getDocument', { depth: -1, pierce: true });
+    const { nodeId } = await send('DOM.querySelector', { nodeId: root.nodeId, selector: s.upload.selector });
+    await send('DOM.setFileInputFiles', { nodeId, files: [s.upload.file] });
+    await sleep(300);
+  }
   // clickAt: تعبير JS يعيد [x, y] (أو [x1, y1, x2, y2] للسحب) فيُضاف إلى clicks
   const clicks = [...(s.clicks ?? [])];
   if (s.clickAt) clicks.push(await evaluate(s.clickAt));

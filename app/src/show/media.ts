@@ -35,6 +35,11 @@ export async function putLocalFile(file: File): Promise<MediaRef> {
   await tx('readwrite', (s) => s.put({ id, name: file.name, type: file.type, size: file.size, blob: file } satisfies LocalFile));
   return { kind: 'local', id, name: file.name };
 }
+/** حفظ ملف بمعرّفه كما هو (استيراد عرض من جهاز آخر): المراجع في الإعدادات تبقى صالحة */
+export async function putLocalFileWithId(f: LocalFile): Promise<void> {
+  await tx('readwrite', (s) => s.put(f));
+  urlCache.delete(f.id);
+}
 export const getLocalFile = (id: string) => tx<LocalFile | undefined>('readonly', (s) => s.get(id));
 export const deleteLocalFile = (id: string) => tx('readwrite', (s) => s.delete(id)).then(() => undefined);
 export const listLocalFiles = () => tx<LocalFile[]>('readonly', (s) => s.getAll());

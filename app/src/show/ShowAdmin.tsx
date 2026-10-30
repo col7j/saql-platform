@@ -11,6 +11,7 @@ import type { RemoteInfo } from './sync';
 import { DemoEditor } from './admin/DemoEditor';
 import { toast } from './admin/MediaPicker';
 import { mediaUsage } from './editor/usage';
+import { ExportModal, ImportModal } from './editor/Transfer';
 import { MediaLibraryHost, uploadFiles, type MediaKind } from './editor/MediaLibrary';
 import { ELEMENT_LABELS, makeElement, type ElementType, type SlideElement, type SlideSettings } from './slides/model';
 import { FitStage, SlideCanvas } from './slides/SlideView';
@@ -116,6 +117,9 @@ export default function ShowAdmin() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const importRef = useRef<HTMLInputElement>(null);
+  const bundleRef = useRef<HTMLInputElement>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [bundleFile, setBundleFile] = useState<File | null>(null);
   const clipboard = useRef<SlideElement[]>([]);
 
   // السجل يبدأ مع أول تحميل، وتعديل من نافذة أخرى يصبح الحالة الحالية دون مسح السجل
@@ -217,7 +221,7 @@ export default function ShowAdmin() {
   const keys = useRef<(e: KeyboardEvent) => void>(() => undefined);
   keys.current = (e: KeyboardEvent) => {
     const t = e.target as HTMLElement;
-    if (t.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]') || libraryOpen || previewOpen || addOpen) return;
+    if (t.closest('input, textarea, select, [contenteditable="true"], [role="dialog"]') || libraryOpen || previewOpen || addOpen || exportOpen || bundleFile) return;
     const mod = e.metaKey || e.ctrlKey;
     const k = e.key.toLowerCase();
     if (mod && (k === 'z' || e.code === 'KeyZ')) return e.preventDefault(), e.shiftKey ? doRedo() : doUndo();
@@ -323,12 +327,15 @@ export default function ShowAdmin() {
         <MoreMenu
           label="الملف"
           items={[
-            { label: 'تصدير الإعدادات (JSON)', onClick: () => download('show.json', exportConfig(cfg)) },
-            { label: 'استيراد إعدادات…', onClick: () => importRef.current?.click() },
+            { label: 'تصدير العرض كاملاً (ملف واحد)', onClick: () => setExportOpen(true) },
+            { label: 'استيراد عرض…', onClick: () => bundleRef.current?.click() },
+            { label: 'تصدير الإعدادات فقط (JSON)', onClick: () => download('show.json', exportConfig(cfg)) },
+            { label: 'استيراد إعدادات فقط (JSON)…', onClick: () => importRef.current?.click() },
             { label: 'استعادة show.json من المستودع', onClick: restoreRepo },
 
           ]}
         />
+        <input ref={bundleRef} type="file" accept=".zip,application/zip" hidden data-testid="bundle-input" onChange={(e) => (setBundleFile(e.target.files?.[0] ?? null), (e.target.value = ''))} />
         <input ref={importRef} type="file" accept="application/json,.json" hidden onChange={(e) => (onImport(e.target.files?.[0]), (e.target.value = ''))} />
         <Button size="sm" icon={<Icons.MonitorPlay className="h-4 w-4" />} onClick={() => window.open(showUrl('#/show'), 'saql-show')}>افتح شاشة العرض</Button>
       </header>
@@ -502,6 +509,17 @@ export default function ShowAdmin() {
         <p className="mt-2 text-xs text-ink-500">المعاينة من الخطوة الحالية؛ غيّر الخطوة من شريط النقرات أسفل اللوحة.</p>
       </Modal>
 
+      <ExportModal cfg={cfg} open={exportOpen} onClose={() => setExportOpen(false)} />
+      <ImportModal
+        file={bundleFile}
+        onClose={() => setBundleFile(null)}
+        onDone={(imported) => {
+          commit(imported);
+          setBundleFile(null);
+          setSelectedSeg(null);
+          toast(`استُورد العرض «${imported.title}»`);
+        }}
+      />
       <ConfirmHost />
       <Toasts />
     </div>
