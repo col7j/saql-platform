@@ -14,15 +14,50 @@ beforeAll(() => {
 });
 
 describe('ديمو المنصة للقراءة فقط', () => {
-  it('يختار رحلة مكتملة: وثيقة وخطتان أ وب وميزانية', async () => {
-    const { demoSnapshot, pickDemoTrip } = await import('@/show/demo/data');
+  it('الديمو بصفة مشارك في مجموعة، لا القائد العام ولا أحد من الإدارة', async () => {
+    const { demoSnapshot, demoUserId, DEMO_PARTICIPANT } = await import('@/show/demo/data');
+    const { getCapabilities } = await import('@/domain/permissions');
     const db = demoSnapshot();
-    const t = pickDemoTrip(db)!;
-    expect(t.schedule.plans.map((p) => p.name).slice(0, 2)).toEqual(['الخطة أ', 'الخطة ب']);
-    expect(t.schedule.plans[1].items.length).toBeGreaterThan(0);
-    expect(db.budgetRequests.some((r) => r.ownerId === t.id)).toBe(true);
-    expect(pickDemoTrip(db, db.trips[2].id)!.id).toBe(db.trips[2].id);
-    expect(pickDemoTrip(db, 'غير-موجود')!.id).toBe(t.id);
+    const c = getCapabilities(db, demoUserId(db));
+    expect(demoUserId(db)).toBe(DEMO_PARTICIPANT);
+    expect(c.isParticipant).toBe(true);
+    expect(c.isStaff || c.isLeader).toBe(false);
+    expect(c.group).toBeTruthy();
+  });
+
+  it('كل شاشة يمر بها الديمو فيها بيانات يراها المشارك بصلاحياته الفعلية', async () => {
+    const { demoSnapshot, demoTargets } = await import('@/show/demo/data');
+    const { canViewTripPlans, canTakeTripAttendance } = await import('@/domain/permissions');
+    const { eventsFor } = await import('@/domain/calendar');
+    const { isPlanUnlocked } = await import('@/domain/workflow');
+    const db = demoSnapshot();
+    const t = demoTargets(db);
+    const trip = db.trips.find((x) => x.id === t.tripId)!;
+    expect(canViewTripPlans(db, t.personId, trip)).toBe(true);
+    expect(canTakeTripAttendance(db, t.personId, trip)).toBe(true);
+    expect(trip.schedule.plans.slice(0, 2).map((p) => p.name)).toEqual(['الخطة أ', 'الخطة ب']);
+    expect(trip.schedule.plans[1].items.length).toBeGreaterThan(0);
+    // يوم التقويم فيه عام ومجموعة وخاص
+    const kinds = new Set(eventsFor(db, t.personId).filter((e) => e.date === t.day).map((e) => e.scope));
+    expect(kinds.has('personal')).toBe(true);
+    expect(eventsFor(db, t.personId).filter((e) => e.date === t.day).length).toBeGreaterThanOrEqual(2);
+    // لقاء التركيز: المشارك مقدّمه وتقييمه مكتمل
+    const f = db.focusMeetings.find((x) => x.id === t.focusId)!;
+    expect(f.presenterIds).toContain(t.personId);
+    expect(Object.keys(f.presenterEvaluations[t.personId] ?? {}).length).toBe(db.settings.presentationCriteria.length);
+    // الخطة الشخصية مفتوحة وفيها خطوات
+    expect(isPlanUnlocked(db, t.personId)).toBe(true);
+    expect(db.personalPlans.find((p) => p.participantId === t.personId)!.aspects.some((a) => a.steps.length > 0)).toBe(true);
+  });
+
+  it('الإثراء على نسخة الديمو وحدها: بيانات المنصة التجريبية لا تتغير', async () => {
+    const { buildSeed } = await import('@/data/seed');
+    const { demoSnapshot } = await import('@/show/demo/data');
+    const seed = buildSeed();
+    const demo = demoSnapshot();
+    expect(demo).not.toBe(seed);
+    expect(seed.individualMeetings.some((m) => m.id === 'im_demo')).toBe(false);
+    expect(demo.individualMeetings.some((m) => m.id === 'im_demo')).toBe(true);
   });
 
   it('أي تعديل من الشاشات لا يغيّر اللقطة ولا يُكتب في التخزين', async () => {

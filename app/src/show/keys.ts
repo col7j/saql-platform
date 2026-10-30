@@ -24,3 +24,14 @@ export function touchAction(dx: number, dy: number, x: number, width: number): '
   if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return x < width / 2 ? 'next' : 'prev';
   return null;
 }
+
+/** الأرقام 1–4 (العلوية أو لوحة الأرقام، وبالأرقام العربية) تقفز إلى مشهد في الديمو. يعيد ترتيب المشهد من 0 */
+export function sceneKey(e: { key: string; code?: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean }): number | null {
+  if (e.ctrlKey || e.metaKey || e.altKey) return null;
+  const m = /^(?:Digit|Numpad)([1-4])$/.exec(e.code ?? '');
+  if (m) return Number(m[1]) - 1;
+  const i = ['1', '2', '3', '4'].indexOf(e.key);
+  if (i >= 0) return i;
+  const a = ['١', '٢', '٣', '٤'].indexOf(e.key);
+  return a >= 0 ? a : null;
+}

@@ -1,5 +1,5 @@
 // منطق نقي لترتيب الفقرات والتنقل بينها: لا يعرف الواجهة ولا التخزين.
-import { defaultSettings, type Segment, type SegmentType, type ShowConfig } from './model';
+import { defaultSettings, demoSteps, type Segment, type SegmentType, type ShowConfig } from './model';
 
 /** موضع العرض: الفقرة (بترتيبها) والخطوة داخلها (شريحة، دفعة أسماء، خطوة ديمو) */
 export interface Pos {
@@ -44,7 +44,7 @@ export function stepCount(seg: Segment): number {
     case 'slides': return Math.max(1, seg.settings.slides.length);
     // الخطوة 0 العنوان وحده، ثم دفعة أسماء مع كل نقرة
     case 'names': return 1 + Math.ceil(seg.settings.names.length / Math.max(1, seg.settings.perStep));
-    case 'demo': return Math.max(1, seg.settings.steps.length);
+    case 'demo': return Math.max(1, demoSteps(seg.settings).length);
     default: return 1;
   }
 }

@@ -1,7 +1,7 @@
 // وضع «عرض الحفل»: ترتيب الفقرات، التنقل، التخزين المنفصل، حارس القراءة فقط، والتزامن
 import { describe, expect, it } from 'vitest';
 import { DB_VERSION } from '@/data/seed';
-import { DEFAULT_CONFIG, DEMO_STEPS, type Segment, type ShowConfig } from '@/show/model';
+import { DEFAULT_CONFIG, DEMO_SCENES, type Segment, type ShowConfig } from '@/show/model';
 import { addSegment, clampPos, followSegment, isEnd, moveSegment, next, normalize, prev, removeSegment, skipSegment, sortSegments, stepCount, updateSegment } from '@/show/nav';
 import { SHOW_KEY, clearSavedConfig, exportConfig, loadInitialConfig, loadSavedConfig, parseConfig, saveConfig } from '@/show/storage';
 import { guardPlatformWrites, isShowHash } from '@/show/guard';
@@ -36,7 +36,7 @@ describe('ترتيب الفقرات', () => {
   });
   it('الإضافة في الآخر بإعدادات افتراضية، والحذف يعيد الترقيم', () => {
     const added = addSegment([seg('a', 0), seg('b', 3)], 'demo', 'ديمو', 'd');
-    expect(added[added.length - 1]).toMatchObject({ id: 'd', order: 2, settings: { steps: [...DEMO_STEPS] } });
+    expect(added[added.length - 1]).toMatchObject({ id: 'd', order: 2, settings: { scenes: [...DEMO_SCENES] } });
     expect(removeSegment(added, 'b').map((s) => [s.id, s.order])).toEqual([['a', 0], ['d', 1]]);
   });
   it('تعديل الاسم والإعدادات لا يمس بقية الفقرات', () => {
@@ -52,7 +52,7 @@ describe('التنقل بين الفقرات والخطوات', () => {
     expect(stepCount(slides('x', 0, 0))).toBe(1);
     expect(stepCount(slides('x', 0, 3))).toBe(3);
     expect(stepCount(names('x', 0, ['أ', 'ب', 'ج', 'د', 'هـ'], 2))).toBe(4); // العنوان ثم 2+2+1
-    expect(stepCount({ ...seg('d', 0), type: 'demo', settings: { steps: ['list', 'trip'] } } as Segment)).toBe(2);
+    expect(stepCount({ ...seg('d', 0), type: 'demo', settings: { scenes: ['calendar', 'plan'] } } as Segment)).toBe(3 + 2);
   });
   it('التالي يمر على كل الخطوات ثم يقف في الآخر', () => {
     let p = { seg: 0, step: 0 };
@@ -199,5 +199,35 @@ describe('أدوات الشرائح', () => {
     expect(expandPattern('show-media/slides/Slide{n}.PNG', 3)).toEqual(['show-media/slides/Slide1.PNG', 'show-media/slides/Slide2.PNG', 'show-media/slides/Slide3.PNG']);
     expect(expandPattern('show-media/a.png', 9)).toEqual(['show-media/a.png']);
     expect(expandPattern('x{n}', -2)).toEqual([]);
+  });
+});
+
+describe('مشاهد الديمو', () => {
+  it('الخطوات بترتيب المشاهد، وأول كل مشهد معلَّم لعنوانه', async () => {
+    const { demoSteps } = await import('@/show/model');
+    const steps = demoSteps({ scenes: ['calendar', 'trips', 'focus', 'plan'] });
+    expect(steps.map((s) => s.key)).toEqual(['calendar.month', 'calendar.day', 'calendar.event', 'trips.trip', 'trips.docs', 'trips.plans', 'trips.closure', 'focus.list', 'focus.detail', 'focus.evaluation', 'plan.wheel', 'plan.goals']);
+    expect(steps.filter((s) => s.first).map((s) => s.scene)).toEqual(['calendar', 'trips', 'focus', 'plan']);
+  });
+  it('القفز بالأرقام إلى أول المشهد، وخارج المشاهد لا شيء', async () => {
+    const { sceneStart } = await import('@/show/model');
+    const all = { scenes: [...DEMO_SCENES] };
+    expect([0, 1, 2, 3].map((n) => sceneStart(all, n))).toEqual([0, 3, 7, 10]);
+    expect(sceneStart({ scenes: ['focus', 'plan'] }, 1)).toBe(3);
+    expect(sceneStart({ scenes: ['focus', 'plan'] }, 2)).toBeNull();
+  });
+  it('الإعدادات القديمة (خطوات القائد) تتحول إلى المشاهد الأربعة، والمكرر يُحذف', () => {
+    const old = parseConfig({ segments: [{ type: 'demo', title: 'ديمو', settings: { tripId: 't4', steps: ['list', 'focusTrip', 'budget'] } }] });
+    expect(old.segments[0].settings).toEqual({ scenes: [...DEMO_SCENES] });
+    const picked = parseConfig({ segments: [{ type: 'demo', settings: { scenes: ['plan', 'calendar', 'plan', 'x'] } }] });
+    expect(picked.segments[0].settings).toEqual({ scenes: ['plan', 'calendar'] });
+  });
+  it('الأرقام 1–4 بلوحتي المفاتيح العربية والإنجليزية', async () => {
+    const { sceneKey } = await import('@/show/keys');
+    expect(sceneKey({ key: '1', code: 'Digit1' })).toBe(0);
+    expect(sceneKey({ key: '٤', code: 'Digit4' })).toBe(3);
+    expect(sceneKey({ key: '3', code: 'Numpad3' })).toBe(2);
+    expect(sceneKey({ key: '5', code: 'Digit5' })).toBeNull();
+    expect(sceneKey({ key: '1', code: 'Digit1', metaKey: true })).toBeNull();
   });
 });
