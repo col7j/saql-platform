@@ -168,18 +168,18 @@ export default function ShowPlayer() {
         <img src={LOGO_MARK} alt="" draggable={false} />
       </div>
 
-      <div className="absolute inset-0 z-40 bg-black" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none', transition: 'opacity 500ms ease' }} />
+      <div className="show-off z-40" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none', transition: 'opacity 500ms ease' }} />
 
       {!started && (
         <div className="absolute inset-0 z-50" onPointerUp={(e) => e.stopPropagation()}>
           <Backdrop>
             <div className="show-center">
               <div className="flex flex-col items-center">
-                <img src={LOGO_ONDARK} alt="صقل" className="show-in h-[26vh] w-auto" style={{ ['--i' as string]: 0 }} draggable={false} />
-                <h1 className="show-title show-in mt-[4vh]" style={{ ['--i' as string]: 1, fontSize: 'clamp(40px, min(4.6vw, 8.5vh), 96px)' }}>{cfg.title}</h1>
+                <img src={LOGO_ONDARK} alt="صقل" className="show-in show-logo-start" style={{ ['--i' as string]: 0 }} draggable={false} />
+                <h1 className="show-subtitle show-in mt-[4vh]" style={{ ['--i' as string]: 1 }}>{cfg.title}</h1>
                 <button
                   autoFocus
-                  className="show-in mt-[5vh] rounded-full bg-brand-600 px-[2.6em] py-[.9em] text-[clamp(18px,1.4vw,26px)] font-bold text-white shadow-[0_20px_60px_rgb(0_185_209/.35)] ring-1 ring-white/15 transition hover:bg-brand-500"
+                  className="show-in show-cta mt-[5vh]"
                   style={{ ['--i' as string]: 2 }}
                   onClick={() => {
                     setStarted(true);
@@ -188,7 +188,7 @@ export default function ShowPlayer() {
                 >
                   ابدأ العرض
                 </button>
-                <p className="show-in mt-[4vh] text-[clamp(13px,.85vw,16px)] leading-loose text-white/55" style={{ ['--i' as string]: 3 }}>
+                <p className="show-in show-help mt-[4vh]" style={{ ['--i' as string]: 3 }}>
                   {list.length} فقرات · التالي: → أو PageDown أو المسافة · السابق: ← أو PageUp
                   <br />
                   F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي

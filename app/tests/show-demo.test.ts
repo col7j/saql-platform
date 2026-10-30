@@ -125,3 +125,17 @@ describe('كاميرا الديمو', () => {
     expect(union([null])).toBeNull();
   });
 });
+
+describe('الكاميرا وشعار الزاوية', () => {
+  it('المنطقة العريضة المثبّتة يميناً تبتعد عن منطقة الشعار بمقدار end', async () => {
+    const { focus } = await import('@/show/demo/camera');
+    const view = { w: 1920, h: 1080 };
+    const r = { x: 100, y: 100, w: 1000, h: 300 };
+    const a = focus(r, view, 2000, { min: 2.4, max: 2.4 });
+    const b = focus(r, view, 2000, { min: 2.4, max: 2.4, end: 150 });
+    expect(a.tx - b.tx).toBeCloseTo(150);
+    // المنطقة التي تتسع كلها في الوسط لا تتأثر
+    const small = { x: 300, y: 100, w: 300, h: 200 };
+    expect(focus(small, view, 2000, { max: 2, end: 150 })).toEqual(focus(small, view, 2000, { max: 2 }));
+  });
+});

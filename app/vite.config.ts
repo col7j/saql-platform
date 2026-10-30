@@ -9,5 +9,5 @@ export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
   // الحزم مثبتة خارج مجلد iCloud ومربوطة برابط رمزي (انظر README)
   server: { port: 5173, fs: { allow: ['.', homedir() + '/.saql-platform-deps'] }, watch: { ignored: ['**/node_modules/**', '**/dist/**'] } },
-  test: { environment: 'node', include: ['tests/**/*.test.ts'] },
+  test: { environment: 'node', include: ['tests/**/*.test.ts'], css: { include: [/src\/show\/.*\.css/] } },
 } as any);

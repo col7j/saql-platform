@@ -1,4 +1,5 @@
 // مدخل وضع «عرض الحفل»: يُحمَّل كحزمة منفصلة خارج موجّه المنصة (انظر main.tsx).
+import './show.css';
 import { lazy, Suspense, useEffect, useState } from 'react';
 
 const ShowPlayer = lazy(() => import('./ShowPlayer'));
@@ -18,7 +19,7 @@ export default function ShowRoot() {
     return () => window.removeEventListener('hashchange', on);
   }, []);
   return (
-    <Suspense fallback={<div className={screen === 'admin' ? 'min-h-screen bg-ink-50' : 'fixed inset-0 bg-black'} />}>
+    <Suspense fallback={<div className={screen === 'admin' ? 'min-h-screen' : 'show-stage'} />}>
       {screen === 'admin' ? <ShowAdmin /> : screen === 'demo' ? <DemoFrame /> : screen === 'preview' ? <PreviewFrame /> : <ShowPlayer />}
     </Suspense>
   );

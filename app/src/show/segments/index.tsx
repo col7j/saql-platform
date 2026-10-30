@@ -150,9 +150,9 @@ function NamesView({ seg, step }: SegProps<NamesSegment>) {
     <Backdrop>
       <p className="show-kicker show-fade absolute left-0 right-0 top-[6vh] text-center">{title}</p>
       <div className="show-center">
-        <div key={step} className="flex flex-col items-center gap-[3vh]">
+        <div key={step} className="show-stack-tight">
           {batch.map((n, i) => (
-            <div key={n + i} className="show-display show-reveal" style={{ animationDelay: `${i * 260}ms`, fontSize: batch.length > 1 ? 'clamp(48px, min(5vw, 9vh), 96px)' : undefined }}>
+            <div key={n + i} className="show-display show-reveal" style={{ animationDelay: `${i * 260}ms`, fontSize: batch.length > 1 ? 'calc(var(--b-fs-subtitle) * var(--u) * 1.3)' : undefined }}>
               {n}
             </div>
           ))}
@@ -160,20 +160,20 @@ function NamesView({ seg, step }: SegProps<NamesSegment>) {
       </div>
       {/* العدّاد: الرقم الحالي وحده بلون التوكيد */}
       <p className="show-kicker absolute bottom-[5vh] left-0 right-0 text-center num">
-        <span className="show-em font-bold">{last}</span> / {names.length}
+        <span className="show-em">{last}</span> / {names.length}
       </p>
     </Backdrop>
   );
 }
 
 function BlankView({ seg }: SegProps<BlankSegment>) {
-  if (seg.settings.variant === 'black') return <div className="absolute inset-0 bg-black" />;
+  if (seg.settings.variant === 'black') return <div className="show-off" />;
   return (
     <Backdrop>
       <div className="show-center">
         <div className="flex flex-col items-center">
-          <img src={LOGO_ONDARK} alt="صقل" className="show-in h-[38vh] w-auto" style={order(0)} draggable={false} />
-          {seg.settings.caption && <p className="show-title show-in mt-[5vh]" style={{ ...order(1), fontSize: 'clamp(40px, min(4.4vw, 8vh), 96px)' }}>{seg.settings.caption}</p>}
+          <img src={LOGO_ONDARK} alt="صقل" className="show-in show-logo-hero" style={order(0)} draggable={false} />
+          {seg.settings.caption && <p className="show-subtitle show-in mt-[5vh]" style={order(1)}>{seg.settings.caption}</p>}
         </div>
       </div>
     </Backdrop>

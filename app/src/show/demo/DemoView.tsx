@@ -12,6 +12,8 @@ const CAM_MS = 1300;
 const FADE_MS = 320;
 const TITLE_MS = 2000;
 const EASE = 'cubic-bezier(.65,0,.35,1)';
+/** عرض منطقة شعار الزاوية من الحافة اليمنى على شاشة 1920 (الهامش + الشريحة) */
+const MARK_ZONE = 150;
 
 type Finder = (doc: Document, t: DemoTargets) => Rect | null;
 
@@ -214,7 +216,8 @@ export default function DemoView({ seg, step }: { seg: DemoSegment; step: number
     // أسفل الشاشة محجوز لمؤشر التقدّم، فلا تقع المنطقة تحته
     const safe = { w: size.w, h: size.h * 0.9 };
     const spot = d.spot && dc ? d.spot(dc, targets) : r;
-    return { cam: r ? focus(r, safe, pageH.current, d.opts) : { s: size.w / PAGE_W, tx: 0, ty: 0 }, rect: spot };
+    // ويمين الشاشة العلوي فيه شعار الزاوية: لا يبدأ النص المقروء تحته
+    return { cam: r ? focus(r, safe, pageH.current, { end: size.w * (MARK_ZONE / 1920), ...d.opts }) : { s: size.w / PAGE_W, tx: 0, ty: 0 }, rect: spot };
   };
 
   const go = useCallback(
@@ -324,13 +327,10 @@ export default function DemoView({ seg, step }: { seg: DemoSegment; step: number
           src={initial.src}
           title="ديمو المنصة"
           tabIndex={-1}
-          className="pointer-events-none block border-0"
+          className="show-demo-panel pointer-events-none block border-0"
           style={{
             width: PAGE_W,
             height: 800,
-            borderRadius: 18,
-            background: 'rgb(var(--c-ink-50))',
-            boxShadow: '0 40px 120px rgb(0 0 0 / .5), 0 0 0 1px rgb(255 255 255 / .06)',
             opacity: hidden ? 0 : 1,
             transform: hidden ? 'scale(.985)' : 'none',
             transition: `opacity ${FADE_MS}ms ease, transform ${FADE_MS * 2}ms ease`,
@@ -338,14 +338,13 @@ export default function DemoView({ seg, step }: { seg: DemoSegment; step: number
         />
         {/* إضاءة المنطقة المقرّبة: حلقة بلون التوهّج */}
         <div
-          className="pointer-events-none absolute rounded-[20px]"
+          className="show-demo-ring pointer-events-none absolute"
           style={{
             left: (spot?.x ?? 0) - 8,
             top: (spot?.y ?? 0) - 8,
             width: (spot?.w ?? PAGE_W) + 16,
             height: (spot?.h ?? 800) + 16,
             opacity: spot && !hidden && !title ? 1 : 0,
-            boxShadow: '0 0 0 3px rgb(var(--c-brand-400) / .85), 0 0 40px rgb(var(--c-brand-400) / .35)',
             transition: `opacity 500ms ease, left ${CAM_MS}ms ${EASE}, top ${CAM_MS}ms ${EASE}, width ${CAM_MS}ms ${EASE}, height ${CAM_MS}ms ${EASE}`,
           }}
         />
@@ -356,9 +355,9 @@ export default function DemoView({ seg, step }: { seg: DemoSegment; step: number
         <Backdrop>
           {title && (
             <div key={title.key} className="show-center">
-              <div className="flex flex-col items-center gap-[3.4vh]">
+              <div className="show-stack">
                 <p className="show-kicker show-in num" style={order(0)}>
-                  <span className="show-em font-bold">{title.n}</span> / {sceneCount}
+                  <span className="show-em">{title.n}</span> / {sceneCount}
                 </p>
                 <h1 className="show-title show-in" style={order(1)}>{DEMO_SCENE_LABELS[title.scene]}</h1>
                 <div className="show-rule show-in" style={order(2)} />
@@ -373,20 +372,12 @@ export default function DemoView({ seg, step }: { seg: DemoSegment; step: number
       </div>
 
       {/* مؤشر التقدّم: نقطة لكل خطوة مجمّعة بالمشاهد، والحالية وحدها بلون التوكيد */}
-      <div className="absolute bottom-[3.2vh] left-1/2 z-30 flex -translate-x-1/2 items-center gap-[1.2vw] rounded-full bg-[rgb(var(--c-ink-900)/.55)] px-[1.1vw] py-[0.9vh] backdrop-blur-md">
+      <div className="absolute bottom-[3.2vh] left-1/2 z-30 flex -translate-x-1/2 items-center gap-[1.2vw] px-[1.1vw] py-[0.9vh] show-dots">
         {seg.settings.scenes.map((sc, si) => (
           <div key={sc} className="flex items-center gap-[0.45vw]">
             {steps.map((x, i) =>
               x.sceneIndex === si ? (
-                <span
-                  key={x.key}
-                  className="block rounded-full transition-all duration-500"
-                  style={{
-                    height: 'clamp(6px, .75vh, 10px)',
-                    width: i === step ? 'clamp(22px, 1.6vw, 34px)' : 'clamp(6px, .75vh, 10px)',
-                    background: i === step ? 'var(--show-em)' : i < step ? 'rgb(255 255 255 / .8)' : 'rgb(255 255 255 / .28)',
-                  }}
-                />
+                <span key={x.key} className={`show-dot ${i === step ? 'now' : i < step ? 'done' : ''}`} />
               ) : null,
             )}
           </div>
