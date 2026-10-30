@@ -88,25 +88,40 @@ describe('كاميرا الديمو', () => {
     const { overview, PAGE_W } = await import('@/show/demo/camera');
     expect(overview(view)).toEqual({ s: 1920 / PAGE_W, tx: 0, ty: 0 });
   });
-  it('التقريب يضع البطاقة في الوسط بتكبير محدود', async () => {
+  it('المنطقة الصغيرة في الوسط بتكبير محدود بالحد الأقصى', async () => {
     const { focus } = await import('@/show/demo/camera');
-    const r = { x: 600, y: 700, w: 400, h: 200 };
-    const c = focus(r, view, 3000, { pad: 0 });
-    expect(c.s).toBeCloseTo((1920 / 1440) * 2.6);
+    const r = { x: 500, y: 600, w: 300, h: 150 };
+    const c = focus(r, view, 3000, { pad: 0, max: 2.4 });
+    expect(c.s).toBeCloseTo(2.4);
     expect(c.tx + c.s * (r.x + r.w / 2)).toBeCloseTo(view.w / 2);
     expect(c.ty + c.s * (r.y + r.h / 2)).toBeCloseTo(view.h / 2);
   });
-  it('لا يُظهر فراغاً فوق الصفحة أو على جانبيها', async () => {
+  it('نص المنصة (14px) لا يقل عن 28px بعد التقريب حتى للبطاقة الكبيرة', async () => {
+    const { focus, READABLE, screenScale } = await import('@/show/demo/camera');
+    const big = { x: 100, y: 300, w: 1100, h: 1600 };
+    const c = focus(big, view, 4000, { min: READABLE });
+    expect(14 * c.s).toBeGreaterThanOrEqual(28);
+    // وعلى دقة أصغر: نفس النسبة من عرض الشاشة
+    const small = focus(big, { w: 1280, h: 720 }, 4000, { min: READABLE });
+    expect(screenScale({ w: 1920, h: 1080 }, 14 * small.s * (1920 / 1280))).toBeCloseTo(14 * c.s);
+  });
+  it('المنطقة الأعرض من الشاشة: يظهر جانبها الأيمن (بداية القراءة)، والأطول: يظهر أعلاها', async () => {
     const { focus } = await import('@/show/demo/camera');
-    const c = focus({ x: 0, y: 0, w: 300, h: 150 }, view, 3000);
+    const r = { x: 100, y: 300, w: 1100, h: 1600 };
+    const c = focus(r, view, 4000, { pad: 0, min: 2 });
+    expect(c.tx + c.s * (r.x + r.w)).toBeCloseTo(view.w); // الحافة اليمنى عند يمين الشاشة
+    expect(c.ty + c.s * r.y).toBeCloseTo(0); // الأعلى عند أعلى الشاشة
+  });
+  it('لا يُظهر فراغاً خارج الصفحة حين تملأ الشاشة', async () => {
+    const { focus, PAGE_W } = await import('@/show/demo/camera');
+    const c = focus({ x: 0, y: 0, w: 200, h: 100 }, view, 3000, { min: 2 });
     expect(c.tx).toBeLessThanOrEqual(0);
     expect(c.ty).toBeLessThanOrEqual(0);
-    expect(c.tx).toBeGreaterThanOrEqual(view.w - c.s * 1440);
+    expect(c.tx).toBeGreaterThanOrEqual(view.w - c.s * PAGE_W);
   });
-  it('البطاقة الطويلة يظهر أعلاها مقروءاً لا مصغّرة كلها', async () => {
-    const { focus } = await import('@/show/demo/camera');
-    const c = focus({ x: 300, y: 400, w: 1000, h: 2400 }, view, 4000, { pad: 0 });
-    expect(c.s).toBeCloseTo(1920 / 1000);
-    expect(c.ty + c.s * 400).toBeCloseTo(0); // أعلى البطاقة عند أعلى الشاشة
+  it('المستطيل الجامع', async () => {
+    const { union } = await import('@/show/demo/camera');
+    expect(union([{ x: 10, y: 20, w: 5, h: 5 }, null, { x: 0, y: 30, w: 50, h: 10 }])).toEqual({ x: 0, y: 20, w: 50, h: 20 });
+    expect(union([null])).toBeNull();
   });
 });

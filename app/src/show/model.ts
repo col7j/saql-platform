@@ -23,7 +23,7 @@ export const DEMO_SCENES = ['calendar', 'trips', 'focus', 'plan'] as const;
 export type DemoScene = (typeof DEMO_SCENES)[number];
 export const DEMO_SCENE_STEPS = {
   calendar: ['month', 'day', 'event'],
-  trips: ['trip', 'docs', 'plans', 'closure'],
+  trips: ['trip', 'docs', 'plans', 'attendance', 'evaluation'],
   focus: ['list', 'detail', 'evaluation'],
   plan: ['wheel', 'goals'],
 } as const satisfies Record<DemoScene, readonly string[]>;
@@ -42,7 +42,8 @@ export const DEMO_STEP_LABELS: Record<DemoStepKey, string> = {
   'trips.trip': 'رحلة المجموعة',
   'trips.docs': 'مكونات الرحلة',
   'trips.plans': 'الخطتان أ وب',
-  'trips.closure': 'الحضور والتقييم',
+  'trips.attendance': 'الحضور',
+  'trips.evaluation': 'تقييم الرحلة',
   'focus.list': 'قائمة اللقاءات',
   'focus.detail': 'تفاصيل اللقاء',
   'focus.evaluation': 'تقييم التقديم',

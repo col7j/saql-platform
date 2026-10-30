@@ -63,7 +63,14 @@ export function enrichDemo(db: DB): DB {
   const day = busiestDay(db, personId);
   const g = db.groups.find((x) => x.id === getCapabilities(db, personId).group?.id);
   if (day && g?.facilitatorId && !db.individualMeetings.some((m) => m.participantId === personId && m.date === day && m.status !== 'cancelled')) {
-    db.individualMeetings.push({ id: 'im_demo', facilitatorId: g.facilitatorId, participantId: personId, date: day, start: '19:30', end: '20:15', origin: 'personal_invite', status: 'booked', notesOnPlan: 'مراجعة خطوات الجانب المهاري' });
+    // اليوم الماضي يظهر لقاءً منجزاً بملاحظاته، والقادم محجوزاً
+    const past = day < todayISO();
+    db.individualMeetings.push({
+      id: 'im_demo', facilitatorId: g.facilitatorId, participantId: personId, date: day, start: '19:30', end: '20:15', origin: 'personal_invite',
+      status: past ? 'done' : 'booked',
+      notesOnPlan: 'خطوات الجانب المهاري واضحة ومجدولة، والجانب الصحي يحتاج هدفاً قابلاً للقياس.',
+      notesOnMeeting: past ? 'لقاء مركّز، واتفقنا على مراجعة الخطة بعد الرحلة القادمة.' : undefined,
+    });
   }
   return db;
 }

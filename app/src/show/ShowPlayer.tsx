@@ -1,10 +1,10 @@
 // شاشة العرض (#/show): ملء الشاشة، كليكر وأسهم ولمس، انتقالات ناعمة، تحميل مسبق، وتزامن مع شاشة التحكم.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Maximize } from 'lucide-react';
-import type { Segment, ShowConfig } from './model';
+import { sceneStart, type Segment, type ShowConfig } from './model';
 import { preload } from './media';
 import { clampPos, followSegment, next, prev, skipSegment, sortSegments, stepCount, type Pos } from './nav';
-import { keyAction, touchAction } from './keys';
+import { keyAction, sceneKey, touchAction } from './keys';
 import { SegmentView, hidesCornerMark } from './segments';
 import { Backdrop, LOGO_MARK, LOGO_ONDARK } from './segments/Fallback';
 import { useShowConfig, useSync } from './useShow';
@@ -89,6 +89,18 @@ export default function ShowPlayer() {
   // المفاتيح
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // الأرقام 1–4 تقفز إلى أول مشهد في الديمو المعروض
+      const n = sceneKey(e);
+      if (n !== null && ref.current.started) {
+        const { cfg, pos } = ref.current;
+        const seg = cfg ? sortSegments(cfg.segments)[pos.seg] : undefined;
+        const step = seg?.type === 'demo' ? sceneStart(seg.settings, n) : null;
+        if (step !== null) {
+          e.preventDefault();
+          go((_, p) => ({ seg: p.seg, step }));
+        }
+        return;
+      }
       const a = keyAction(e);
       if (!a) return;
       e.preventDefault();

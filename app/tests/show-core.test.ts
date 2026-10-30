@@ -206,13 +206,13 @@ describe('مشاهد الديمو', () => {
   it('الخطوات بترتيب المشاهد، وأول كل مشهد معلَّم لعنوانه', async () => {
     const { demoSteps } = await import('@/show/model');
     const steps = demoSteps({ scenes: ['calendar', 'trips', 'focus', 'plan'] });
-    expect(steps.map((s) => s.key)).toEqual(['calendar.month', 'calendar.day', 'calendar.event', 'trips.trip', 'trips.docs', 'trips.plans', 'trips.closure', 'focus.list', 'focus.detail', 'focus.evaluation', 'plan.wheel', 'plan.goals']);
+    expect(steps.map((s) => s.key)).toEqual(['calendar.month', 'calendar.day', 'calendar.event', 'trips.trip', 'trips.docs', 'trips.plans', 'trips.attendance', 'trips.evaluation', 'focus.list', 'focus.detail', 'focus.evaluation', 'plan.wheel', 'plan.goals']);
     expect(steps.filter((s) => s.first).map((s) => s.scene)).toEqual(['calendar', 'trips', 'focus', 'plan']);
   });
   it('القفز بالأرقام إلى أول المشهد، وخارج المشاهد لا شيء', async () => {
     const { sceneStart } = await import('@/show/model');
     const all = { scenes: [...DEMO_SCENES] };
-    expect([0, 1, 2, 3].map((n) => sceneStart(all, n))).toEqual([0, 3, 7, 10]);
+    expect([0, 1, 2, 3].map((n) => sceneStart(all, n))).toEqual([0, 3, 8, 11]);
     expect(sceneStart({ scenes: ['focus', 'plan'] }, 1)).toBe(3);
     expect(sceneStart({ scenes: ['focus', 'plan'] }, 2)).toBeNull();
   });
