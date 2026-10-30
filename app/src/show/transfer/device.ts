@@ -2,6 +2,7 @@
 // وكتابتها في الجهاز الجديد عند الاستيراد بنفس معرّفاتها، فتبقى كل المراجع في الإعدادات صالحة.
 import { listLocalFiles, putLocalFileWithId } from '../media';
 import type { MediaRef, ShowConfig } from '../model';
+import { loadSnapshot, notifySnapshotChanged, saveSnapshot } from '../demo/snapshot';
 import { buildBundle, collectRefs, isSiteUrl, rewriteRefs, type Manifest, type ReadBundle, type SourceFile } from './bundle';
 
 export interface ExportProgress {
@@ -45,7 +46,7 @@ export async function exportShow(cfg: ShowConfig, includeUnused: boolean, onProg
     }
   }
   onProgress?.({ phase: 'pack', done: 0, total: 1 });
-  const zipped = await buildBundle(cfg, sources, missing);
+  const zipped = await buildBundle(cfg, sources, missing, undefined, loadSnapshot());
   onProgress?.({ phase: 'done', done: 1, total: 1 });
   return { blob: new Blob([zipped as BlobPart], { type: 'application/zip' }), manifest: { missing }, count: sources.length };
 }
@@ -75,6 +76,11 @@ export async function importShow(b: ReadBundle, onProgress?: (done: number, tota
       map.set(f.src, { kind: 'local', id, name: f.name });
     }
     onProgress?.(++done, b.files.length);
+  }
+  // لقطة الديمو تُستبدل فقط إن حملت الحزمة لقطة صالحة، وإلا تبقى لقطة هذا الجهاز كما هي
+  if (b.snapshot) {
+    saveSnapshot(b.snapshot);
+    notifySnapshotChanged();
   }
   return rewriteRefs(b.config, map);
 }

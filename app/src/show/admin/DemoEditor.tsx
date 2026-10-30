@@ -3,15 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Icons, Toggle, cx } from '@/ui';
 import { DEMO_PAGE_LABELS, DEMO_SCENES, DEMO_SCENE_LABELS, DEMO_SCENE_PAGES, demoSteps, type DemoPage, type DemoSegment, type DemoSettings } from '../model';
-import { DEMO_READY, demoSnapshot, demoTargets } from '../demo/data';
+import { DEMO_READY, demoData } from '../demo/data';
 import { PAGE_ID, frameUrl } from '../demo/DemoView';
 import { contentRects, detectCards, planTour, type Shot } from '../demo/tour';
+import { DemoDataCard } from './DemoDataCard';
 
 const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** يقرأ خطوات كل صفحة كما ستراها الجولة على شاشة 1920×1080 */
 async function scanPages(frame: HTMLIFrameElement, pages: DemoPage[], onPage: (p: DemoPage, shots: Shot[]) => void) {
-  const targets = demoTargets(demoSnapshot());
+  const { targets } = demoData();
   let seq = 1000;
   for (const page of pages) {
     const s = ++seq;
@@ -65,8 +66,10 @@ export function DemoEditor({ seg, patch }: { seg: DemoSegment; patch: (s: Partia
 
   return (
     <div className="space-y-5">
+      <DemoDataCard />
+
       <p className="text-xs leading-relaxed text-ink-500">
-        الديمو بصفة مشارك من البيانات التجريبية الثابتة، للقراءة فقط ولا يكتب في بيانات المنصة. الجولة تفتح كل صفحة كاملة ثم تقرّب على كل بطاقة بترتيب القراءة بحجم مقروء، والبطاقة الكبيرة تُعرض أجزاءً. في العرض: K تشغيل/إيقاف، والأسهم للتقدّم والرجوع، و1–4 للمشاهد.
+        الديمو بمنظور مشارك من لقطة البيانات، للقراءة فقط ولا يكتب في بيانات المنصة. الجولة تفتح كل صفحة كاملة ثم تقرّب على كل بطاقة بترتيب القراءة بحجم مقروء، والبطاقة الكبيرة تُعرض أجزاءً. في العرض: K تشغيل/إيقاف، والأسهم للتقدّم والرجوع، و1–4 للمشاهد.
       </p>
 
       <div className="space-y-2">

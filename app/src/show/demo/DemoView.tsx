@@ -7,7 +7,8 @@ import { getCapabilities } from '@/domain/permissions';
 import { DEMO_SCENE_LABELS, demoSteps, type DemoScene, type DemoSegment } from '../model';
 import { Backdrop, Fallback, markLogo } from '../segments/Fallback';
 import { PAGE_W, READABLE, camTransform, focus, type Cam, type Rect } from './camera';
-import { DEMO_READY, demoSnapshot, demoTargets, type DemoViewKey } from './data';
+import { DEMO_READY, type DemoData, type DemoViewKey } from './data';
+import { useDemoData } from './useDemoData';
 import { contentRects, detectCards, planTour, shotCam, shotDuration, visibleShots, type Shot } from './tour';
 
 const CAM_MS = 1300;
@@ -70,9 +71,14 @@ export interface DemoProps {
   animate?: boolean;
 }
 
-export default function DemoView({ seg, step, active, playing = false, onAdvance, onEnd, registerNav, theme = 'dark', animate = true }: DemoProps) {
-  const db = demoSnapshot();
-  const targets = demoTargets(db);
+/** تتغير اللقطة (التقاط جديد أو مشارك آخر): الجولة تبدأ من جديد على البيانات الجديدة */
+export default function DemoView(props: DemoProps) {
+  const { ver, ...data } = useDemoData();
+  return <DemoTour key={ver} {...props} data={data} />;
+}
+
+function DemoTour({ seg, step, active, playing = false, onAdvance, onEnd, registerNav, theme = 'dark', animate = true, data }: DemoProps & { data: DemoData }) {
+  const { db, targets } = data;
   const person = db.persons.find((p) => p.id === targets.personId);
   const group = getCapabilities(db, targets.personId).group;
   const pages = demoSteps(seg.settings);

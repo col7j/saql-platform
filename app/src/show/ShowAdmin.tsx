@@ -9,6 +9,7 @@ import { exportConfig, loadRepoConfig, parseConfig, saveConfig } from './storage
 import { useShowConfig, useSync } from './useShow';
 import type { RemoteInfo } from './sync';
 import { DemoEditor } from './admin/DemoEditor';
+import { useSnapshotStatus } from './admin/DemoDataCard';
 import { toast } from './admin/MediaPicker';
 import { mediaUsage } from './editor/usage';
 import { ExportModal, ImportModal } from './editor/Transfer';
@@ -143,6 +144,8 @@ export default function ShowAdmin() {
 
   const list = useMemo(() => (cfg ? sortSegments(cfg.segments) : []), [cfg]);
   const seg = list.find((s) => s.id === selectedSeg) ?? list[0];
+  const hasDemo = list.some((s) => s.type === 'demo');
+  const snapStatus = useSnapshotStatus();
   const slide = seg?.type === 'slide' ? seg : null;
   const maxStep = seg ? stepCount(seg) - 1 : 0;
   const curStep = Math.min(step, maxStep);
@@ -296,6 +299,11 @@ export default function ShowAdmin() {
           ))}
         </div>
         <Button size="sm" variant="secondary" icon={<Icons.Library className="h-4 w-4" />} onClick={() => setLibraryOpen(true)}>المكتبة</Button>
+        {hasDemo && snapStatus.state !== 'ok' && (
+          <button className="flex items-center gap-1.5 rounded-full border border-accent-100 bg-accent-50 px-2.5 py-1 text-xs text-accent-700" onClick={() => setSelectedSeg(list.find((s) => s.type === 'demo')?.id ?? null)} title="الديمو يعرض البيانات التجريبية">
+            <Icons.TriangleAlert className="h-3.5 w-3.5" /> الديمو بلا لقطة بيانات
+          </button>
+        )}
         <div className="flex-1" />
         <Badge tone={connected ? 'green' : 'gray'} icon={<span className={cx('h-2 w-2 rounded-full', connected ? 'bg-ok-500' : 'bg-ink-300')} />}>
           {connected ? (liveSeg ? `على الشاشة: ${liveSeg.title}` : 'شاشة العرض متصلة') : 'شاشة العرض غير مفتوحة'}

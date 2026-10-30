@@ -6,6 +6,9 @@ import type { ShowConfig } from '../model';
 import { fmtSize, toast } from '../admin/MediaPicker';
 import { BUNDLE_EXT, collectRefs, readBundle, type Manifest, type ReadBundle } from '../transfer/bundle';
 import { exportShow, importShow, type ExportProgress } from '../transfer/device';
+import { useSnapshotStatus } from '../admin/DemoDataCard';
+
+const fmtDay = (iso: string) => new Date(iso).toLocaleString('ar-SA-u-nu-latn', { dateStyle: 'medium', timeStyle: 'short' });
 
 const fileName = (title: string) => `${(title || 'عرض').replace(/[\\/:*?"<>|]+/g, '-').trim()}-${new Date().toISOString().slice(0, 10)}${BUNDLE_EXT}`;
 
@@ -22,6 +25,7 @@ export function ExportModal({ cfg, open, onClose }: { cfg: ShowConfig; open: boo
   const [lib, setLib] = useState<{ used: number; usedSize: number; all: number; allSize: number } | null>(null);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [result, setResult] = useState<{ size: number; count: number; missing: Manifest['missing'] } | null>(null);
+  const snap = useSnapshotStatus();
 
   useEffect(() => {
     if (!open) return;
@@ -56,6 +60,10 @@ export function ExportModal({ cfg, open, onClose }: { cfg: ShowConfig; open: boo
             <li>الشرائح: <b className="num">{cfg.segments.length}</b></li>
             <li>الملفات المستخدمة على هذا الجهاز: <b className="num">{lib.used}</b> ({fmtSize(lib.usedSize)})</li>
             <li>ملفات الموقع المستخدمة: <b className="num">{collectRefs(cfg).filter((r) => r.kind === 'url').length}</b></li>
+            <li>
+              بيانات الديمو:{' '}
+              {snap.state === 'ok' ? <>لقطة <span className="num">{fmtDay(snap.snapshot.capturedAt)}</span></> : <span className="text-accent-700">لا توجد لقطة (سيعرض الديمو البيانات التجريبية)</span>}
+            </li>
           </ul>
         )}
         {lib && lib.all > lib.used && (
@@ -131,6 +139,14 @@ export function ImportModal({ file, onClose, onDone }: { file: File | null; onCl
               <li>الشرائح: <b className="num">{bundle.config.segments.length}</b></li>
               <li>الملفات: <b className="num">{bundle.files.length}</b> ({fmtSize(size)})، وكلها سليمة (تطابقت بصماتها)</li>
               <li>صُدِّر في: <span className="num">{new Date(bundle.manifest.exportedAt).toLocaleString('ar-SA-u-nu-latn')}</span></li>
+              <li>
+                بيانات الديمو:{' '}
+                {bundle.snapshot
+                  ? <>لقطة <span className="num">{fmtDay(bundle.snapshot.capturedAt)}</span>، تحل محل لقطة هذا الجهاز</>
+                  : bundle.manifest.snapshot
+                    ? <span className="text-accent-700">لقطة من نسخة أخرى لبيانات المنصة، لن تُستخدم (أعد الالتقاط)</span>
+                    : 'لا توجد في الملف، وتبقى لقطة هذا الجهاز'}
+              </li>
             </ul>
             {bundle.manifest.missing.length > 0 && (
               <Notice tone="orange">

@@ -3,9 +3,11 @@
 //
 // show.json        إعدادات العرض كما يصدّرها المحرّر
 // manifest.json    وصف الملفات وبصماتها
+// demo-snapshot.json  لقطة بيانات الديمو إن وُجدت (لا تدخل في show.json أبداً)
 // media/…          الملفات نفسها (بلا ضغط: الصور والفيديو مضغوطة أصلاً)
 import { strFromU8, strToU8, unzip, zip, type AsyncZippable } from 'fflate';
 import type { MediaRef, ShowConfig } from '../model';
+import { parseSnapshot, type DemoSnapshot } from '../demo/snapshot';
 import { exportConfig, parseConfig } from '../storage';
 
 export const BUNDLE_FORMAT = 'saql-show';
@@ -34,7 +36,11 @@ export interface Manifest {
   files: BundleFile[];
   /** مراجع لم تُضمَّن (رابط خارجي أو ملف لم يُعثر عليه) */
   missing: { ref: string; reason: string }[];
+  /** لقطة بيانات الديمو، إن وُجدت */
+  snapshot?: { path: string; size: number; sha256: string; capturedAt: string };
 }
+
+const SNAPSHOT_PATH = 'demo-snapshot.json';
 
 export interface SourceFile {
   kind: 'local' | 'url';
@@ -74,7 +80,7 @@ const zipAsync = (files: AsyncZippable) => new Promise<Uint8Array>((res, rej) =>
 const unzipAsync = (data: Uint8Array) => new Promise<Record<string, Uint8Array>>((res, rej) => unzip(data, (e, d) => (e ? rej(e) : res(d))));
 
 /** يبني ملف العرض الواحد */
-export async function buildBundle(cfg: ShowConfig, sources: SourceFile[], missing: Manifest['missing'] = [], onProgress?: (done: number, total: number) => void): Promise<Uint8Array> {
+export async function buildBundle(cfg: ShowConfig, sources: SourceFile[], missing: Manifest['missing'] = [], onProgress?: (done: number, total: number) => void, snapshot?: DemoSnapshot | null): Promise<Uint8Array> {
   const files: BundleFile[] = [];
   const entries: AsyncZippable = {};
   let i = 0;
@@ -85,6 +91,11 @@ export async function buildBundle(cfg: ShowConfig, sources: SourceFile[], missin
     onProgress?.(i, sources.length);
   }
   const manifest: Manifest = { format: BUNDLE_FORMAT, version: BUNDLE_VERSION, exportedAt: new Date().toISOString(), title: cfg.title, segments: cfg.segments.length, files, missing };
+  if (snapshot) {
+    const data = strToU8(JSON.stringify(snapshot));
+    manifest.snapshot = { path: SNAPSHOT_PATH, size: data.byteLength, sha256: await sha256(data), capturedAt: snapshot.capturedAt };
+    entries[SNAPSHOT_PATH] = [data, { level: 6 }];
+  }
   entries['show.json'] = [strToU8(exportConfig(cfg)), { level: 6 }];
   entries['manifest.json'] = [strToU8(JSON.stringify(manifest, null, 2)), { level: 6 }];
   return zipAsync(entries);
@@ -94,6 +105,7 @@ export interface ReadBundle {
   config: ShowConfig;
   manifest: Manifest;
   files: (BundleFile & { data: Uint8Array })[];
+  snapshot: DemoSnapshot | null;
 }
 
 /** يقرأ ملف العرض ويتحقق منه كاملاً قبل أي كتابة: الصيغة، الإعدادات، ووجود كل ملف وحجمه وبصمته */
@@ -122,7 +134,15 @@ export async function readBundle(data: Uint8Array): Promise<ReadBundle> {
     if (f.kind === 'local' && !f.id) throw new Error(`ملف بلا معرّف: ${f.name}`);
     files.push({ ...f, data: d });
   }
-  return { config, manifest, files };
+  let snapshot: DemoSnapshot | null = null;
+  if (manifest.snapshot) {
+    const d = entries[manifest.snapshot.path];
+    if (!d) throw new Error('ملف ناقص في الحزمة: بيانات الديمو');
+    if (d.byteLength !== manifest.snapshot.size || (await sha256(d)) !== manifest.snapshot.sha256) throw new Error('ملف تالف في الحزمة: بيانات الديمو');
+    // لقطة من نسخة بيانات أخرى للمنصة لا تمنع الاستيراد: يُستورد العرض ويُطلب التقاط جديد
+    snapshot = parseSnapshot(strFromU8(d));
+  }
+  return { config, manifest, files, snapshot };
 }
 
 /** يستبدل مراجع روابط بمراجع محلية (حين لا يوجد الملف على الموقع في الجهاز الجديد) */
