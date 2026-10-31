@@ -15,7 +15,16 @@ const CHROME = process.env.CHROME || '/Applications/Google Chrome.app/Contents/M
 const port = 9800 + Math.floor(Math.random() * 150);
 const profile = mkdtempSync(join(tmpdir(), 'rehearsal-'));
 const chrome = spawn(CHROME, ['--headless=new', `--remote-debugging-port=${port}`, `--user-data-dir=${profile}`, '--hide-scrollbars', '--force-device-scale-factor=1', '--window-size=1920,1080', '--autoplay-policy=no-user-gesture-required', 'about:blank'], { stdio: 'ignore' });
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const nap = (ms) => new Promise((r) => setTimeout(r, ms));
+// انتظار طويل مع نبضة كل 5 ثوانٍ: اتصال أدوات المطوّر ينقطع بصمت إن خمد دقيقة كاملة
+let pulse = async () => undefined;
+const sleep = async (ms) => {
+  const end = Date.now() + ms;
+  while (Date.now() < end) {
+    await nap(Math.min(5000, end - Date.now()));
+    if (Date.now() < end) await pulse();
+  }
+};
 const log = [];
 const note = (m) => (log.push(`${new Date().toISOString().slice(11, 19)} ${m}`), console.log(m));
 
@@ -41,7 +50,9 @@ const send = (method, params = {}) => new Promise((res, rej) => {
   pending.set(i, (m) => (m.error ? rej(new Error(method + ': ' + m.error.message)) : res(m.result)));
   ws.send(JSON.stringify({ id: i, method, params }));
 });
+const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(`انتهت المهلة: ${what}`)), ms))]);
 const evaluate = async (expression) => (await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })).result?.value;
+pulse = () => withTimeout(send('Runtime.evaluate', { expression: '1', returnByValue: true }), 15000, 'نبضة').catch((e) => (errors.push(String(e)), undefined));
 const key = (code, k) => evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(k)}, code: ${JSON.stringify(code)} })), 1`);
 const shot = async (name) => {
   const { data } = await send('Page.captureScreenshot', { format: 'png' });
