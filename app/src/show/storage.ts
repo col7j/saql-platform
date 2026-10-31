@@ -1,6 +1,6 @@
 // تخزين إعدادات العرض بمفتاح خاص (show-config)، مستقل عن مفاتيح المنصة (saql.*) وعن DB_VERSION،
 // فلا يُمسح عند رفع نسخة البيانات التجريبية ولا عند «إعادة البيانات».
-import { DEFAULT_CONFIG, DEMO_DEFAULTS, DEMO_SCENES, SHOW_SCHEMA_VERSION, type LegacySegment, type LegacySegmentType, type MediaRef, type Segment, type ShowConfig } from './model';
+import { DEFAULT_CONFIG, DEMO_DEFAULTS, DEMO_SCENES, LAUNCH_DEFAULTS, PHOTO_DEFAULTS, SHOW_SCHEMA_VERSION, type AgreementParty, type LegacySegment, type LegacySegmentType, type MediaRef, type RosterPerson, type Section, type Segment, type ShowConfig, type WhoEntry } from './model';
 import { normalize } from './nav';
 import { media, slideSettings } from './slides/sanitize';
 import { migrateLegacy } from './slides/templates';
@@ -39,13 +39,74 @@ function legacy(type: LegacySegmentType, v: Record<string, any>, id: string, tit
   }
 }
 
+const num = (v: unknown, d: number, min: number, max: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : d);
+const strs = (v: unknown) => (Array.isArray(v) ? v.map((x) => str(x).trim()).filter(Boolean) : []);
+const list = <T,>(v: unknown, fn: (x: Record<string, any>, i: number) => T | null, max = 500): T[] =>
+  (Array.isArray(v) ? v : []).slice(0, max).map((x, i) => (isObj(x) ? fn(x, i) : null)).filter((x): x is T => x !== null);
+
+function section(v: unknown): Section | undefined {
+  if (!isObj(v)) return undefined;
+  return { title: str(v.title).trim() || 'فقرة', minutes: num(v.minutes, 0, 0, 600) };
+}
+
+const whoEntry = (x: Record<string, any>, i: number): WhoEntry | null => {
+  const e: WhoEntry = { id: str(x.id) || `who_${i}`, name: str(x.name).trim(), fact: str(x.fact).trim(), hints: strs(x.hints).slice(0, 10) };
+  if (str(x.personId)) e.personId = str(x.personId);
+  if (str(x.group).trim()) e.group = str(x.group).trim();
+  const photo = media(x.photo);
+  if (photo) e.photo = photo;
+  if (x.skip === true) e.skip = true;
+  return e.name || e.fact ? e : null;
+};
+const rosterPerson = (x: Record<string, any>): RosterPerson | null => {
+  const name = str(x.name).trim();
+  if (!name) return null;
+  const p: RosterPerson = { name };
+  if (str(x.group).trim()) p.group = str(x.group).trim();
+  if (str(x.role).trim()) p.role = str(x.role).trim();
+  return p;
+};
+const party = (x: Record<string, any>, i: number): AgreementParty => ({
+  id: str(x.id) || `party_${i}`,
+  name: str(x.name).trim(),
+  ...(media(x.logo) ? { logo: media(x.logo) } : {}),
+  title: str(x.title).trim(),
+  rep: str(x.rep).trim(),
+  repTitle: str(x.repTitle).trim(),
+});
+
+/** فقرات الحفل الخاصة (غير الشرائح الحرة والديمو) */
+function ceremonySegment(type: unknown, s: Record<string, any>): Pick<Segment, 'type' | 'settings'> | null {
+  switch (type) {
+    case 'whoami':
+      return { type, settings: { heading: str(s.heading) || 'من أنا؟', entries: list(s.entries, whoEntry, 300) } };
+    case 'roster':
+      return { type, settings: { heading: str(s.heading) || 'المشاركون', source: s.source === 'staff' ? 'staff' : 'participants', people: list(s.people, rosterPerson, 400), perPage: num(s.perPage, 35, 1, 60) } };
+    case 'agreements':
+      return { type, settings: { heading: str(s.heading) || 'توقيع اتفاقيات التعاون', hostName: str(s.hostName), ...(media(s.hostLogo) ? { hostLogo: media(s.hostLogo) } : {}), parties: list(s.parties, party, 8) } };
+    case 'launch':
+      return { type, settings: { waitTitle: str(s.waitTitle, LAUNCH_DEFAULTS.waitTitle), waitSub: str(s.waitSub, LAUNCH_DEFAULTS.waitSub), doneTitle: str(s.doneTitle, LAUNCH_DEFAULTS.doneTitle), autoNext: num(s.autoNext, LAUNCH_DEFAULTS.autoNext, 0, 120) } };
+    case 'photo':
+      return { type, settings: { heading: str(s.heading, PHOTO_DEFAULTS.heading), sub: str(s.sub, PHOTO_DEFAULTS.sub), seconds: num(s.seconds, PHOTO_DEFAULTS.seconds, 1, 10) } };
+  }
+  return null;
+}
+
 function readSegment(v: unknown, i: number): Segment[] {
   if (!isObj(v)) throw new Error(`الفقرة ${i + 1} ليست كائناً صالحاً`);
+  const out = readSegmentBody(v, i);
+  const sec = section(v.section);
+  return sec ? out.map((s, k) => (k === 0 ? { ...s, section: sec } : s)) : out;
+}
+
+function readSegmentBody(v: Record<string, any>, i: number): Segment[] {
   const type = v.type;
   const id = str(v.id) || `seg_${i}_${String(type)}`;
   const title = str(v.title) || 'فقرة';
   const order = Number.isFinite(v.order) ? v.order : i;
   if (type === 'slide') return [{ id, type, title, order, settings: slideSettings(v.settings, id) }];
+  const c = ceremonySegment(type, isObj(v.settings) ? v.settings : {});
+  if (c) return [{ id, title, order, ...c } as Segment];
   if (type === 'demo') {
     const s = isObj(v.settings) ? v.settings : {};
     // الإعدادات القديمة (خطوات بصفة القائد) تتحول إلى المشاهد الأربعة
@@ -104,7 +165,24 @@ export function clearSavedConfig(store: KV | null = local()) {
   }
 }
 
-export const exportConfig = (cfg: ShowConfig) => JSON.stringify({ ...cfg, segments: normalize(cfg.segments) }, null, 2);
+/** يحذف البيانات الشخصية: أسماء المشاركين ومعلومات «من أنا؟» وشبكة الأسماء. تبقى في show-config وملف العرض الكامل فقط */
+export function withoutPersonalData(cfg: ShowConfig): ShowConfig {
+  return {
+    ...cfg,
+    segments: cfg.segments.map((s) => {
+      if (s.type === 'whoami') return { ...s, settings: { ...s.settings, entries: [] } };
+      if (s.type === 'roster') return { ...s, settings: { ...s.settings, people: [] } };
+      return s;
+    }),
+  };
+}
+
+/** JSON الإعدادات. بلا personal: بلا أسماء ولا معلومات (تصدير JSON وshow.json في المستودع العلني).
+ *  personal: كاملاً (داخل ملف العرض الكامل فقط) */
+export const exportConfig = (cfg: ShowConfig, opts: { personal?: boolean } = {}) => {
+  const c = opts.personal ? cfg : withoutPersonalData(cfg);
+  return JSON.stringify({ ...c, segments: normalize(c.segments) }, null, 2);
+};
 
 /** show.json من المستودع (app/public/show.json)، وإلا الإعدادات المدمجة */
 export async function loadRepoConfig(fetcher: typeof fetch = fetch): Promise<ShowConfig> {

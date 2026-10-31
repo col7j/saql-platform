@@ -116,5 +116,6 @@ export function slideSettings(v: unknown, base: string): SlideSettings {
       seen.add(id);
       return { ...e, id };
     });
-  return { bg: bg(s.bg), mark: bool(s.mark, true), elements };
+  const fx = s.fx === 'confetti' || s.fx === 'glow' ? s.fx : undefined;
+  return { bg: bg(s.bg), mark: bool(s.mark, true), elements, ...(fx ? { fx } : {}) };
 }

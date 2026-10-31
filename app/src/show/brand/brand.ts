@@ -41,8 +41,20 @@ export const BRAND_FONTS = [
     label: 'ثمانية',
     source: 'decision' as BrandSource,
     weights: { 300: 'Light', 400: 'Regular', 500: 'Medium', 700: 'Bold', 900: 'Black' } as Record<number, string>,
+    /** ملف كل وزن في public */
+    file: (name: string) => `fonts/thmanyahsans/thmanyahsans-${name}.woff2`,
+  },
+  {
+    // خط مصحف لآيات القرآن الكريم وحدها (قرار في docs/ceremony-decisions.md). ملفات محلية برخصة OFL
+    family: 'Amiri',
+    label: 'أميري (للآيات)',
+    source: 'decision' as BrandSource,
+    weights: { 400: 'Regular', 700: 'Bold' } as Record<number, string>,
+    file: (name: string) => `fonts/amiri/Amiri-${name}.woff2`,
   },
 ] as const;
+/** خط الآيات القرآنية */
+export const QURAN_FONT = 'Amiri';
 
 /** تسلسل العناوين بالبكسل على لوحة 1080 (جدول «الخطوط وتسلسل العناوين» في الملف، بالأوزان المقابلة في ثمانية) */
 export const TYPE_SCALE = {

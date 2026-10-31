@@ -3,12 +3,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Badge, Button, ConfirmHost, Icons, Input, MoreMenu, Modal, Toasts, askConfirm, cx } from '@/ui';
 import { CANVAS } from './brand/brand';
-import { DEMO_DEFAULTS, DEMO_PAGE_LABELS, DEMO_SCENES, DEMO_SCENE_LABELS, THEMES, demoSteps, type DemoSegment, type MediaRef, type Segment, type ShowConfig, type ShowTheme } from './model';
+import { DEMO_DEFAULTS, DEMO_PAGE_LABELS, DEMO_SCENES, DEMO_SCENE_LABELS, SEGMENT_LABELS, THEMES, demoSteps, type DemoSegment, type MediaRef, type Segment, type ShowConfig, type ShowTheme } from './model';
 import { insertSegment, moveSegment, removeSegment, replaceSegment, sortSegments, stepCount, type Pos } from './nav';
 import { exportConfig, loadRepoConfig, parseConfig, saveConfig } from './storage';
 import { useShowConfig, useSync } from './useShow';
-import type { RemoteInfo } from './sync';
+import type { LiveInfo, RemoteInfo } from './sync';
+import { Console } from './admin/Console';
+import { collectRefs } from './transfer/bundle';
 import { DemoEditor } from './admin/DemoEditor';
+import { stepSub } from './stepLabel';
+import { AgreementsEditor, LaunchEditor, PhotoEditor, RosterEditor, SectionField, WhoAmIEditor } from './admin/CeremonyEditors';
+import { CEREMONY_TEMPLATES, ceremonySegmentsFor, type CeremonyKey } from './ceremony/catalog';
 import { useSnapshotStatus } from './admin/DemoDataCard';
 import { LinkBadge, LinkPanel } from './admin/LinkPanel';
 import { useHostLink } from './remote/host';
@@ -27,14 +32,7 @@ import { external, initHistory, record, redo, undo, type History } from './edito
 const showUrl = (hash: string) => `${window.location.pathname}${window.location.search}${hash}`;
 const segId = () => `seg_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-function stepLabel(seg: Segment, step: number) {
-  if (seg.type === 'demo') {
-    const d = demoSteps(seg.settings)[step];
-    return d ? `${DEMO_SCENE_LABELS[d.scene]} · ${DEMO_PAGE_LABELS[d.page]}` : '';
-  }
-  const n = stepCount(seg);
-  return n > 1 ? `النقرة ${step} من ${n - 1}` : '';
-}
+const stepLabel = (seg: Segment, step: number) => stepSub(seg, step) ?? '';
 
 function download(name: string, text: string) {
   const a = document.createElement('a');
@@ -74,11 +72,14 @@ function LivePreview({ seg, step }: { seg: Segment; step: number }) {
 
 const THUMB_W = 168;
 
+const TYPE_ICON: Record<Exclude<Segment['type'], 'slide'>, keyof typeof Icons> = { demo: 'MonitorPlay', whoami: 'CircleHelp', roster: 'Users', agreements: 'Handshake', launch: 'Rocket', photo: 'Camera' };
+
 function Thumb({ seg, theme }: { seg: Segment; theme: ShowTheme }) {
-  if (seg.type === 'demo') {
+  if (seg.type !== 'slide') {
+    const I = Icons[TYPE_ICON[seg.type]] as typeof Icons.Type;
     return (
       <div className="grid h-full w-full place-items-center bg-gradient-to-br from-brand-700 to-brand-500 text-white">
-        <span className="flex flex-col items-center gap-1 text-[11px]"><Icons.MonitorPlay className="h-5 w-5" /> ديمو المنصة</span>
+        <span className="flex flex-col items-center gap-1 text-[11px]"><I className="h-5 w-5" /> {SEGMENT_LABELS[seg.type]}</span>
       </div>
     );
   }
@@ -113,7 +114,7 @@ export default function ShowAdmin() {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [step, setStep] = useState(0);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [live, setLive] = useState<{ pos: Pos; started: boolean; paused?: boolean; remote?: RemoteInfo; at: number } | null>(null);
+  const [live, setLive] = useState<{ pos: Pos; started: boolean; paused?: boolean; blackout?: boolean; remote?: RemoteInfo; live?: LiveInfo; at: number } | null>(null);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [dropping, setDropping] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -133,7 +134,7 @@ export default function ShowAdmin() {
 
   useEffect(() => {
     document.title = 'محرّر العرض · صقل';
-    const off = sync.subscribe((m) => m.type === 'state' && setLive({ pos: m.pos, started: m.started, paused: m.paused, remote: m.remote, at: Date.now() }));
+    const off = sync.subscribe((m) => m.type === 'state' && setLive({ pos: m.pos, started: m.started, paused: m.paused, blackout: m.blackout, remote: m.remote, live: m.live, at: Date.now() }));
     sync.send({ type: 'hello' });
     return off;
   }, [sync]);
@@ -147,9 +148,11 @@ export default function ShowAdmin() {
   const list = useMemo(() => (cfg ? sortSegments(cfg.segments) : []), [cfg]);
   const seg = list.find((s) => s.id === selectedSeg) ?? list[0];
   const hasDemo = list.some((s) => s.type === 'demo');
+  const localCount = useMemo(() => (cfg ? collectRefs(cfg).filter((r) => r.kind === 'local').length : 0), [cfg]);
   const snapStatus = useSnapshotStatus();
   const host = useHostLink();
   const [linkOpen, setLinkOpen] = useState(false);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   const slide = seg?.type === 'slide' ? seg : null;
   const maxStep = seg ? stepCount(seg) - 1 : 0;
   const curStep = Math.min(step, maxStep);
@@ -264,6 +267,14 @@ export default function ShowAdmin() {
     selectSeg(id);
     setAddOpen(false);
   };
+  /** فقرة حفل جاهزة (وقد تكون عدة شرائح كالتعريف بالبرنامج) بعد الشريحة الحالية */
+  const addCeremony = (key: CeremonyKey) => {
+    const id = segId();
+    const segs = ceremonySegmentsFor(key, id);
+    setSegments((x) => segs.reduce((acc, s, i) => insertSegment(acc, s, i ? segs[i - 1].id : seg?.id), x));
+    selectSeg(segs[0].id);
+    setAddOpen(false);
+  };
   const duplicateSlide = (s: Segment) => {
     const id = segId();
     const copy: Segment = s.type === 'slide' ? { ...s, id, title: `${s.title} (نسخة)`, settings: { ...s.settings, elements: cloneElements(s.settings.elements) } } : { ...structuredClone(s), id };
@@ -303,6 +314,11 @@ export default function ShowAdmin() {
           ))}
         </div>
         <Button size="sm" variant="secondary" icon={<Icons.Library className="h-4 w-4" />} onClick={() => setLibraryOpen(true)}>المكتبة</Button>
+        {localCount > 0 && (
+          <button onClick={() => setExportOpen(true)} className="flex items-center gap-1.5 rounded-full border border-accent-100 bg-accent-50 px-2.5 py-1 text-xs text-accent-700" title="الملفات المرفوعة محلياً (IndexedDB) تبقى على هذا الجهاز فقط. انقلها بـ«تصدير العرض كاملاً»" data-local-notice>
+            <Icons.HardDrive className="h-3.5 w-3.5" /> <span className="num">{localCount}</span> ملف على هذا الجهاز فقط
+          </button>
+        )}
         {hasDemo && snapStatus.state !== 'ok' && (
           <button className="flex items-center gap-1.5 rounded-full border border-accent-100 bg-accent-50 px-2.5 py-1 text-xs text-accent-700" onClick={() => setSelectedSeg(list.find((s) => s.type === 'demo')?.id ?? null)} title="الديمو يعرض البيانات التجريبية">
             <Icons.TriangleAlert className="h-3.5 w-3.5" /> الديمو بلا لقطة بيانات
@@ -315,6 +331,7 @@ export default function ShowAdmin() {
         <Button size="sm" variant="secondary" disabled={!connected} title="السابق" onClick={() => sync.send({ type: 'nav', dir: 'prev' })}><Icons.ChevronRight className="h-4 w-4" /></Button>
         <Button size="sm" variant="secondary" disabled={!connected} title="التالي" onClick={() => sync.send({ type: 'nav', dir: 'next' })}><Icons.ChevronLeft className="h-4 w-4" /></Button>
         <LinkBadge host={host} onOpen={() => setLinkOpen(true)} />
+        <Button size="sm" icon={<Icons.Radio className="h-4 w-4" />} onClick={() => setConsoleOpen(true)} data-open-console>التشغيل</Button>
         {liveSeg?.type === 'demo' && (
           <Button size="sm" variant="secondary" icon={live?.paused ? <Icons.Play className="h-4 w-4" /> : <Icons.Pause className="h-4 w-4" />} onClick={() => sync.send({ type: 'tour', action: 'toggle' })}>
             {live?.paused ? 'شغّل الجولة' : 'أوقف الجولة'}
@@ -427,7 +444,7 @@ export default function ShowAdmin() {
           {seg && maxStep > 0 && (
             <div className="flex shrink-0 items-center justify-center gap-2 border-t border-ink-100 bg-white py-1.5 text-xs text-ink-600">
               <button className="rounded-full p-1.5 hover:bg-ink-50 disabled:opacity-30" disabled={curStep === 0} onClick={() => setStep(curStep - 1)} aria-label="الخطوة السابقة"><Icons.ChevronRight className="h-4 w-4" /></button>
-              <span className="min-w-40 text-center">{curStep === 0 ? (seg.type === 'demo' ? stepLabel(seg, 0) : 'عند ظهور الشريحة') : stepLabel(seg, curStep)}{seg.type === 'slide' ? ` · ${maxStep} نقرة` : ''}</span>
+              <span className="min-w-40 text-center">{curStep === 0 && seg.type === 'slide' ? 'عند ظهور الشريحة' : stepLabel(seg, curStep)}{seg.type === 'slide' ? ` · ${maxStep} نقرة` : ''}</span>
               <button className="rounded-full p-1.5 hover:bg-ink-50 disabled:opacity-30" disabled={curStep >= maxStep} onClick={() => setStep(curStep + 1)} aria-label="الخطوة التالية"><Icons.ChevronLeft className="h-4 w-4" /></button>
             </div>
           )}
@@ -452,12 +469,22 @@ export default function ShowAdmin() {
               onTitle={(t) => setSegments((x) => replaceSegment(x, { ...slide, title: t }), 'slide-title')}
               onChange={(p, key) => setSlide((s) => ({ ...s, ...p }), key)}
             />
-          ) : seg?.type === 'demo' ? (
+          ) : seg ? (
             <div className="space-y-4 p-4">
-              <Input value={seg.title} onChange={(e) => setSegments((x) => replaceSegment(x, { ...seg, title: e.target.value }), 'demo-title')} className="!min-h-0 !py-1.5 font-semibold" aria-label="عنوان الفقرة" />
-              <DemoEditor seg={seg} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }))} />
+              <Input value={seg.title} onChange={(e) => setSegments((x) => replaceSegment(x, { ...seg, title: e.target.value } as Segment), 'seg-title')} className="!min-h-0 !py-1.5 font-semibold" aria-label="عنوان الفقرة" />
+              {seg.type === 'demo' && <DemoEditor seg={seg} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }))} />}
+              {seg.type === 'whoami' && <WhoAmIEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'who')} />}
+              {seg.type === 'roster' && <RosterEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'roster')} />}
+              {seg.type === 'agreements' && <AgreementsEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'agreements')} />}
+              {seg.type === 'launch' && <LaunchEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'launch')} />}
+              {seg.type === 'photo' && <PhotoEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'photo')} />}
             </div>
           ) : null}
+          {seg && !(slide && selectedEls.length > 0) && (
+            <div className="border-t border-ink-100 px-4 py-4">
+              <SectionField seg={seg} onChange={(section) => setSegments((x) => replaceSegment(x, (section ? { ...seg, section } : (({ section: _s, ...rest }) => rest)(seg)) as Segment), 'section')} />
+            </div>
+          )}
           {slide && selectedEls.length === 0 && slide.settings.elements.length > 0 && (
             <div className="border-t border-ink-100 px-4 py-4">
               <h4 className="mb-2 text-xs font-semibold text-ink-500">الطبقات (الأعلى أولاً)</h4>
@@ -478,7 +505,26 @@ export default function ShowAdmin() {
       </div>
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="شريحة جديدة" wide>
-        <ul className="grid max-h-[65vh] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
+        <h4 className="mb-2 text-xs font-semibold text-ink-500">فقرات الحفل</h4>
+        <ul className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(Object.keys(CEREMONY_TEMPLATES) as CeremonyKey[]).map((k) => {
+            const t = CEREMONY_TEMPLATES[k];
+            const I = Icons[t.icon] as typeof Icons.Type;
+            return (
+              <li key={k}>
+                <button onClick={() => addCeremony(k)} className="flex h-full w-full items-start gap-2 rounded-xl border border-ink-100 p-2.5 text-start hover:border-brand-600 hover:bg-brand-50" data-ceremony-template={k}>
+                  <I className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />
+                  <span>
+                    <span className="block text-sm font-medium text-ink-900">{t.label}</span>
+                    <span className="block text-[11px] leading-snug text-ink-500">{t.hint}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        <h4 className="mb-2 text-xs font-semibold text-ink-500">قوالب الشرائح</h4>
+        <ul className="grid max-h-[45vh] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
           {(Object.keys(TEMPLATES) as TemplateKey[]).map((k) => (
             <li key={k}>
               <button onClick={() => addSlide(k)} className="group block w-full text-start">
@@ -508,6 +554,7 @@ export default function ShowAdmin() {
 
       <ExportModal cfg={cfg} open={exportOpen} onClose={() => setExportOpen(false)} />
       <LinkPanel host={host} open={linkOpen} onClose={() => setLinkOpen(false)} />
+      {consoleOpen && <Console cfg={cfg} live={connected ? live : null} connected={connected} send={(m) => sync.send(m)} onClose={() => setConsoleOpen(false)} />}
       <ImportModal
         file={bundleFile}
         onClose={() => setBundleFile(null)}

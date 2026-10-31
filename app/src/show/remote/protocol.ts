@@ -41,11 +41,13 @@ export interface Backend {
   onDisconnectSet(path: string, value: unknown): void;
 }
 
+export const CUE_COMMANDS = ['hint', 'reveal', 'skip', 'launch', 'photo', 'skipVideo'] as const;
 export type RemoteCommand =
   | { type: 'next' }
   | { type: 'prev' }
   | { type: 'tour' }
   | { type: 'blackout' }
+  | { type: (typeof CUE_COMMANDS)[number] }
   | { type: 'goto'; seg: number };
 
 export interface RemoteState {
@@ -57,7 +59,8 @@ export interface RemoteState {
   blackout: boolean;
   title: string;
   /** عنوان كل فقرة ونوعها، لقائمة «انتقل إلى» في الجوال */
-  outline: { title: string; type: 'slide' | 'demo' }[];
+  outline: { title: string; type: import('../model').SegmentType }[];
+  live?: import('../sync').LiveInfo;
 }
 
 const sp = (key: string, ...rest: string[]) => ['sessions', key, ...rest].join('/');
@@ -86,6 +89,7 @@ export function randomCode(words = (n: number) => crypto.getRandomValues(new Uin
 export function parseCommand(v: any): RemoteCommand | null {
   if (!v || typeof v !== 'object') return null;
   if (v.type === 'next' || v.type === 'prev' || v.type === 'tour' || v.type === 'blackout') return { type: v.type };
+  if ((CUE_COMMANDS as readonly string[]).includes(v.type)) return { type: v.type };
   if (v.type === 'goto' && Number.isInteger(v.seg) && v.seg >= 0 && v.seg < 1000) return { type: 'goto', seg: v.seg };
   return null;
 }

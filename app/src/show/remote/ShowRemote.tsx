@@ -2,7 +2,9 @@
 // وإيقاف جولة الديمو، والشاشة السوداء، والانتقال لأي فقرة. حالة الاتصال ظاهرة دائماً.
 // بعد الدخول يُحفظ مفتاح الجلسة على الجوال، فإعادة تحميل الصفحة تعود بلا رمز ما دام الجوال لم يُفصل.
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, LogOut, MonitorOff, Pause, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Eye, Lightbulb, LogOut, MonitorOff, Pause, Play, SkipForward, Timer } from 'lucide-react';
+import { LongPress, Schedule } from '../ceremony/controls';
+import { fmtClock } from '../ceremony/logic';
 import { markLogo } from '../segments/Fallback';
 import { connectFirebase, loadFirebaseConfig } from './firebase';
 import { loopbackClient, loopbackEnabled } from './loopback';
@@ -105,7 +107,7 @@ export default function ShowRemote() {
       {phase.kind === 'off' && (
         <div className="rm-center">
           <p className="rm-big">التحكم من الجوال غير مُفعَّل</p>
-          <p className="rm-note">يحتاج إعداد Firebase (ملف firebase-config.json). خطوات الإعداد في README المشروع.</p>
+          <p className="rm-note">أضف إعدادات Firebase لتفعيل الجوال (ملف show-firebase.json). خطوات الإعداد في README المشروع.</p>
         </div>
       )}
       {phase.kind === 'enter' && (
@@ -169,7 +171,10 @@ function Controls({ s, net, onLeave, onEnded }: { s: RemoteSession; net: boolean
     s.send(c).finally(() => setSending(false));
   };
   const cur = st?.outline[st.seg];
+  const nxt = st?.outline[st.seg + 1];
   const live = net && display;
+  const v = st?.live?.video;
+  const hasLaunch = !!st?.outline.some((o) => o.type === 'launch');
   return (
     <div className="rm-controls">
       <div className="rm-status" data-live={live}>
@@ -177,27 +182,53 @@ function Controls({ s, net, onLeave, onEnded }: { s: RemoteSession; net: boolean
         {!net ? 'انقطع اتصال الجوال، يُعاد تلقائياً' : !display ? 'شاشة العرض غير متصلة الآن' : 'متصل بالعرض'}
       </div>
       <div className="rm-now">
-        <p className="rm-kicker num">{st ? `الفقرة ${st.seg + 1} من ${st.outline.length}${st.steps > 1 ? ` · ${st.step + 1}/${st.steps}` : ''}` : '…'}</p>
+        <p className="rm-kicker num">{st ? `الآن على الشاشة · ${st.seg + 1} من ${st.outline.length}${st.steps > 1 ? ` · خطوة ${st.step + 1}/${st.steps}` : ''}` : '…'}</p>
         <p className="rm-big">{st ? (st.started ? cur?.title || '—' : 'لم يبدأ العرض بعد') : 'بانتظار حالة العرض…'}</p>
+        {st?.live?.sub && <p className="rm-note">{st.live.sub}</p>}
+        {nxt && <p className="rm-kicker">التالي: {nxt.title}</p>}
+        {v && (
+          <div className="rm-video">
+            <div className="rm-video-bar"><div style={{ width: `${(v.t / Math.max(1, v.d)) * 100}%` }} /></div>
+            <span className="num">{fmtClock(v.t * 1000)} / {fmtClock(v.d * 1000)}</span>
+          </div>
+        )}
       </div>
       <div className="rm-nav">
         <button className="rm-btn rm-next" disabled={!live || sending} onClick={() => send({ type: 'next' })} aria-label="التالي">
-          التالي <ChevronLeft className="rm-ico" />
+          {cur?.type === 'whoami' ? 'التالي / كشف' : 'التالي'} <ChevronLeft className="rm-ico" />
         </button>
         <button className="rm-btn rm-prev" disabled={!live || sending} onClick={() => send({ type: 'prev' })} aria-label="السابق">
           <ChevronRight className="rm-ico" /> السابق
         </button>
       </div>
+      {cur?.type === 'whoami' && (
+        <div className="rm-row">
+          <button className="rm-btn" disabled={!live} onClick={() => send({ type: 'hint' })}><Lightbulb className="rm-ico" /> تلميح</button>
+          <button className="rm-btn" disabled={!live} onClick={() => send({ type: 'reveal' })}><Eye className="rm-ico" /> كشف</button>
+          <button className="rm-btn" disabled={!live} onClick={() => send({ type: 'skip' })}><SkipForward className="rm-ico" /> تخطي</button>
+        </div>
+      )}
       <div className="rm-row">
         {cur?.type === 'demo' && (
           <button className="rm-btn" disabled={!live} onClick={() => send({ type: 'tour' })}>
             {st?.paused ? <Play className="rm-ico" /> : <Pause className="rm-ico" />} {st?.paused ? 'شغّل الجولة' : 'أوقف الجولة'}
           </button>
         )}
+        {cur?.type === 'photo' && (
+          <button className="rm-btn" disabled={!live} onClick={() => send({ type: 'photo' })}><Timer className="rm-ico" /> مؤقت الصورة</button>
+        )}
+        {v && (
+          <button className="rm-btn" disabled={!live} onClick={() => send({ type: 'skipVideo' })}><SkipForward className="rm-ico" /> تخطي الفيديو</button>
+        )}
         <button className="rm-btn" data-on={!!st?.blackout} disabled={!live} onClick={() => send({ type: 'blackout' })}>
           <MonitorOff className="rm-ico" /> {st?.blackout ? 'أعد الشاشة' : 'شاشة سوداء'}
         </button>
       </div>
+      {hasLaunch && (
+        <LongPress label="تدشين: اضغط مطوّلاً ثانيتين" disabled={!live || (cur?.type === 'launch' && (st?.step ?? 0) > 0)} onDone={() => send({ type: 'launch' })} className="rm-btn rm-launch">
+          تدشين (اضغط مطوّلاً)
+        </LongPress>
+      )}
       {st && st.outline.length > 1 && (
         <details className="rm-list">
           <summary>انتقل إلى فقرة</summary>
@@ -212,6 +243,15 @@ function Controls({ s, net, onLeave, onEnded }: { s: RemoteSession; net: boolean
           </ol>
         </details>
       )}
+      <details className="rm-list">
+        <summary>جدول الحفل</summary>
+        <div className="rm-sched-wrap">
+          <Schedule
+            live={st?.live}
+            classes={{ root: 'rm-sched', head: 'rm-sched-head', bar: 'rm-video-bar', fill: 'rm-sched-fill', list: 'rm-sched-list', row: 'rm-sched-row', now: 'rm-sched-now', over: 'rm-over', btn: 'rm-sched-btn' }}
+          />
+        </div>
+      </details>
       <button className="rm-leave" onClick={onLeave}>
         <LogOut className="rm-ico" /> خروج
       </button>

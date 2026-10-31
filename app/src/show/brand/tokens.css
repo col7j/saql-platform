@@ -10,6 +10,9 @@
 @font-face { font-family: 'Thmanyah Sans'; font-weight: 500; font-style: normal; font-display: block; src: url('/fonts/thmanyahsans/thmanyahsans-Medium.woff2') format('woff2'); }
 @font-face { font-family: 'Thmanyah Sans'; font-weight: 700; font-style: normal; font-display: block; src: url('/fonts/thmanyahsans/thmanyahsans-Bold.woff2') format('woff2'); }
 @font-face { font-family: 'Thmanyah Sans'; font-weight: 900; font-style: normal; font-display: block; src: url('/fonts/thmanyahsans/thmanyahsans-Black.woff2') format('woff2'); }
+/* خط المصحف للآيات وحدها */
+@font-face { font-family: 'Amiri'; font-weight: 400; font-style: normal; font-display: block; src: url('/fonts/amiri/Amiri-Regular.woff2') format('woff2'); }
+@font-face { font-family: 'Amiri'; font-weight: 700; font-style: normal; font-display: block; src: url('/fonts/amiri/Amiri-Bold.woff2') format('woff2'); }
 
 :root {
   /* ألوان الهوية بقنوات RGB لتعمل معها الشفافية */
@@ -30,6 +33,7 @@
 
   /* الخط والأوزان */
   --b-font: 'Thmanyah Sans', system-ui, sans-serif;
+  --b-font-quran: 'Amiri', 'Thmanyah Sans', serif;
   --b-w-light: 300;
   --b-w-regular: 400;
   --b-w-medium: 500;

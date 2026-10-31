@@ -39,3 +39,19 @@
 .rm-item { display: flex; width: 100%; gap: 10px; text-align: start; padding: 12px 10px; border-radius: 12px; font: inherit; font-size: 15px; color: rgb(var(--t-fg)); }
 .rm-item[data-now='true'] { background: rgb(var(--t-primary)); color: rgb(var(--b-white)); }
 .rm-leave { align-self: center; display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 14px; color: rgb(var(--t-fg) / var(--t-fg-muted)); padding: 8px 12px; }
+
+/* الفيديو وجدول الحفل والتدشين */
+.rm-video { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: 13px; color: rgb(var(--t-fg) / var(--t-fg-muted)); }
+.rm-video-bar { flex: 1; height: 6px; border-radius: 999px; overflow: hidden; background: rgb(var(--t-fg) / .14); }
+.rm-video-bar > div { height: 100%; background: rgb(var(--b-gold)); }
+.rm-launch { min-height: 64px; background: rgb(var(--b-gold)); color: rgb(var(--b-ink)); border-color: transparent; font-size: 19px; user-select: none; -webkit-user-select: none; }
+.rm-sched-wrap { padding: 0 12px 12px; }
+.rm-sched { display: flex; flex-direction: column; gap: 8px; }
+.rm-sched-head { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 13px; color: rgb(var(--t-fg) / var(--t-fg-muted)); }
+.rm-sched-head b { color: rgb(var(--t-head)); margin-inline-end: auto; }
+.rm-sched-fill { height: 100%; background: rgb(var(--b-gold)); }
+.rm-sched-list { display: flex; flex-direction: column; gap: 2px; }
+.rm-sched-row { display: grid; grid-template-columns: 20px minmax(0, 1fr) 40px 52px; gap: 8px; padding: 8px; border-radius: 10px; font-size: 14px; }
+.rm-sched-now { background: rgb(var(--t-primary)); color: rgb(var(--b-white)); }
+.rm-over { color: rgb(var(--b-orange)); }
+.rm-sched-btn { font: inherit; font-size: 12px; padding: 2px 8px; border-radius: 8px; background: rgb(var(--t-fg) / .1); color: rgb(var(--t-fg)); }

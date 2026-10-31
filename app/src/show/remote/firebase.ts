@@ -11,10 +11,10 @@ export interface FirebaseConfig {
   [k: string]: unknown;
 }
 
-/** إعداد Firebase العام من public/firebase-config.json (ليس سراً: يحميه تسجيل الدخول وقواعد الأمان). غيابه = لا تحكم من الجوال */
+/** إعداد Firebase العام من public/show-firebase.json (ليس سراً: يحميه تسجيل الدخول وقواعد الأمان). غيابه = لا تحكم من الجوال */
 export async function loadFirebaseConfig(fetcher: typeof fetch = fetch): Promise<FirebaseConfig | null> {
   try {
-    const res = await fetcher('./firebase-config.json', { cache: 'no-cache' });
+    const res = await fetcher('./show-firebase.json', { cache: 'no-cache' });
     if (!res.ok) return null;
     const c = await res.json();
     return c && typeof c === 'object' && ['apiKey', 'databaseURL', 'projectId', 'appId'].every((k) => typeof c[k] === 'string' && c[k]) ? (c as FirebaseConfig) : null;

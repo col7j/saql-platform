@@ -47,6 +47,7 @@ export function commandToMessage(c: RemoteCommand): ShowMessage {
     case 'tour': return { type: 'tour', action: 'toggle' };
     case 'blackout': return { type: 'blackout' };
     case 'goto': return { type: 'goto', pos: { seg: c.seg, step: 0 } };
+    default: return { type: 'cue', cue: c.type };
   }
 }
 
@@ -63,6 +64,7 @@ export function messageToState(m: ShowMessage): RemoteState | null {
     blackout: !!m.blackout,
     title: item?.title ?? '',
     outline: m.outline,
+    ...(m.live ? { live: JSON.parse(JSON.stringify(m.live)) } : {}),
   };
 }
 

@@ -154,11 +154,16 @@ export type SlideBg =
   | { kind: 'media'; media?: MediaRef }
   | { kind: 'black' };
 
+/** مؤثر خلفية للشريحة كلها: قصاصات احتفالية أو توهّج نابض (بألوان الهوية) */
+export const SLIDE_FX = { none: 'بلا مؤثر', confetti: 'قصاصات احتفالية', glow: 'توهّج نابض' } as const;
+export type SlideFx = keyof typeof SLIDE_FX;
+
 export interface SlideSettings {
   bg: SlideBg;
   /** شعار الزاوية الثابت */
   mark: boolean;
   elements: SlideElement[];
+  fx?: SlideFx;
 }
 
 export const DEFAULT_FONT = BRAND_FONTS[0].family;

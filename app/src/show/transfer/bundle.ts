@@ -96,7 +96,7 @@ export async function buildBundle(cfg: ShowConfig, sources: SourceFile[], missin
     manifest.snapshot = { path: SNAPSHOT_PATH, size: data.byteLength, sha256: await sha256(data), capturedAt: snapshot.capturedAt };
     entries[SNAPSHOT_PATH] = [data, { level: 6 }];
   }
-  entries['show.json'] = [strToU8(exportConfig(cfg)), { level: 6 }];
+  entries['show.json'] = [strToU8(exportConfig(cfg, { personal: true })), { level: 6 }];
   entries['manifest.json'] = [strToU8(JSON.stringify(manifest, null, 2)), { level: 6 }];
   return zipAsync(entries);
 }

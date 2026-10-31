@@ -34,7 +34,7 @@
         "commands": {
           "$cmd": {
             ".write": "auth != null && ((!data.exists() && newData.child('uid').val() === auth.uid && root.child('sessions').child($key).child('remotes').child(auth.uid).exists() && root.child('sessions').child($key).child('expiresAt').val() > now) || (!newData.exists() && root.child('sessions').child($key).child('displays').child(auth.uid).exists()))",
-            ".validate": "newData.hasChildren(['uid', 'type', 'at']) && newData.child('type').isString() && newData.child('type').val().matches(/^(next|prev|tour|blackout|goto)$/) && (newData.child('type').val() !== 'goto' || (newData.child('seg').isNumber() && newData.child('seg').val() >= 0 && newData.child('seg').val() < 1000))"
+            ".validate": "newData.hasChildren(['uid', 'type', 'at']) && newData.child('type').isString() && newData.child('type').val().matches(/^(next|prev|tour|blackout|goto|hint|reveal|skip|launch|photo|skipVideo)$/) && (newData.child('type').val() !== 'goto' || (newData.child('seg').isNumber() && newData.child('seg').val() >= 0 && newData.child('seg').val() < 1000))"
           }
         },
         "$other": { ".validate": false }

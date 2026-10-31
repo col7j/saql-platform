@@ -7,7 +7,27 @@ import { clampPos, followSegment, next, prev, skipSegment, sortSegments, stepCou
 import { keyAction, sceneKey, touchAction } from './keys';
 import type { DemoNav } from './demo/DemoView';
 import { useRemoteDisplay } from './remote/display';
-import { combineSync, type ShowMessage } from './sync';
+import { combineSync, type Cue, type LiveInfo, type ShowMessage } from './sync';
+import { agenda, agendaIndex, agendaKey, emptyTiming, spentOf, tick, whoHint, whoReveal, whoSkip, type Timing } from './ceremony/logic';
+import { stepSub } from './stepLabel';
+
+const TIMING_KEY = 'show-timing';
+const loadTiming = (): Timing => {
+  try {
+    const v = JSON.parse(localStorage.getItem(TIMING_KEY) ?? 'null');
+    return v && typeof v.spent === 'object' ? v : emptyTiming();
+  } catch {
+    return emptyTiming();
+  }
+};
+const saveTiming = (t: Timing) => {
+  try {
+    localStorage.setItem(TIMING_KEY, JSON.stringify(t));
+  } catch {
+    /* في الذاكرة فقط */
+  }
+};
+
 
 import { SegmentView, hidesCornerMark } from './segments';
 import { Backdrop, heroLogo, markLogo } from './segments/Fallback';
@@ -54,8 +74,13 @@ export default function ShowPlayer() {
   // الطبقات: الفقرة الحالية فوق، والسابقة تحتها حتى يكتمل الظهور التدريجي
   const [layers, setLayers] = useState<{ id: string; step: number; leaving: boolean }[]>([]);
 
-  const ref = useRef({ cfg, pos, started, paused, blackout, remote: remote.info });
-  ref.current = { cfg, pos, started, paused, blackout, remote: remote.info };
+  const [photoRun, setPhotoRun] = useState(0);
+  const [video, setVideo] = useState<LiveInfo['video']>();
+  const [timing, setTiming] = useState<Timing>(loadTiming);
+  const [clockOn, setClockOn] = useState(true);
+
+  const ref = useRef({ cfg, pos, started, paused, blackout, remote: remote.info, video, timing, clockOn });
+  ref.current = { cfg, pos, started, paused, blackout, remote: remote.info, video, timing, clockOn };
 
   const list = cfg ? sortSegments(cfg.segments) : [];
   const current = list[pos.seg];
@@ -77,6 +102,67 @@ export default function ShowPlayer() {
     [go],
   );
 
+  /** أوامر فقرات الحفل (من المفاتيح أو المحرّر أو الجوال) */
+  const cue = useCallback(
+    (c: Cue) => {
+      const { cfg, pos } = ref.current;
+      if (!cfg) return;
+      const l = sortSegments(cfg.segments);
+      const seg = l[pos.seg];
+      const to = (step: number | null) => step !== null && go((_, p) => ({ seg: p.seg, step }));
+      switch (c) {
+        case 'hint': if (seg?.type === 'whoami') to(whoHint(seg.settings, pos.step)); break;
+        case 'reveal': if (seg?.type === 'whoami') to(whoReveal(seg.settings, pos.step)); break;
+        case 'skip':
+          if (seg?.type === 'whoami') {
+            const n = whoSkip(seg.settings, pos.step);
+            if (n !== null) to(n);
+            else go(skipSegment);
+          }
+          break;
+        case 'launch': {
+          // من أي مكان: يقفز إلى التدشين ويبدأ التسلسل المحلي (الحركة، ثم «تم التدشين»، ثم الفيديو، ثم الديمو)
+          const i = seg?.type === 'launch' ? pos.seg : l.findIndex((s) => s.type === 'launch');
+          if (i >= 0 && !(seg?.type === 'launch' && pos.step > 0)) go(() => ({ seg: i, step: 1 }));
+          break;
+        }
+        case 'photo': if (seg?.type === 'photo') setPhotoRun((r) => r + 1); break;
+        case 'skipVideo': if (ref.current.video) go(skipSegment); break;
+      }
+    },
+    [go],
+  );
+
+  // التدشين: بعد «تم التدشين» بالثواني المحددة تبدأ الفقرة التالية (الفيديو ثم الديمو) على هذا الجهاز بلا إنترنت
+  useEffect(() => {
+    if (!started || current?.type !== 'launch' || pos.step !== 2 || !current.settings.autoNext) return;
+    const t = setTimeout(() => go(next), current.settings.autoNext * 1000);
+    return () => clearTimeout(t);
+  }, [started, current, pos.step, go]);
+
+  // تقدّم الفيديو المعروض (للمحرّر والجوال)
+  useEffect(() => {
+    const t = setInterval(() => {
+      const v = document.querySelector<HTMLVideoElement>('.show-layer.entering video');
+      setVideo((old) => {
+        const now = v && Number.isFinite(v.duration) && v.duration > 0 ? { t: Math.floor(v.currentTime), d: Math.round(v.duration) } : undefined;
+        return old?.t === now?.t && old?.d === now?.d ? old : now;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // ساعة الحفل: الزمن الفعلي لكل فقرة في الجدول، بعد «ابدأ العرض» وما دامت تعمل
+  const items = useMemo(() => agenda(list), [cfg]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const key = started && clockOn && items.length ? agendaKey(items, agendaIndex(items, pos.seg)) : null;
+    setTiming((t) => {
+      const n = tick(t, key, Date.now());
+      if (n !== t) saveTiming(n);
+      return n;
+    });
+  }, [started, clockOn, pos.seg, items]);
+
   // كل فقرة ديمو تبدأ بحسب إعداد التشغيل التلقائي
   useEffect(() => {
     setPaused(current?.type === 'demo' ? !current.settings.autoplay : false);
@@ -94,12 +180,23 @@ export default function ShowPlayer() {
   const stateMsg = (): ShowMessage => {
     const { cfg, pos, started, paused, blackout } = ref.current;
     const l = cfg ? sortSegments(cfg.segments) : [];
-    return { type: 'state', pos, started, paused, blackout, steps: l[pos.seg] ? stepCount(l[pos.seg]) : 1, outline: l.map((s) => ({ title: s.title, type: s.type })), remote: ref.current.remote };
+    const items = agenda(l);
+    const now = Date.now();
+    const t = ref.current.timing;
+    const live: LiveInfo = {
+      sub: stepSub(l[pos.seg], pos.step),
+      ...(ref.current.video ? { video: ref.current.video } : {}),
+      agenda: items.map((a, i) => ({ title: a.title, minutes: a.minutes, spent: spentOf(t, agendaKey(items, i), now) })),
+      agendaAt: agendaIndex(items, pos.seg),
+      clock: { running: !!t.current, startedAt: t.startedAt, at: now },
+      ...(l[pos.seg]?.type === 'launch' ? { launch: pos.step } : {}),
+    };
+    return { type: 'state', pos, started, paused, blackout, steps: l[pos.seg] ? stepCount(l[pos.seg]) : 1, outline: l.map((s) => ({ title: s.title, type: s.type })), remote: ref.current.remote, live };
   };
   useEffect(() => {
     if (cfg) preloadAround(cfg, pos);
     sync.send(stateMsg());
-  }, [cfg, pos, started, paused, blackout, sync, remote.info]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cfg, pos, started, paused, blackout, sync, remote.info, video, timing]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(
     () =>
@@ -109,8 +206,17 @@ export default function ShowPlayer() {
         if (m.type === 'goto') go((c) => clampPos(c, m.pos));
         if (m.type === 'nav') nav(m.dir);
         if (m.type === 'tour') setPaused((p) => (m.action === 'toggle' ? !p : m.action === 'pause'));
+        if (m.type === 'cue') cue(m.cue);
+        if (m.type === 'timing') {
+          if (m.action === 'toggle') setClockOn((v) => !v);
+          else {
+            const t = emptyTiming();
+            saveTiming(t);
+            setTiming(t);
+          }
+        }
       }),
-    [sync, go, nav],
+    [sync, go, nav, cue],
   );
 
   // الانتقال بين الفقرات
@@ -155,10 +261,11 @@ export default function ShowPlayer() {
       else if (a === 'last') go((c) => ({ seg: c.segments.length - 1, step: 0 }));
       else if (a === 'fullscreen') toggleFullscreen();
       else if (a === 'blackout') setBlackout((b) => !b);
+      else cue(a);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [go, nav]);
+  }, [go, nav, cue]);
 
   // إخفاء المؤشر بعد ثانيتين بلا حركة
   useEffect(() => {
@@ -208,6 +315,7 @@ export default function ShowPlayer() {
               onAdvance={() => go(next)}
               onEnd={() => setPaused(true)}
               registerNav={registerNav}
+              photoRun={photoRun}
             />
           </div>
         );
@@ -218,8 +326,6 @@ export default function ShowPlayer() {
       <div className="show-mark" style={{ opacity: started && !hidesCornerMark(current) && !blackout ? 1 : 0 }}>
         <img src={markLogo(cfg.theme)} alt="" draggable={false} />
       </div>
-
-      {/* رمز التحكم من الجوال: يُخفى ويظهر بـ C */}
 
       <div className="show-off z-40" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none', transition: 'opacity 500ms ease' }} />
 
@@ -244,7 +350,7 @@ export default function ShowPlayer() {
                 <p className="show-in show-help mt-[4vh]" style={{ ['--i' as string]: 3 }}>
                   {list.length} فقرات · التالي: → أو PageDown أو المسافة · السابق: ← أو PageUp
                   <br />
-                  F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · K تشغيل الجولة أو إيقافها · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
+                  F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · K الجولة · H تلميح · R كشف · S تخطي · L تدشين · T مؤقت الصورة · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
                 </p>
               </div>
             </div>

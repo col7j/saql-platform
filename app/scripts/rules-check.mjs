@@ -1,10 +1,10 @@
 // فحص قواعد الأمان على Firebase الحقيقي بعد نشرها: node scripts/rules-check.mjs
-// يقرأ public/firebase-config.json، وينشئ مستخدمين مجهولين (محرّر، شاشة عرض، جوال، غريب، مخمّن)،
+// يقرأ public/show-firebase.json، وينشئ مستخدمين مجهولين (محرّر، شاشة عرض، جوال، غريب، مخمّن)،
 // ويجرّب ما يجب أن يُقبل وما يجب أن يُرفض عبر REST، ثم يحذف الجلسة التي أنشأها.
 import { readFileSync } from 'node:fs';
 import { randomBytes, randomInt } from 'node:crypto';
 
-const cfg = JSON.parse(readFileSync(new URL('../public/firebase-config.json', import.meta.url), 'utf8'));
+const cfg = JSON.parse(readFileSync(new URL('../public/show-firebase.json', import.meta.url), 'utf8'));
 const DB = cfg.databaseURL.replace(/\/$/, '');
 const TS = { '.sv': 'timestamp' };
 const key = () => randomBytes(16).toString('base64url');

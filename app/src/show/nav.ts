@@ -1,6 +1,7 @@
 // منطق نقي لترتيب الفقرات والتنقل بينها: لا يعرف الواجهة ولا التخزين.
 import { demoSteps, type Segment, type ShowConfig } from './model';
 import { slideStepCount } from './slides/model';
+import { agreementSteps, LAUNCH_STEPS, rosterPages, whoNext, whoStepCount } from './ceremony/logic';
 
 /** موضع العرض: الفقرة (بترتيبها) والخطوة داخلها (شريحة، دفعة أسماء، خطوة ديمو) */
 export interface Pos {
@@ -48,7 +49,15 @@ export const replaceSegment = (segments: Segment[], seg: Segment): Segment[] => 
 /** عدد الخطوات داخل الفقرة */
 export function stepCount(seg: Segment): number {
   // الشريحة: نقرة لكل عنصر يظهر لاحقاً أو دفعة أسماء. الديمو: خطوة لكل لقطة
-  return seg.type === 'demo' ? Math.max(1, demoSteps(seg.settings).length) : slideStepCount(seg.settings);
+  switch (seg.type) {
+    case 'demo': return Math.max(1, demoSteps(seg.settings).length);
+    case 'whoami': return whoStepCount(seg.settings);
+    case 'roster': return rosterPages(seg.settings).length;
+    case 'agreements': return agreementSteps(seg.settings);
+    case 'launch': return LAUNCH_STEPS;
+    case 'photo': return 1;
+    default: return slideStepCount(seg.settings);
+  }
 }
 
 export function clampPos(cfg: ShowConfig, pos: Pos): Pos {
@@ -62,7 +71,12 @@ export function next(cfg: ShowConfig, pos: Pos): Pos {
   const list = sortSegments(cfg.segments);
   const p = clampPos(cfg, pos);
   if (!list.length) return p;
-  if (p.step < stepCount(list[p.seg]) - 1) return { seg: p.seg, step: p.step + 1 };
+  const cur = list[p.seg];
+  // «من أنا؟»: التالي يكشف ثم ينتقل للمشارك التالي (التلميحات بزرها)
+  if (cur.type === 'whoami') {
+    const n = whoNext(cur.settings, p.step);
+    if (n !== null) return { seg: p.seg, step: n };
+  } else if (p.step < stepCount(cur) - 1) return { seg: p.seg, step: p.step + 1 };
   if (p.seg < list.length - 1) return { seg: p.seg + 1, step: 0 };
   return p;
 }

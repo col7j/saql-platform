@@ -41,7 +41,12 @@ const mmss = (ms: number) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms 
 
 /** شارة الربط في رأس المحرّر */
 export function LinkBadge({ host, onOpen }: { host: Host; onOpen: () => void }) {
-  if (host.phase === 'off') return null;
+  if (host.phase === 'off')
+    return (
+      <button onClick={onOpen} className="flex items-center gap-1.5 rounded-full border border-accent-100 bg-accent-50 px-2.5 py-1 text-xs text-accent-700" data-link-badge>
+        <Icons.Smartphone className="h-3.5 w-3.5" /> أضف إعدادات Firebase لتفعيل الجوال
+      </button>
+    );
   const { remotes, online } = host.status;
   return (
     <button onClick={onOpen} className="flex items-center gap-1.5 rounded-full border border-ink-100 px-2.5 py-1 text-xs text-ink-700 hover:bg-ink-50" data-link-badge>
@@ -76,7 +81,7 @@ export function LinkPanel({ host, open, onClose }: { host: Host; open: boolean; 
     <Modal open={open} onClose={onClose} title="الربط: شاشة العرض والجوال">
       <div className="space-y-4 text-sm text-ink-700" data-link-panel>
         {phase === 'loading' && <p className="text-ink-500">جارٍ الاتصال…</p>}
-        {phase === 'off' && <Notice tone="orange">التحكم من الجوال غير مُفعَّل: يحتاج إعداد Firebase (ملف firebase-config.json). الخطوات في README.</Notice>}
+        {phase === 'off' && <Notice tone="orange">أضف إعدادات Firebase لتفعيل الجوال: الصق قيم firebaseConfig في app/public/show-firebase.json (الخطوات في README). حتى ذلك يعمل التحكم من هذا المحرّر على نفس الجهاز.</Notice>}
         {phase === 'error' && <Notice tone="red">{error}</Notice>}
         {phase === 'none' && (
           <>

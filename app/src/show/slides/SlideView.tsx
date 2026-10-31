@@ -2,6 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { ChevronsLeft, Volume2 } from 'lucide-react';
 import { useMediaUrl } from '../segments/useMedia';
+import { SlideFxLayer } from '../ceremony/fx';
 import { BRAND_COLORS } from '../brand/brand';
 import {
   CANVAS, isVisibleAt, logoSrc, nameBatches, THEME_ROLES,
@@ -92,6 +93,7 @@ export function SlideCanvas({ settings, theme = 'dark', step, mode, active = fal
   return (
     <div className="sl-canvas" data-show-theme={theme} style={{ transform: `scale(${scale})` }}>
       <Background bg={settings.bg} mode={mode} />
+      <SlideFxLayer fx={settings.fx} still={mode !== 'play'} />
       {settings.elements.map((el, z) => {
         const visible = isVisibleAt(el, step);
         if (!visible && !(dimHidden && mode === 'edit')) return null;

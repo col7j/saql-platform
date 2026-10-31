@@ -1,75 +1,13 @@
 {
   "schemaVersion": 2,
-  "title": "حفل برنامج صقل",
+  "title": "اللقاء الافتتاحي · صقل 7",
   "theme": "dark",
   "segments": [
     {
-      "id": "seg_opening",
+      "id": "c_welcome",
       "type": "slide",
-      "title": "الافتتاح",
+      "title": "الترحيب",
       "order": 0,
-      "settings": {
-        "bg": {
-          "kind": "theme",
-          "glow": true
-        },
-        "mark": false,
-        "elements": [
-          {
-            "id": "seg_opening_e1",
-            "type": "logo",
-            "x": 767.5565198251737,
-            "y": 230,
-            "w": 385,
-            "h": 380,
-            "rot": 0,
-            "opacity": 1,
-            "shadow": "none",
-            "anim": {
-              "type": "scale",
-              "delay": 0,
-              "duration": 900
-            },
-            "step": 0,
-            "props": {
-              "kind": "vertical",
-              "variant": "auto"
-            }
-          },
-          {
-            "id": "seg_opening_e2",
-            "type": "text",
-            "x": 96,
-            "y": 680,
-            "w": 1728,
-            "h": 100,
-            "rot": 0,
-            "opacity": 1,
-            "shadow": "none",
-            "anim": {
-              "type": "up",
-              "delay": 260,
-              "duration": 1000
-            },
-            "step": 0,
-            "props": {
-              "text": "حفل برنامج صقل",
-              "font": "Thmanyah Sans",
-              "weight": 700,
-              "size": 60,
-              "color": "head",
-              "align": "center",
-              "line": 1.25
-            }
-          }
-        ]
-      }
-    },
-    {
-      "id": "seg_intro",
-      "type": "slide",
-      "title": "فيديو المقدمة",
-      "order": 1,
       "settings": {
         "bg": {
           "kind": "theme",
@@ -78,7 +16,276 @@
         "mark": true,
         "elements": [
           {
-            "id": "seg_intro_e1",
+            "id": "c_welcome_e1",
+            "type": "image",
+            "x": 680,
+            "y": 110,
+            "w": 560,
+            "h": 360,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 200,
+              "duration": 1800
+            },
+            "step": 0,
+            "props": {
+              "fit": "contain",
+              "radius": 0
+            },
+            "name": "شعار الجمعية"
+          },
+          {
+            "id": "c_welcome_e2",
+            "type": "text",
+            "x": 96,
+            "y": 500,
+            "w": 1728,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1100,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "اسم الجمعية",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 60,
+              "color": "fg",
+              "align": "center",
+              "line": 1.2
+            },
+            "name": "اسم الجمعية"
+          },
+          {
+            "id": "c_welcome_e3",
+            "type": "shape",
+            "x": 850,
+            "y": 630,
+            "w": 220,
+            "h": 8,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 1700,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_welcome_e4",
+            "type": "text",
+            "x": 96,
+            "y": 680,
+            "w": 1728,
+            "h": 150,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 2000,
+              "duration": 1300
+            },
+            "step": 0,
+            "props": {
+              "text": "اللقاء الافتتاحي · صقل 7",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 110,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            },
+            "name": "عنوان الحفل"
+          },
+          {
+            "id": "c_welcome_e5",
+            "type": "text",
+            "x": 96,
+            "y": 860,
+            "w": 1728,
+            "h": 80,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 2600,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "أهلاً وسهلاً بكم",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 48,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            },
+            "name": "الترحيب"
+          }
+        ]
+      },
+      "section": {
+        "title": "المقدمة والترحيب بالحضور",
+        "minutes": 3
+      }
+    },
+    {
+      "id": "c_quran",
+      "type": "slide",
+      "title": "القرآن الكريم",
+      "order": 1,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": false
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_quran_e1",
+            "type": "text",
+            "x": 96,
+            "y": 170,
+            "w": 1728,
+            "h": 70,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 0,
+              "duration": 1600
+            },
+            "step": 0,
+            "props": {
+              "text": "تلاوة آيات من القرآن الكريم",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 44,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_quran_e2",
+            "type": "text",
+            "x": 200,
+            "y": 330,
+            "w": 1520,
+            "h": 360,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 500,
+              "duration": 2200
+            },
+            "step": 0,
+            "props": {
+              "text": "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ",
+              "font": "Amiri",
+              "weight": 400,
+              "size": 104,
+              "color": "head",
+              "align": "center",
+              "line": 1.7
+            },
+            "name": "الآية"
+          },
+          {
+            "id": "c_quran_e3",
+            "type": "shape",
+            "x": 900,
+            "y": 760,
+            "w": 120,
+            "h": 8,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 1500,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_quran_e4",
+            "type": "text",
+            "x": 96,
+            "y": 800,
+            "w": 1728,
+            "h": 80,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 1800,
+              "duration": 1400
+            },
+            "step": 0,
+            "props": {
+              "text": "القارئ",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 46,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            },
+            "name": "اسم القارئ"
+          }
+        ]
+      },
+      "section": {
+        "title": "تلاوة آيات من القرآن الكريم",
+        "minutes": 3
+      }
+    },
+    {
+      "id": "c_video",
+      "type": "slide",
+      "title": "عرض فيديو",
+      "order": 2,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_video_e1",
             "type": "text",
             "x": 96,
             "y": 400,
@@ -94,7 +301,7 @@
             },
             "step": 0,
             "props": {
-              "text": "فيديو المقدمة",
+              "text": "عرض فيديو",
               "font": "Thmanyah Sans",
               "weight": 900,
               "size": 96,
@@ -104,7 +311,7 @@
             }
           },
           {
-            "id": "seg_intro_e2",
+            "id": "c_video_e2",
             "type": "shape",
             "x": 890,
             "y": 590,
@@ -128,7 +335,7 @@
             }
           },
           {
-            "id": "seg_intro_e9",
+            "id": "c_video_e9",
             "type": "video",
             "x": 168,
             "y": 94.5,
@@ -148,33 +355,20 @@
               "radius": 24,
               "muted": false,
               "autoAdvance": true,
-              "showSkip": true,
-              "media": {
-                "kind": "url",
-                "src": "show-media/intro.mp4"
-              }
+              "showSkip": false
             }
           }
         ]
+      },
+      "section": {
+        "title": "عرض فيديو",
+        "minutes": 5
       }
     },
     {
-      "id": "seg_speaker",
+      "id": "c_prog_1",
       "type": "slide",
-      "title": "كلمة الافتتاح",
-      "order": 2,
-      "settings": {
-        "bg": {
-          "kind": "black"
-        },
-        "mark": false,
-        "elements": []
-      }
-    },
-    {
-      "id": "seg_slides",
-      "type": "slide",
-      "title": "عرض البرنامج",
+      "title": "صقل 7",
       "order": 3,
       "settings": {
         "bg": {
@@ -184,44 +378,96 @@
         "mark": true,
         "elements": [
           {
-            "id": "seg_slides_e1",
+            "id": "c_prog_1_e1",
             "type": "text",
             "x": 96,
-            "y": 400,
+            "y": 230,
             "w": 1728,
-            "h": 150,
+            "h": 90,
             "rot": 0,
             "opacity": 1,
             "shadow": "none",
             "anim": {
               "type": "up",
-              "delay": 0,
+              "delay": 100,
               "duration": 1000
             },
             "step": 0,
             "props": {
-              "text": "عرض البرنامج",
+              "text": "هلا بك في",
               "font": "Thmanyah Sans",
-              "weight": 900,
-              "size": 96,
-              "color": "head",
+              "weight": 500,
+              "size": 64,
+              "color": "fg",
               "align": "center",
-              "line": 1.15
+              "line": 1.2
             }
           },
           {
-            "id": "seg_slides_e2",
+            "id": "c_prog_1_e2",
+            "type": "text",
+            "x": 560,
+            "y": 320,
+            "w": 620,
+            "h": 330,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 450,
+              "duration": 1400
+            },
+            "step": 0,
+            "props": {
+              "text": "صقل",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 300,
+              "color": "head",
+              "align": "center",
+              "line": 1
+            }
+          },
+          {
+            "id": "c_prog_1_e3",
+            "type": "text",
+            "x": 470,
+            "y": 320,
+            "w": 180,
+            "h": 330,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 1100,
+              "duration": 1300
+            },
+            "step": 0,
+            "props": {
+              "text": "7",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 300,
+              "color": "em",
+              "align": "center",
+              "line": 1
+            }
+          },
+          {
+            "id": "c_prog_1_e4",
             "type": "shape",
-            "x": 890,
-            "y": 590,
-            "w": 140,
-            "h": 7,
+            "x": 830,
+            "y": 700,
+            "w": 260,
+            "h": 8,
             "rot": 0,
             "opacity": 1,
             "shadow": "none",
             "anim": {
               "type": "wipe",
-              "delay": 250,
+              "delay": 1600,
               "duration": 900
             },
             "step": 0,
@@ -232,28 +478,161 @@
               "strokeWidth": 4,
               "radius": 999
             }
+          },
+          {
+            "id": "c_prog_1_e5",
+            "type": "text",
+            "x": 96,
+            "y": 740,
+            "w": 1728,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1800,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "اللقاء الافتتاحي · برنامج التأهيل القيادي",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 52,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          }
+        ]
+      },
+      "section": {
+        "title": "التعريف بالبرنامج",
+        "minutes": 10
+      }
+    },
+    {
+      "id": "c_prog_2",
+      "type": "slide",
+      "title": "في اللغة",
+      "order": 4,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_prog_2_e1",
+            "type": "text",
+            "x": 96,
+            "y": 200,
+            "w": 1728,
+            "h": 70,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "في اللغة",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 44,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_2_e2",
+            "type": "text",
+            "x": 96,
+            "y": 290,
+            "w": 1728,
+            "h": 300,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 250,
+              "duration": 1400
+            },
+            "step": 0,
+            "props": {
+              "text": "صَقَلَ",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 260,
+              "color": "head",
+              "align": "center",
+              "line": 1.05
+            }
+          },
+          {
+            "id": "c_prog_2_e3",
+            "type": "shape",
+            "x": 860,
+            "y": 640,
+            "w": 200,
+            "h": 8,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 900,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_2_e4",
+            "type": "text",
+            "x": 96,
+            "y": 690,
+            "w": 1728,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1100,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "الشيءَ: جَلّاه، وأزال عنه الصدأَ والكَدَر",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 64,
+              "color": "fg",
+              "align": "center",
+              "line": 1.2
+            }
           }
         ]
       }
     },
     {
-      "id": "seg_demo",
-      "type": "demo",
-      "title": "جولة في المنصة",
-      "order": 4,
-      "settings": {
-        "scenes": [
-          "calendar",
-          "trips",
-          "focus",
-          "plan"
-        ]
-      }
-    },
-    {
-      "id": "seg_names",
+      "id": "c_prog_3",
       "type": "slide",
-      "title": "المكرَّمون",
+      "title": "المقابلات الشخصية",
       "order": 5,
       "settings": {
         "bg": {
@@ -263,7 +642,4094 @@
         "mark": true,
         "elements": [
           {
-            "id": "seg_names_e1",
+            "id": "c_prog_3_e1",
+            "type": "text",
+            "x": 96,
+            "y": 210,
+            "w": 1728,
+            "h": 70,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "ولهذا كانت المقابلات الشخصية",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 44,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_3_e2",
+            "type": "text",
+            "x": 96,
+            "y": 320,
+            "w": 1728,
+            "h": 170,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 250,
+              "duration": 1300
+            },
+            "step": 0,
+            "props": {
+              "text": "«انتقينا معادنَ نفيسة»",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 128,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_3_e3",
+            "type": "shape",
+            "x": 860,
+            "y": 540,
+            "w": 200,
+            "h": 8,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 700,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_3_e4",
+            "type": "text",
+            "x": 260,
+            "y": 600,
+            "w": 1400,
+            "h": 220,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 1,
+            "props": {
+              "text": "وجاء صقل ليجلوها؛\nفتزداد المهاراتُ إتقانًا، والشخصياتُ صفاءً",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 58,
+              "color": "fg",
+              "align": "center",
+              "line": 1.55
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_prog_4",
+      "type": "slide",
+      "title": "ما صقل؟",
+      "order": 6,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_prog_4_e1",
+            "type": "text",
+            "x": 96,
+            "y": 70,
+            "w": 1728,
+            "h": 60,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "أربع ركائز",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 40,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_4_e2",
+            "type": "text",
+            "x": 96,
+            "y": 132,
+            "w": 1728,
+            "h": 130,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 150,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "ما صقل؟",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 96,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_4_e3",
+            "type": "shape",
+            "x": 1386,
+            "y": 380,
+            "w": 360,
+            "h": 420,
+            "rot": 0,
+            "opacity": 0.22,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 500,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 44
+            }
+          },
+          {
+            "id": "c_prog_4_e4",
+            "type": "shape",
+            "x": 1426,
+            "y": 420,
+            "w": 80,
+            "h": 10,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 750,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_4_e5",
+            "type": "text",
+            "x": 1416,
+            "y": 500,
+            "w": 300,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 650,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "مهارات",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 88,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_4_e6",
+            "type": "text",
+            "x": 1416,
+            "y": 640,
+            "w": 300,
+            "h": 70,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 800,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "عملية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 44,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_4_e7",
+            "type": "shape",
+            "x": 982,
+            "y": 380,
+            "w": 360,
+            "h": 420,
+            "rot": 0,
+            "opacity": 0.22,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 720,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 44
+            }
+          },
+          {
+            "id": "c_prog_4_e8",
+            "type": "shape",
+            "x": 1022,
+            "y": 420,
+            "w": 80,
+            "h": 10,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 970,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_4_e9",
+            "type": "text",
+            "x": 1012,
+            "y": 500,
+            "w": 300,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 870,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "علاقات",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 88,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_4_e10",
+            "type": "text",
+            "x": 1012,
+            "y": 640,
+            "w": 300,
+            "h": 70,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1020,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "مميزة وقوية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 44,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_4_e11",
+            "type": "shape",
+            "x": 578,
+            "y": 380,
+            "w": 360,
+            "h": 420,
+            "rot": 0,
+            "opacity": 0.22,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 940,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 44
+            }
+          },
+          {
+            "id": "c_prog_4_e12",
+            "type": "shape",
+            "x": 618,
+            "y": 420,
+            "w": 80,
+            "h": 10,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 1190,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_4_e13",
+            "type": "text",
+            "x": 608,
+            "y": 500,
+            "w": 300,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1090,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "معرفة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 88,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_4_e14",
+            "type": "text",
+            "x": 608,
+            "y": 640,
+            "w": 300,
+            "h": 70,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1240,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "نظرية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 44,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_4_e15",
+            "type": "shape",
+            "x": 174,
+            "y": 380,
+            "w": 360,
+            "h": 420,
+            "rot": 0,
+            "opacity": 0.22,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1160,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 44
+            }
+          },
+          {
+            "id": "c_prog_4_e16",
+            "type": "shape",
+            "x": 214,
+            "y": 420,
+            "w": 80,
+            "h": 10,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 1410,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_4_e17",
+            "type": "text",
+            "x": 204,
+            "y": 500,
+            "w": 300,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1310,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "قيادة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 88,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_4_e18",
+            "type": "text",
+            "x": 204,
+            "y": 640,
+            "w": 300,
+            "h": 70,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1460,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "إيجابية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 44,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_4_e19",
+            "type": "text",
+            "x": 96,
+            "y": 988,
+            "w": 700,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 900,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "صقل 7 · اللقاء الافتتاحي",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_prog_5",
+      "type": "slide",
+      "title": "الفلسفة",
+      "order": 7,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_prog_5_e1",
+            "type": "text",
+            "x": 96,
+            "y": 220,
+            "w": 1728,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "في صقل، لا نصنع",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 60,
+              "color": "fg",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_5_e2",
+            "type": "text",
+            "x": 96,
+            "y": 320,
+            "w": 1728,
+            "h": 160,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 250,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "القائدَ الوظيفي",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 120,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_5_e3",
+            "type": "shape",
+            "x": 560,
+            "y": 400,
+            "w": 800,
+            "h": 12,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 0,
+              "duration": 700
+            },
+            "step": 1,
+            "props": {
+              "shape": "rect",
+              "fill": "em2",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_5_e4",
+            "type": "text",
+            "x": 96,
+            "y": 560,
+            "w": 1728,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 2,
+            "props": {
+              "text": "بل نصنع",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 60,
+              "color": "fg",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_5_e5",
+            "type": "text",
+            "x": 96,
+            "y": 660,
+            "w": 1728,
+            "h": 190,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 1300
+            },
+            "step": 3,
+            "props": {
+              "text": "القائدَ الإنسان",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 150,
+              "color": "em",
+              "align": "center",
+              "line": 1.2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_prog_6",
+      "type": "slide",
+      "title": "دوائر النمو",
+      "order": 8,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_prog_6_e1",
+            "type": "text",
+            "x": 96,
+            "y": 50,
+            "w": 1728,
+            "h": 60,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "حيث ينمو القائد",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 40,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_6_e2",
+            "type": "text",
+            "x": 96,
+            "y": 110,
+            "w": 1728,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 150,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "دوائر النمو",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 88,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_6_e3",
+            "type": "shape",
+            "x": 560,
+            "y": 250,
+            "w": 800,
+            "h": 800,
+            "rot": 0,
+            "opacity": 0.16,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 300,
+              "duration": 1200
+            },
+            "step": 0,
+            "props": {
+              "shape": "circle",
+              "fill": "primary",
+              "stroke": "em",
+              "strokeWidth": 6,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_6_e4",
+            "type": "shape",
+            "x": 795,
+            "y": 285,
+            "w": 330,
+            "h": 330,
+            "rot": 0,
+            "opacity": 0.92,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 1,
+            "props": {
+              "shape": "circle",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_6_e5",
+            "type": "text",
+            "x": 795,
+            "y": 405,
+            "w": 330,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 250,
+              "duration": 1000
+            },
+            "step": 1,
+            "props": {
+              "text": "مع النفس",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 50,
+              "color": "ink",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_6_e6",
+            "type": "shape",
+            "x": 968.2050807568878,
+            "y": 585,
+            "w": 330,
+            "h": 330,
+            "rot": 0,
+            "opacity": 0.92,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 2,
+            "props": {
+              "shape": "circle",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_6_e7",
+            "type": "text",
+            "x": 968.2050807568878,
+            "y": 705,
+            "w": 330,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 250,
+              "duration": 1000
+            },
+            "step": 2,
+            "props": {
+              "text": "مع الفريق",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 50,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_6_e8",
+            "type": "shape",
+            "x": 621.7949192431122,
+            "y": 585,
+            "w": 330,
+            "h": 330,
+            "rot": 0,
+            "opacity": 0.92,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 3,
+            "props": {
+              "shape": "circle",
+              "fill": "em2",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_6_e9",
+            "type": "text",
+            "x": 621.7949192431122,
+            "y": 705,
+            "w": 330,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 250,
+              "duration": 1000
+            },
+            "step": 3,
+            "props": {
+              "text": "مع الناس",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 50,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_prog_7",
+      "type": "slide",
+      "title": "رحلة القائد",
+      "order": 9,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_prog_7_e1",
+            "type": "text",
+            "x": 96,
+            "y": 50,
+            "w": 1728,
+            "h": 60,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "كيف نتعلّم القيادة",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 40,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_7_e2",
+            "type": "text",
+            "x": 96,
+            "y": 110,
+            "w": 1728,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 150,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "رحلة القائد في صقل",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 88,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_7_e3",
+            "type": "shape",
+            "x": 660,
+            "y": 350,
+            "w": 600,
+            "h": 600,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 300,
+              "duration": 1200
+            },
+            "step": 0,
+            "props": {
+              "shape": "circle",
+              "fill": "none",
+              "stroke": "em",
+              "strokeWidth": 8,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_7_e4",
+            "type": "shape",
+            "x": 820,
+            "y": 210,
+            "w": 280,
+            "h": 280,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 1,
+            "props": {
+              "shape": "circle",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_7_e5",
+            "type": "text",
+            "x": 820,
+            "y": 305,
+            "w": 280,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 1,
+            "props": {
+              "text": "تعلُّم",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 56,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_7_e6",
+            "type": "shape",
+            "x": 1201.8076211353316,
+            "y": 482,
+            "w": 36,
+            "h": 36,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 450,
+              "duration": 900
+            },
+            "step": 1,
+            "props": {
+              "shape": "circle",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_7_e7",
+            "type": "shape",
+            "x": 1079.8076211353316,
+            "y": 660,
+            "w": 280,
+            "h": 280,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 2,
+            "props": {
+              "shape": "circle",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_7_e8",
+            "type": "text",
+            "x": 1079.8076211353316,
+            "y": 755,
+            "w": 280,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 2,
+            "props": {
+              "text": "تجربة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 56,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_7_e9",
+            "type": "shape",
+            "x": 942,
+            "y": 932,
+            "w": 36,
+            "h": 36,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 450,
+              "duration": 900
+            },
+            "step": 2,
+            "props": {
+              "shape": "circle",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_7_e10",
+            "type": "shape",
+            "x": 560.1923788646684,
+            "y": 660,
+            "w": 280,
+            "h": 280,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 3,
+            "props": {
+              "shape": "circle",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_7_e11",
+            "type": "text",
+            "x": 560.1923788646684,
+            "y": 755,
+            "w": 280,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 3,
+            "props": {
+              "text": "تقييم",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 56,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_7_e12",
+            "type": "shape",
+            "x": 682.1923788646684,
+            "y": 482,
+            "w": 36,
+            "h": 36,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 450,
+              "duration": 900
+            },
+            "step": 3,
+            "props": {
+              "shape": "circle",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 32
+            }
+          },
+          {
+            "id": "c_prog_7_e13",
+            "type": "text",
+            "x": 96,
+            "y": 988,
+            "w": 700,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 900,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "صقل 7 · اللقاء الافتتاحي",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_prog_8",
+      "type": "slide",
+      "title": "خطوات متدرّجة",
+      "order": 10,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_prog_8_e1",
+            "type": "text",
+            "x": 96,
+            "y": 50,
+            "w": 1728,
+            "h": 60,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "مراحل البرنامج",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 40,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_8_e2",
+            "type": "text",
+            "x": 96,
+            "y": 112,
+            "w": 1728,
+            "h": 130,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 150,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "خطواتٌ متدرّجة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 96,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_8_e3",
+            "type": "shape",
+            "x": 1489,
+            "y": 630,
+            "w": 318,
+            "h": 330,
+            "rot": 0,
+            "opacity": 0.24,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 1,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 36
+            }
+          },
+          {
+            "id": "c_prog_8_e4",
+            "type": "text",
+            "x": 1513,
+            "y": 656,
+            "w": 90,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 1,
+            "props": {
+              "text": "١",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 72,
+              "color": "em",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_8_e5",
+            "type": "text",
+            "x": 1513,
+            "y": 756,
+            "w": 270,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 300,
+              "duration": 1000
+            },
+            "step": 1,
+            "props": {
+              "text": "الخطة الشخصية والميسّر",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "head",
+              "align": "start",
+              "line": 1.3
+            }
+          },
+          {
+            "id": "c_prog_8_e6",
+            "type": "text",
+            "x": 1513,
+            "y": 870,
+            "w": 270,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 420,
+              "duration": 1000
+            },
+            "step": 1,
+            "props": {
+              "text": "توجيهٌ شخصي، وتخطيطٌ متوازن",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.45
+            }
+          },
+          {
+            "id": "c_prog_8_e7",
+            "type": "shape",
+            "x": 1145,
+            "y": 555,
+            "w": 318,
+            "h": 405,
+            "rot": 0,
+            "opacity": 0.33999999999999997,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 2,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 36
+            }
+          },
+          {
+            "id": "c_prog_8_e8",
+            "type": "text",
+            "x": 1169,
+            "y": 581,
+            "w": 90,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 2,
+            "props": {
+              "text": "٢",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 72,
+              "color": "em",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_8_e9",
+            "type": "text",
+            "x": 1169,
+            "y": 681,
+            "w": 270,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 300,
+              "duration": 1000
+            },
+            "step": 2,
+            "props": {
+              "text": "لقاءات التركيز",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "head",
+              "align": "start",
+              "line": 1.3
+            }
+          },
+          {
+            "id": "c_prog_8_e10",
+            "type": "text",
+            "x": 1169,
+            "y": 795,
+            "w": 270,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 420,
+              "duration": 1000
+            },
+            "step": 2,
+            "props": {
+              "text": "لبناتٌ معرفية ومهارية شاملة",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.45
+            }
+          },
+          {
+            "id": "c_prog_8_e11",
+            "type": "shape",
+            "x": 801,
+            "y": 480,
+            "w": 318,
+            "h": 480,
+            "rot": 0,
+            "opacity": 0.44,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 3,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 36
+            }
+          },
+          {
+            "id": "c_prog_8_e12",
+            "type": "text",
+            "x": 825,
+            "y": 506,
+            "w": 90,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 3,
+            "props": {
+              "text": "٣",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 72,
+              "color": "em",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_8_e13",
+            "type": "text",
+            "x": 825,
+            "y": 606,
+            "w": 270,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 300,
+              "duration": 1000
+            },
+            "step": 3,
+            "props": {
+              "text": "ورشٌ ودورات تأسيسية",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "head",
+              "align": "start",
+              "line": 1.3
+            }
+          },
+          {
+            "id": "c_prog_8_e14",
+            "type": "text",
+            "x": 825,
+            "y": 720,
+            "w": 270,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 420,
+              "duration": 1000
+            },
+            "step": 3,
+            "props": {
+              "text": "تأسيسٌ نظريّ للقيادة",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.45
+            }
+          },
+          {
+            "id": "c_prog_8_e15",
+            "type": "shape",
+            "x": 457,
+            "y": 405,
+            "w": 318,
+            "h": 555,
+            "rot": 0,
+            "opacity": 0.54,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 4,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 36
+            }
+          },
+          {
+            "id": "c_prog_8_e16",
+            "type": "text",
+            "x": 481,
+            "y": 431,
+            "w": 90,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 4,
+            "props": {
+              "text": "٤",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 72,
+              "color": "em",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_8_e17",
+            "type": "text",
+            "x": 481,
+            "y": 531,
+            "w": 270,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 300,
+              "duration": 1000
+            },
+            "step": 4,
+            "props": {
+              "text": "رحلات داخل المدينة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "head",
+              "align": "start",
+              "line": 1.3
+            }
+          },
+          {
+            "id": "c_prog_8_e18",
+            "type": "text",
+            "x": 481,
+            "y": 645,
+            "w": 270,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 420,
+              "duration": 1000
+            },
+            "step": 4,
+            "props": {
+              "text": "تقودها المجموعات: تجربةٌ قيادية أولى مع الفريق",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.45
+            }
+          },
+          {
+            "id": "c_prog_8_e19",
+            "type": "shape",
+            "x": 113,
+            "y": 330,
+            "w": 318,
+            "h": 630,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 5,
+            "props": {
+              "shape": "rect",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 36
+            }
+          },
+          {
+            "id": "c_prog_8_e20",
+            "type": "text",
+            "x": 137,
+            "y": 356,
+            "w": 90,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 5,
+            "props": {
+              "text": "٥",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 72,
+              "color": "em",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_8_e21",
+            "type": "text",
+            "x": 137,
+            "y": 456,
+            "w": 270,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 300,
+              "duration": 1000
+            },
+            "step": 5,
+            "props": {
+              "text": "سفرتان خارج المدينة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "head",
+              "align": "start",
+              "line": 1.3
+            }
+          },
+          {
+            "id": "c_prog_8_e22",
+            "type": "text",
+            "x": 137,
+            "y": 570,
+            "w": 270,
+            "h": 120,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 420,
+              "duration": 1000
+            },
+            "step": 5,
+            "props": {
+              "text": "تقودها المجموعات: تجربةٌ قيادية فعلية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.45
+            }
+          },
+          {
+            "id": "c_prog_8_e23",
+            "type": "text",
+            "x": 96,
+            "y": 988,
+            "w": 700,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 900,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "صقل 7 · اللقاء الافتتاحي",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_prog_9",
+      "type": "slide",
+      "title": "جدول الرحلة",
+      "order": 11,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": false,
+        "elements": [
+          {
+            "id": "c_prog_9_e1",
+            "type": "text",
+            "x": 96,
+            "y": 36,
+            "w": 1728,
+            "h": 56,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "من أكتوبر إلى مارس",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 38,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e2",
+            "type": "text",
+            "x": 96,
+            "y": 90,
+            "w": 1728,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 150,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "جدول الرحلة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 84,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_9_e3",
+            "type": "shape",
+            "x": 1567,
+            "y": 225,
+            "w": 281,
+            "h": 790,
+            "rot": 0,
+            "opacity": 0.16,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 300,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 30
+            }
+          },
+          {
+            "id": "c_prog_9_e4",
+            "type": "shape",
+            "x": 1585,
+            "y": 243,
+            "w": 245,
+            "h": 74,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 400,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_9_e5",
+            "type": "text",
+            "x": 1585,
+            "y": 249,
+            "w": 245,
+            "h": 62,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 450,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "أكتوبر",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e6",
+            "type": "text",
+            "x": 1587,
+            "y": 335,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 550,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "31",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e7",
+            "type": "text",
+            "x": 1587,
+            "y": 379,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 600,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "اللقاء الافتتاحي",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e8",
+            "type": "shape",
+            "x": 1268,
+            "y": 225,
+            "w": 281,
+            "h": 790,
+            "rot": 0,
+            "opacity": 0.16,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 460,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 30
+            }
+          },
+          {
+            "id": "c_prog_9_e9",
+            "type": "shape",
+            "x": 1286,
+            "y": 243,
+            "w": 245,
+            "h": 74,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 560,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_9_e10",
+            "type": "text",
+            "x": 1286,
+            "y": 249,
+            "w": 245,
+            "h": 62,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 610,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "نوفمبر",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e11",
+            "type": "text",
+            "x": 1288,
+            "y": 335,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 710,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "7 · لقاء",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e12",
+            "type": "text",
+            "x": 1288,
+            "y": 379,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 760,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "عجلة الحياة والتخطيط الشخصي",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e13",
+            "type": "text",
+            "x": 1288,
+            "y": 485,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 710,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "14 · لقاء",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e14",
+            "type": "text",
+            "x": 1288,
+            "y": 529,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 760,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "كيف تخطط لرحلة، وزاد السفر",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e15",
+            "type": "text",
+            "x": 1288,
+            "y": 635,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 710,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "19–21 · رحلة القيادة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e16",
+            "type": "text",
+            "x": 1288,
+            "y": 679,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 760,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "ينبع: القيادة والمهارات",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e17",
+            "type": "text",
+            "x": 1288,
+            "y": 785,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 710,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "28",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e18",
+            "type": "text",
+            "x": 1288,
+            "y": 829,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 760,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "رحلة المجموعة 1",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e19",
+            "type": "shape",
+            "x": 969,
+            "y": 225,
+            "w": 281,
+            "h": 790,
+            "rot": 0,
+            "opacity": 0.16,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 620,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 30
+            }
+          },
+          {
+            "id": "c_prog_9_e20",
+            "type": "shape",
+            "x": 987,
+            "y": 243,
+            "w": 245,
+            "h": 74,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 720,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_9_e21",
+            "type": "text",
+            "x": 987,
+            "y": 249,
+            "w": 245,
+            "h": 62,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 770,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "ديسمبر",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e22",
+            "type": "text",
+            "x": 989,
+            "y": 335,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 870,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "5",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e23",
+            "type": "text",
+            "x": 989,
+            "y": 379,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 920,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "رحلة المجموعة 2",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e24",
+            "type": "text",
+            "x": 989,
+            "y": 485,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 870,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "12",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e25",
+            "type": "text",
+            "x": 989,
+            "y": 529,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 920,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "رحلة المجموعة 3",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e26",
+            "type": "text",
+            "x": 989,
+            "y": 635,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 870,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "19",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e27",
+            "type": "text",
+            "x": 989,
+            "y": 679,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 920,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "رحلة المجموعة 4",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e28",
+            "type": "text",
+            "x": 989,
+            "y": 785,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 870,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "26 · توقّف",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e29",
+            "type": "text",
+            "x": 989,
+            "y": 829,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 920,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "اختبارات نهائية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e30",
+            "type": "shape",
+            "x": 670,
+            "y": 225,
+            "w": 281,
+            "h": 790,
+            "rot": 0,
+            "opacity": 0.16,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 780,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 30
+            }
+          },
+          {
+            "id": "c_prog_9_e31",
+            "type": "shape",
+            "x": 688,
+            "y": 243,
+            "w": 245,
+            "h": 74,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 880,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_9_e32",
+            "type": "text",
+            "x": 688,
+            "y": 249,
+            "w": 245,
+            "h": 62,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 930,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "يناير",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e33",
+            "type": "text",
+            "x": 688,
+            "y": 335,
+            "w": 245,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 980,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "إجازة 7–17",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 30,
+              "color": "em2",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e34",
+            "type": "text",
+            "x": 690,
+            "y": 389,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1030,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "2 · توقّف",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e35",
+            "type": "text",
+            "x": 690,
+            "y": 433,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1080,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "اختبارات نهائية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e36",
+            "type": "text",
+            "x": 690,
+            "y": 539,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1030,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "7–10",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e37",
+            "type": "text",
+            "x": 690,
+            "y": 583,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1080,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "الرحلة الخارجية الأولى",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e38",
+            "type": "shape",
+            "x": 371,
+            "y": 225,
+            "w": 281,
+            "h": 790,
+            "rot": 0,
+            "opacity": 0.16,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 940,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 30
+            }
+          },
+          {
+            "id": "c_prog_9_e39",
+            "type": "shape",
+            "x": 389,
+            "y": 243,
+            "w": 245,
+            "h": 74,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 1040,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_9_e40",
+            "type": "text",
+            "x": 389,
+            "y": 249,
+            "w": 245,
+            "h": 62,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1090,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "فبراير",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e41",
+            "type": "text",
+            "x": 389,
+            "y": 335,
+            "w": 245,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1140,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "رمضان 8",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 30,
+              "color": "em2",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e42",
+            "type": "text",
+            "x": 391,
+            "y": 389,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1190,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "4–7 · قبل رمضان",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e43",
+            "type": "text",
+            "x": 391,
+            "y": 433,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1240,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "الرحلة الخارجية الثانية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e44",
+            "type": "text",
+            "x": 391,
+            "y": 539,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1190,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "13",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e45",
+            "type": "text",
+            "x": 391,
+            "y": 583,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1240,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "رمضانية لكل مجموعة",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e46",
+            "type": "text",
+            "x": 391,
+            "y": 689,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1190,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "20",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e47",
+            "type": "text",
+            "x": 391,
+            "y": 733,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1240,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "رمضانية لكل مجموعة",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e48",
+            "type": "text",
+            "x": 391,
+            "y": 839,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1190,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "27",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e49",
+            "type": "text",
+            "x": 391,
+            "y": 883,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1240,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "العشر الأواخر",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e50",
+            "type": "shape",
+            "x": 72,
+            "y": 225,
+            "w": 281,
+            "h": 790,
+            "rot": 0,
+            "opacity": 0.16,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1100,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 30
+            }
+          },
+          {
+            "id": "c_prog_9_e51",
+            "type": "shape",
+            "x": 90,
+            "y": 243,
+            "w": 245,
+            "h": 74,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 1200,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradTeal",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_9_e52",
+            "type": "text",
+            "x": 90,
+            "y": 249,
+            "w": 245,
+            "h": 62,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1250,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "مارس",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 40,
+              "color": "white",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e53",
+            "type": "text",
+            "x": 90,
+            "y": 335,
+            "w": 245,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1300,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "العيد 9",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 30,
+              "color": "em2",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e54",
+            "type": "text",
+            "x": 92,
+            "y": 389,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1350,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "6",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e55",
+            "type": "text",
+            "x": 92,
+            "y": 433,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1400,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "العشر الأواخر",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e56",
+            "type": "text",
+            "x": 92,
+            "y": 539,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1350,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "13",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e57",
+            "type": "text",
+            "x": 92,
+            "y": 583,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1400,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "إجازة العيد",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          },
+          {
+            "id": "c_prog_9_e58",
+            "type": "text",
+            "x": 92,
+            "y": 689,
+            "w": 241,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1350,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "20",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 32,
+              "color": "em",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_9_e59",
+            "type": "text",
+            "x": 92,
+            "y": 733,
+            "w": 241,
+            "h": 92,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1400,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "حفل الختام وحصاد الرحلة",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.35
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_prog_10",
+      "type": "slide",
+      "title": "القائد في صقل",
+      "order": 12,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_prog_10_e1",
+            "type": "text",
+            "x": 96,
+            "y": 50,
+            "w": 1728,
+            "h": 60,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "الأدوار المطلوبة",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 40,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_10_e2",
+            "type": "text",
+            "x": 96,
+            "y": 112,
+            "w": 1728,
+            "h": 130,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 150,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "القائد في صقل",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 96,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_10_e3",
+            "type": "shape",
+            "x": 980,
+            "y": 300,
+            "w": 780,
+            "h": 280,
+            "rot": 0,
+            "opacity": 0.2,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 400,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 40
+            }
+          },
+          {
+            "id": "c_prog_10_e4",
+            "type": "shape",
+            "x": 1744,
+            "y": 340,
+            "w": 10,
+            "h": 200,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 600,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_10_e5",
+            "type": "text",
+            "x": 1030,
+            "y": 346,
+            "w": 670,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 550,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "يتأمَّل",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 84,
+              "color": "head",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_10_e6",
+            "type": "text",
+            "x": 1030,
+            "y": 466,
+            "w": 670,
+            "h": 80,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 700,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "تجاربه وتجارب الآخرين، ويفيد منها",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 42,
+              "color": "fg",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_10_e7",
+            "type": "shape",
+            "x": 160,
+            "y": 300,
+            "w": 780,
+            "h": 280,
+            "rot": 0,
+            "opacity": 0.2,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 600,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 40
+            }
+          },
+          {
+            "id": "c_prog_10_e8",
+            "type": "shape",
+            "x": 924,
+            "y": 340,
+            "w": 10,
+            "h": 200,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 800,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_10_e9",
+            "type": "text",
+            "x": 210,
+            "y": 346,
+            "w": 670,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 750,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "يتعاوَن",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 84,
+              "color": "head",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_10_e10",
+            "type": "text",
+            "x": 210,
+            "y": 466,
+            "w": 670,
+            "h": 80,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 900,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "ويبني علاقاتٍ عميقة",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 42,
+              "color": "fg",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_10_e11",
+            "type": "shape",
+            "x": 980,
+            "y": 616,
+            "w": 780,
+            "h": 280,
+            "rot": 0,
+            "opacity": 0.2,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 800,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 40
+            }
+          },
+          {
+            "id": "c_prog_10_e12",
+            "type": "shape",
+            "x": 1744,
+            "y": 656,
+            "w": 10,
+            "h": 200,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 1000,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_10_e13",
+            "type": "text",
+            "x": 1030,
+            "y": 662,
+            "w": 670,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 950,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "يُبادِر",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 84,
+              "color": "head",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_10_e14",
+            "type": "text",
+            "x": 1030,
+            "y": 782,
+            "w": 670,
+            "h": 80,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1100,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "ويشارك، ويجرّب نفسه",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 42,
+              "color": "fg",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_10_e15",
+            "type": "shape",
+            "x": 160,
+            "y": 616,
+            "w": 780,
+            "h": 280,
+            "rot": 0,
+            "opacity": 0.2,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1000,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "primary",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 40
+            }
+          },
+          {
+            "id": "c_prog_10_e16",
+            "type": "shape",
+            "x": 924,
+            "y": 656,
+            "w": 10,
+            "h": 200,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 1200,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_10_e17",
+            "type": "text",
+            "x": 210,
+            "y": 662,
+            "w": 670,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1150,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "يُكوِّن",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 84,
+              "color": "head",
+              "align": "start",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_10_e18",
+            "type": "text",
+            "x": 210,
+            "y": 782,
+            "w": 670,
+            "h": 80,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1300,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "معرفةً تأسيسية",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 42,
+              "color": "fg",
+              "align": "start",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_prog_10_e19",
+            "type": "text",
+            "x": 96,
+            "y": 988,
+            "w": 700,
+            "h": 46,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 900,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "صقل 7 · اللقاء الافتتاحي",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 30,
+              "color": "fg",
+              "align": "start",
+              "line": 1.5
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_prog_11",
+      "type": "slide",
+      "title": "الختام",
+      "order": 13,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_prog_11_e1",
+            "type": "text",
+            "x": 96,
+            "y": 250,
+            "w": 1728,
+            "h": 100,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "لا نطمح أن تتشابه النهايات",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 66,
+              "color": "fg",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_11_e2",
+            "type": "text",
+            "x": 96,
+            "y": 360,
+            "w": 1728,
+            "h": 100,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 500,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "بل أن يخرج كلُّ مشارك",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 66,
+              "color": "fg",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_prog_11_e3",
+            "type": "shape",
+            "x": 860,
+            "y": 500,
+            "w": 200,
+            "h": 8,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 1000,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_prog_11_e4",
+            "type": "text",
+            "x": 96,
+            "y": 560,
+            "w": 1728,
+            "h": 200,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 1200,
+              "duration": 1500
+            },
+            "step": 0,
+            "props": {
+              "text": "بنسخةٍ أفضلَ من نفسه",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 150,
+              "color": "em",
+              "align": "center",
+              "line": 1.2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "c_launch",
+      "title": "التدشين",
+      "order": 14,
+      "type": "launch",
+      "settings": {
+        "waitTitle": "منصة صقل الإلكترونية",
+        "waitSub": "لحظات وتنطلق",
+        "doneTitle": "تم تدشين منصة صقل الإلكترونية",
+        "autoNext": 5
+      },
+      "section": {
+        "title": "تدشين المنصة الإلكترونية",
+        "minutes": 5
+      }
+    },
+    {
+      "id": "c_launch_video",
+      "type": "slide",
+      "title": "فيديو المنصة",
+      "order": 15,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_launch_video_e1",
             "type": "text",
             "x": 96,
             "y": 400,
@@ -279,18 +4745,17 @@
             },
             "step": 0,
             "props": {
-              "text": "المكرَّمون",
+              "text": "فيديو المنصة",
               "font": "Thmanyah Sans",
               "weight": 900,
               "size": 96,
               "color": "head",
               "align": "center",
               "line": 1.15
-            },
-            "until": 1
+            }
           },
           {
-            "id": "seg_names_e2",
+            "id": "c_launch_video_e2",
             "type": "shape",
             "x": 890,
             "y": 590,
@@ -311,101 +4776,413 @@
               "stroke": "none",
               "strokeWidth": 4,
               "radius": 999
-            },
-            "until": 1
-          },
-          {
-            "id": "seg_names_e3",
-            "type": "text",
-            "x": 96,
-            "y": 640,
-            "w": 1728,
-            "h": 60,
-            "rot": 0,
-            "opacity": 1,
-            "shadow": "none",
-            "anim": {
-              "type": "up",
-              "delay": 320,
-              "duration": 1000
-            },
-            "step": 0,
-            "until": 1,
-            "props": {
-              "text": "4 أسماء",
-              "font": "Thmanyah Sans",
-              "weight": 500,
-              "size": 30,
-              "color": "fg",
-              "align": "center",
-              "line": 1.5
             }
           },
           {
-            "id": "seg_names_e4",
-            "type": "text",
-            "x": 96,
-            "y": 60,
-            "w": 1728,
-            "h": 60,
+            "id": "c_launch_video_e9",
+            "type": "video",
+            "x": 168,
+            "y": 94.5,
+            "w": 1584,
+            "h": 891,
             "rot": 0,
             "opacity": 1,
-            "shadow": "none",
+            "shadow": "lift",
             "anim": {
               "type": "fade",
               "delay": 0,
-              "duration": 800
+              "duration": 900
             },
-            "step": 1,
+            "step": 0,
             "props": {
-              "text": "المكرَّمون",
-              "font": "Thmanyah Sans",
-              "weight": 500,
-              "size": 30,
-              "color": "fg",
-              "align": "center",
-              "line": 1.5
-            }
-          },
-          {
-            "id": "seg_names_e5",
-            "type": "names",
-            "x": 96,
-            "y": 200,
-            "w": 1728,
-            "h": 820,
-            "rot": 0,
-            "opacity": 1,
-            "shadow": "none",
-            "anim": {
-              "type": "scale",
-              "delay": 0,
-              "duration": 1300
-            },
-            "step": 1,
-            "props": {
-              "names": [
-                "الاسم الأول",
-                "الاسم الثاني",
-                "الاسم الثالث",
-                "الاسم الرابع"
-              ],
-              "perStep": 1,
-              "font": "Thmanyah Sans",
-              "weight": 900,
-              "size": 110,
-              "color": "head",
-              "counter": true
+              "fit": "contain",
+              "radius": 24,
+              "muted": false,
+              "autoAdvance": true,
+              "showSkip": false
             }
           }
         ]
       }
     },
     {
-      "id": "seg_closing",
+      "id": "c_demo",
+      "type": "demo",
+      "title": "جولة في المنصة",
+      "order": 16,
+      "settings": {
+        "scenes": [
+          "calendar",
+          "trips",
+          "focus",
+          "plan"
+        ],
+        "autoplay": true,
+        "dwell": 5,
+        "durations": {}
+      }
+    },
+    {
+      "id": "c_whoami",
+      "title": "من أنا؟",
+      "order": 17,
+      "type": "whoami",
+      "settings": {
+        "heading": "من أنا؟",
+        "entries": []
+      },
+      "section": {
+        "title": "فقرة التعارف «من أنا؟»",
+        "minutes": 15
+      }
+    },
+    {
+      "id": "c_roster",
+      "title": "المشاركون",
+      "order": 18,
+      "type": "roster",
+      "settings": {
+        "heading": "مشاركو صقل 7",
+        "source": "participants",
+        "people": [],
+        "perPage": 35
+      }
+    },
+    {
+      "id": "c_speaker",
       "type": "slide",
-      "title": "الختام",
-      "order": 6,
+      "title": "كلمة الجمعية",
+      "order": 19,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_speaker_e1",
+            "type": "image",
+            "x": 730,
+            "y": 150,
+            "w": 460,
+            "h": 300,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 100,
+              "duration": 1500
+            },
+            "step": 0,
+            "props": {
+              "fit": "contain",
+              "radius": 0
+            },
+            "name": "شعار الجمعية"
+          },
+          {
+            "id": "c_speaker_e2",
+            "type": "text",
+            "x": 96,
+            "y": 500,
+            "w": 1728,
+            "h": 70,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 600,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "كلمة الجمعية",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 44,
+              "color": "em",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_speaker_e3",
+            "type": "text",
+            "x": 96,
+            "y": 580,
+            "w": 1728,
+            "h": 150,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 800,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "اسم المتحدث",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 110,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            },
+            "name": "اسم المتحدث"
+          },
+          {
+            "id": "c_speaker_e4",
+            "type": "shape",
+            "x": 880,
+            "y": 750,
+            "w": 160,
+            "h": 8,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 1200,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_speaker_e5",
+            "type": "text",
+            "x": 96,
+            "y": 790,
+            "w": 1728,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1400,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "صفة المتحدث",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 52,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            },
+            "name": "صفة المتحدث"
+          }
+        ]
+      },
+      "section": {
+        "title": "كلمة الجمعية",
+        "minutes": 5
+      }
+    },
+    {
+      "id": "c_agreements",
+      "title": "توقيع الاتفاقيات",
+      "order": 20,
+      "type": "agreements",
+      "settings": {
+        "heading": "توقيع اتفاقيات التعاون",
+        "hostName": "",
+        "parties": [
+          {
+            "id": "party_1",
+            "name": "الجهة 1",
+            "title": "اتفاقية تعاون",
+            "rep": "",
+            "repTitle": ""
+          },
+          {
+            "id": "party_2",
+            "name": "الجهة 2",
+            "title": "اتفاقية تعاون",
+            "rep": "",
+            "repTitle": ""
+          },
+          {
+            "id": "party_3",
+            "name": "الجهة 3",
+            "title": "اتفاقية تعاون",
+            "rep": "",
+            "repTitle": ""
+          },
+          {
+            "id": "party_4",
+            "name": "الجهة 4",
+            "title": "اتفاقية تعاون",
+            "rep": "",
+            "repTitle": ""
+          }
+        ]
+      },
+      "section": {
+        "title": "توقيع اتفاقيات التعاون",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "c_photo",
+      "title": "الصورة الجماعية",
+      "order": 21,
+      "type": "photo",
+      "settings": {
+        "heading": "الصورة الجماعية",
+        "sub": "ابتسموا، صقل 7",
+        "seconds": 3
+      },
+      "section": {
+        "title": "التقاط الصورة الجماعية",
+        "minutes": 5
+      }
+    },
+    {
+      "id": "c_cake",
+      "type": "slide",
+      "title": "كيكة التدشين",
+      "order": 22,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": true
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "c_cake_e1",
+            "type": "text",
+            "x": 96,
+            "y": 130,
+            "w": 1728,
+            "h": 90,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 0,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "صقل",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 60,
+              "color": "em",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_cake_e2",
+            "type": "counter",
+            "x": 660,
+            "y": 210,
+            "w": 600,
+            "h": 420,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 300,
+              "duration": 1200
+            },
+            "step": 0,
+            "props": {
+              "from": 1,
+              "to": 7,
+              "duration": 2200,
+              "prefix": "",
+              "suffix": "",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 400,
+              "color": "em"
+            }
+          },
+          {
+            "id": "c_cake_e3",
+            "type": "text",
+            "x": 96,
+            "y": 640,
+            "w": 1728,
+            "h": 160,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 2400,
+              "duration": 1300
+            },
+            "step": 0,
+            "props": {
+              "text": "النسخة السابعة",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 130,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "c_cake_e4",
+            "type": "text",
+            "x": 96,
+            "y": 820,
+            "w": 1728,
+            "h": 80,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 2900,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "نحتفل معاً بانطلاقتها",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 50,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          }
+        ],
+        "fx": "confetti"
+      },
+      "section": {
+        "title": "كيكة تدشين النسخة السابعة",
+        "minutes": 5
+      }
+    },
+    {
+      "id": "c_closing",
+      "type": "slide",
+      "title": "الختام والشكر",
+      "order": 23,
       "settings": {
         "bg": {
           "kind": "theme",
@@ -414,12 +5191,12 @@
         "mark": false,
         "elements": [
           {
-            "id": "seg_closing_e1",
+            "id": "c_closing_e1",
             "type": "logo",
-            "x": 767.5565198251737,
-            "y": 230,
-            "w": 385,
-            "h": 380,
+            "x": 843.5210514731315,
+            "y": 70,
+            "w": 233,
+            "h": 230,
             "rot": 0,
             "opacity": 1,
             "shadow": "none",
@@ -435,34 +5212,116 @@
             }
           },
           {
-            "id": "seg_closing_e2",
+            "id": "c_closing_e2",
             "type": "text",
             "x": 96,
-            "y": 680,
+            "y": 330,
             "w": 1728,
-            "h": 100,
+            "h": 140,
             "rot": 0,
             "opacity": 1,
             "shadow": "none",
             "anim": {
               "type": "up",
-              "delay": 260,
+              "delay": 300,
               "duration": 1000
             },
             "step": 0,
             "props": {
               "text": "شكراً لحضوركم",
               "font": "Thmanyah Sans",
-              "weight": 700,
-              "size": 60,
+              "weight": 900,
+              "size": 110,
               "color": "head",
               "align": "center",
-              "line": 1.25
+              "line": 1.2
             }
+          },
+          {
+            "id": "c_closing_e3",
+            "type": "shape",
+            "x": 870,
+            "y": 480,
+            "w": 180,
+            "h": 8,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 700,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "c_closing_e4",
+            "type": "text",
+            "x": 96,
+            "y": 510,
+            "w": 1728,
+            "h": 80,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 900,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "ونلتقي في رحلة صقل 7",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 52,
+              "color": "fg",
+              "align": "center",
+              "line": 1.5
+            }
+          },
+          {
+            "id": "c_closing_e5",
+            "type": "logoGrid",
+            "x": 192,
+            "y": 640,
+            "w": 1536,
+            "h": 360,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 1200,
+              "duration": 800
+            },
+            "step": 0,
+            "props": {
+              "tiers": [
+                {
+                  "title": "شركاء النجاح",
+                  "size": "md",
+                  "logos": []
+                }
+              ],
+              "titleColor": "em"
+            },
+            "name": "شعارات الشركاء"
           }
         ]
+      },
+      "section": {
+        "title": "الختام والشكر",
+        "minutes": 3
       }
     }
   ],
-  "updatedAt": "2026-10-30T08:24:44.908Z"
+  "updatedAt": "2026-10-31T00:00:00.000Z"
 }

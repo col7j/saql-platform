@@ -1,5 +1,5 @@
 // خريطة المفاتيح لشاشة العرض. الكليكر يرسل غالباً PageDown/PageUp أو الأسهم، وزر «الشاشة السوداء» فيه يرسل B أو النقطة.
-export type KeyAction = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'blackout' | 'tour';
+export type KeyAction = 'next' | 'prev' | 'first' | 'last' | 'fullscreen' | 'blackout' | 'tour' | 'hint' | 'reveal' | 'skip' | 'launch' | 'photo';
 
 export function keyAction(e: { key: string; code?: string; ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean }): KeyAction | null {
   if (e.ctrlKey || e.metaKey || e.altKey) return null;
@@ -17,7 +17,12 @@ export function keyAction(e: { key: string; code?: string; ctrlKey?: boolean; me
   if (e.code === 'KeyB') return 'blackout';
   // تشغيل الجولة التلقائية في الديمو أو إيقافها
   if (e.code === 'KeyK') return 'tour';
-  // إظهار رمز التحكم من الجوال أو إخفاؤه
+  // فقرات الحفل: تلميح وكشف وتخطي في «من أنا؟»، والتدشين، ومؤقت الصورة الجماعية
+  if (e.code === 'KeyH') return 'hint';
+  if (e.code === 'KeyR') return 'reveal';
+  if (e.code === 'KeyS') return 'skip';
+  if (e.code === 'KeyL') return 'launch';
+  if (e.code === 'KeyT') return 'photo';
   return null;
 }
 

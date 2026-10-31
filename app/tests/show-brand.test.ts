@@ -42,9 +42,9 @@ describe('رموز الهوية', () => {
 describe('الخطوط محلية', () => {
   it('كل وزن معلن له ملف woff2 في public وتعريف @font-face', () => {
     for (const f of BRAND_FONTS) {
-      expect(cssVar('b-font')).toContain(`'${f.family}'`);
+      expect(cssVar(f.family === 'Amiri' ? 'b-font-quran' : 'b-font')).toContain(`'${f.family}'`);
       for (const [w, name] of Object.entries(f.weights)) {
-        const file = `fonts/thmanyahsans/thmanyahsans-${name}.woff2`;
+        const file = f.file(name);
         expect('../public/' + file in PUBLIC, file).toBe(true);
         expect(tokens).toMatch(new RegExp(`font-weight: ${w};[^}]*${file.replace(/\./g, '\\.')}`));
       }

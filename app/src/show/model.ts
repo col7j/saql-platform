@@ -5,7 +5,7 @@ import type { SlideSettings } from './slides/model';
 
 export const SHOW_SCHEMA_VERSION = 2;
 
-export type SegmentType = 'slide' | 'demo';
+export type SegmentType = 'slide' | 'demo' | 'whoami' | 'roster' | 'agreements' | 'launch' | 'photo';
 /** أنواع الإصدار 1: للقراءة والتحويل فقط */
 export type LegacySegmentType = 'video' | 'slides' | 'names' | 'blank';
 
@@ -91,16 +91,106 @@ export interface BlankSettings {
   caption?: string;
 }
 
+/** بداية فقرة في جدول الحفل: عنوانها ومدتها المخططة بالدقائق. داخلية للمنظمين فقط:
+ *  تظهر في المحرّر والجوال، ولا تظهر أبداً على شاشة العرض ولا في أي شريحة */
+export interface Section {
+  title: string;
+  minutes: number;
+}
+
 interface Base<T extends SegmentType | LegacySegmentType, S> {
   id: string;
   type: T;
   title: string;
   order: number;
   settings: S;
+  /** هذه الشريحة تبدأ فقرة في جدول الحفل (وما بعدها حتى الفقرة التالية تابع لها) */
+  section?: Section;
 }
+
+// ───────────── «من أنا؟» ─────────────
+/** مشارك في «من أنا؟»: الاسم والمجموعة من لقطة المنصة، والمعلومة والتلميحات تُدخَل في المحرّر وتبقى في show-config فقط */
+export interface WhoEntry {
+  id: string;
+  /** معرّفه في المنصة إن سُحب من اللقطة */
+  personId?: string;
+  name: string;
+  group?: string;
+  /** المعلومة الغريبة أو الطريفة (تظهر وحدها أولاً) */
+  fact: string;
+  /** تلميحات إضافية تظهر متتابعة قبل الكشف */
+  hints: string[];
+  photo?: MediaRef;
+  /** مُتخطّى: لا يظهر في العرض */
+  skip?: boolean;
+}
+export interface WhoAmISettings {
+  /** عنوان شاشة البداية */
+  heading: string;
+  entries: WhoEntry[];
+}
+
+// ───────────── شبكة الأسماء ─────────────
+export interface RosterPerson {
+  name: string;
+  group?: string;
+  /** صفة (لفريق العمل واللجان) */
+  role?: string;
+}
+export interface RosterSettings {
+  heading: string;
+  /** participants: المشاركون بمجموعاتهم، staff: فريق العمل بصفاتهم (تُسحب من لقطة المنصة) */
+  source: 'participants' | 'staff';
+  people: RosterPerson[];
+  /** أقصى عدد في الصفحة الواحدة، والزائد يُقسّم صفحات */
+  perPage: number;
+}
+
+// ───────────── توقيع الاتفاقيات ─────────────
+export interface AgreementParty {
+  id: string;
+  name: string;
+  logo?: MediaRef;
+  /** عنوان الاتفاقية */
+  title: string;
+  rep: string;
+  repTitle: string;
+}
+export interface AgreementsSettings {
+  heading: string;
+  /** شعار الجمعية واسمها (الطرف الثابت في كل اتفاقية) */
+  hostName: string;
+  hostLogo?: MediaRef;
+  parties: AgreementParty[];
+}
+
+// ───────────── التدشين ─────────────
+export interface LaunchSettings {
+  /** شاشة الانتظار */
+  waitTitle: string;
+  waitSub: string;
+  /** بعد الحركة */
+  doneTitle: string;
+  /** ثوانٍ بعد ظهور «تم التدشين» ثم الفقرة التالية تلقائياً (0 = ينتظر المقدّم) */
+  autoNext: number;
+}
+
+// ───────────── الصورة الجماعية ─────────────
+export interface PhotoSettings {
+  heading: string;
+  sub: string;
+  /** ثواني العدّ التنازلي */
+  seconds: number;
+}
+
 export type SlideSegment = Base<'slide', SlideSettings>;
 export type DemoSegment = Base<'demo', DemoSettings>;
-export type Segment = SlideSegment | DemoSegment;
+export type WhoAmISegment = Base<'whoami', WhoAmISettings>;
+export type RosterSegment = Base<'roster', RosterSettings>;
+export type AgreementsSegment = Base<'agreements', AgreementsSettings>;
+export type LaunchSegment = Base<'launch', LaunchSettings>;
+export type PhotoSegment = Base<'photo', PhotoSettings>;
+export type Segment = SlideSegment | DemoSegment | WhoAmISegment | RosterSegment | AgreementsSegment | LaunchSegment | PhotoSegment;
 
 export type VideoSegment = Base<'video', VideoSettings>;
 export type SlidesSegment = Base<'slides', SlidesSettings>;
@@ -123,7 +213,15 @@ export interface ShowConfig {
 export const SEGMENT_LABELS: Record<SegmentType, string> = {
   slide: 'شريحة',
   demo: 'ديمو المنصة',
+  whoami: 'من أنا؟',
+  roster: 'شبكة الأسماء',
+  agreements: 'توقيع الاتفاقيات',
+  launch: 'التدشين',
+  photo: 'الصورة الجماعية',
 };
+
+export const LAUNCH_DEFAULTS: LaunchSettings = { waitTitle: 'منصة صقل الإلكترونية', waitSub: 'لحظات وتنطلق', doneTitle: 'تم تدشين منصة صقل الإلكترونية', autoNext: 5 };
+export const PHOTO_DEFAULTS: PhotoSettings = { heading: 'الصورة الجماعية', sub: 'ابتسموا، صقل 7', seconds: 3 };
 
 export const DEFAULT_CONFIG: ShowConfig = {
   schemaVersion: SHOW_SCHEMA_VERSION,
