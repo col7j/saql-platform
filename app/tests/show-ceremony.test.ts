@@ -2,7 +2,7 @@
 // حفل «صقل 7»: هيكل الفقرات والمدد، «من أنا؟»، شبكة الأسماء، الاتفاقيات، التدشين، الخصوصية، والأوامر
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { ceremonyConfig } from '@/show/ceremony/defaults';
+import { ceremonyConfig, withCeremony } from '@/show/ceremony/defaults';
 import { PROGRAM_SLIDES, programSegments } from '@/show/ceremony/program';
 import { agenda, agendaIndex, agreementAt, agreementSteps, emptyTiming, mergeEntries, parseCsv, parsePasted, rosterGrid, rosterPages, shuffled, spentOf, tick, totalMinutes, whoAt, whoHint, whoNext, whoReveal, whoSkip, whoStepCount } from '@/show/ceremony/logic';
 import { next, sortSegments, stepCount } from '@/show/nav';
@@ -186,5 +186,17 @@ describe('أوامر الجوال والحالة', () => {
   it('شرائح التعريف تُنشأ بمعرّفات فريدة', () => {
     const a = programSegments('x');
     expect(new Set(a.flatMap((s) => s.settings.elements.map((e) => e.id))).size).toBe(a.reduce((n, s) => n + s.settings.elements.length, 0));
+  });
+});
+
+describe('إضافة الحفل إلى عرض قائم', () => {
+  it('تبقى الشرائح السابقة كما هي في أولها، وتُضاف الفقرات بعدها مرة واحدة', () => {
+    const old: ShowConfig = { schemaVersion: 2, title: 'عرضي', theme: 'dark', updatedAt: '', segments: [{ id: 'mine', type: 'photo', title: 'تصميمي', order: 0, settings: { heading: 'قديم', sub: '', seconds: 3 } }] };
+    const r = withCeremony(old);
+    expect(r.added).toBe(ceremonyConfig().segments.length);
+    const list = sortSegments(r.cfg.segments);
+    expect(list[0]).toEqual(old.segments[0]);
+    expect(r.cfg.title).toBe('عرضي');
+    expect(withCeremony(r.cfg).added).toBe(0);
   });
 });

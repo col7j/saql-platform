@@ -32,3 +32,16 @@ export function ceremonySegments(): Segment[] {
 export function ceremonyConfig(): ShowConfig {
   return { schemaVersion: SHOW_SCHEMA_VERSION, title: 'اللقاء الافتتاحي · صقل 7', theme: 'dark', segments: ceremonySegments(), updatedAt: '2026-10-31T00:00:00.000Z' };
 }
+
+/**
+ * يضيف فقرات حفل «صقل 7» إلى عرض قائم بعد شرائحه، دون حذف شيء منه أو تغييره:
+ * تبقى التصاميم السابقة (الشراكات والقرآن وغيرها) والملفات المرفوعة كما هي، وتُرتَّب بعدها من المحرّر.
+ * added = 0 إن كانت الفقرات مضافة من قبل
+ */
+export function withCeremony(cfg: ShowConfig): { cfg: ShowConfig; added: number } {
+  const ids = new Set(cfg.segments.map((s) => s.id));
+  if (ids.has('c_welcome') && ids.has('c_prog_1')) return { cfg, added: 0 };
+  const start = cfg.segments.length;
+  const extra = ceremonySegments().map((s, i) => ({ ...s, id: ids.has(s.id) ? `${s.id}_${Date.now().toString(36)}` : s.id, order: start + i }));
+  return { cfg: { ...cfg, segments: [...cfg.segments, ...extra] }, added: extra.length };
+}

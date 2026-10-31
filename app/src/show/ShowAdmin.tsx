@@ -14,6 +14,7 @@ import { DemoEditor } from './admin/DemoEditor';
 import { stepSub } from './stepLabel';
 import { AgreementsEditor, LaunchEditor, PhotoEditor, RosterEditor, SectionField, WhoAmIEditor } from './admin/CeremonyEditors';
 import { CEREMONY_TEMPLATES, ceremonySegmentsFor, type CeremonyKey } from './ceremony/catalog';
+import { withCeremony } from './ceremony/defaults';
 import { useSnapshotStatus } from './admin/DemoDataCard';
 import { LinkBadge, LinkPanel } from './admin/LinkPanel';
 import { useHostLink } from './remote/host';
@@ -294,6 +295,19 @@ export default function ShowAdmin() {
   const restoreRepo = () =>
     askConfirm({ title: 'استعادة show.json من المستودع؟', body: 'تُستبدل الإعدادات المحفوظة على هذا الجهاز بالملف المنشور مع الموقع (يمكن التراجع).', cta: 'استعد', danger: true, run: async () => (commit(await loadRepoConfig()), setSelectedSeg(null), toast('استُعيدت إعدادات المستودع')) });
 
+  const addCeremonyAll = () =>
+    askConfirm({
+      title: 'إضافة فقرات حفل صقل 7 إلى هذا العرض؟',
+      body: 'تُضاف الفقرات الجديدة كلها (الترحيب، القرآن، الفيديو، التعريف بالبرنامج، التدشين والديمو، «من أنا؟»، كلمة الجمعية، الاتفاقيات، الصورة، الكيكة، الختام) بعد شرائحك الحالية. لا يُحذف شيء من عرضك ولا من مكتبة الملفات، ويمكن التراجع.',
+      cta: 'أضف',
+      run: () => {
+        const r = withCeremony(cfg);
+        if (!r.added) return toast('فقرات الحفل موجودة في العرض من قبل');
+        commit(r.cfg);
+        toast(`أُضيفت ${r.added} شريحة بعد شرائحك، رتّبها بالسحب`);
+      },
+    });
+
   const liveSeg = connected ? list[live!.pos.seg] : undefined;
 
   return (
@@ -345,6 +359,7 @@ export default function ShowAdmin() {
             { label: 'استيراد عرض…', onClick: () => bundleRef.current?.click() },
             { label: 'تصدير الإعدادات فقط (JSON)', onClick: () => download('show.json', exportConfig(cfg)) },
             { label: 'استيراد إعدادات فقط (JSON)…', onClick: () => importRef.current?.click() },
+            { label: 'إضافة فقرات حفل صقل 7 إلى عرضي', onClick: addCeremonyAll },
             { label: 'استعادة show.json من المستودع', onClick: restoreRepo },
 
           ]}
