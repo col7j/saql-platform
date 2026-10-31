@@ -8,3 +8,10 @@ app/dist
 .DS_Store
 .claude/
 .vite/
+
+# خصوصية عرض الحفل: ملفات التصدير ولقطات بيانات المنصة وبيانات «من أنا؟» لا تُرفع للمستودع العلني
+*.saql-show.zip
+demo-snapshot*.json
+show-export*
+*participants*.csv
+*.pptx

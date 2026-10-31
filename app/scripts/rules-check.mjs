@@ -71,6 +71,8 @@ const got = await expect('قراءة الرمز بعد المطالبة', phone.
 if (got.val?.session !== K) (failed++, console.log('✗ الرمز لا يشير إلى الجلسة'));
 await expect('تسجيل الجوال', phone.put(`sessions/${K}/remotes/${phone.uid}`, { at: now, code: C }), true);
 await expect('أمر «التالي»', phone.post(`sessions/${K}/commands`, { uid: phone.uid, type: 'next', at: now }), true);
+await expect('أمر «تلميح» (فقرات الحفل)', phone.post(`sessions/${K}/commands`, { uid: phone.uid, type: 'hint', at: now }), true);
+await expect('أمر «تدشين»', phone.post(`sessions/${K}/commands`, { uid: phone.uid, type: 'launch', at: now }), true);
 await expect('أمر غير معروف', phone.post(`sessions/${K}/commands`, { uid: phone.uid, type: 'config', at: now }), false);
 await expect('الجوال يكتب الحالة', phone.put(`sessions/${K}/state`, { seg: 3, step: 0, started: true }), false);
 await expect('الجوال يسجّل نفسه شاشة عرض', phone.put(`sessions/${K}/displays/${phone.uid}`, { at: now, via: K }), false);
