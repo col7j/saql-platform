@@ -11,6 +11,23 @@ import { combineSync, type Cue, type LiveInfo, type ShowMessage } from './sync';
 import { agenda, agendaIndex, agendaKey, emptyTiming, spentOf, tick, whoHint, whoReveal, whoSkip, type Timing } from './ceremony/logic';
 import { stepSub } from './stepLabel';
 
+const POS_KEY = 'show-pos';
+const loadPos = (): Pos => {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(POS_KEY) ?? 'null');
+    return v && Number.isInteger(v.seg) && Number.isInteger(v.step) && v.seg >= 0 && v.step >= 0 ? v : { seg: 0, step: 0 };
+  } catch {
+    return { seg: 0, step: 0 };
+  }
+};
+const savePos = (p: Pos) => {
+  try {
+    sessionStorage.setItem(POS_KEY, JSON.stringify(p));
+  } catch {
+    /* في الذاكرة فقط */
+  }
+};
+
 const TIMING_KEY = 'show-timing';
 const loadTiming = (): Timing => {
   try {
@@ -63,7 +80,13 @@ export default function ShowPlayer() {
   // التحكم من الجوال (Firebase) قناة ثانية تُضم للمحلية؛ بلا إعداد أو بلا إنترنت تبقى المحلية وحدها
   const remote = useRemoteDisplay();
   const sync = useMemo(() => (remote.sync ? combineSync(local, remote.sync) : local), [local, remote.sync]);
-  const [pos, setPos] = useState<Pos>({ seg: 0, step: 0 });
+  // الموضع يُحفظ في هذا التبويب: إعادة تحميل شاشة العرض بالخطأ تعود إلى نفس الفقرة لا إلى البداية
+  const [pos, setPos] = useState<Pos>(loadPos);
+  useEffect(() => savePos(pos), [pos]);
+  // موضع محفوظ أبعد من العرض الحالي (عرض أقصر بعد التعديل): يُقيَّد بحدوده
+  useEffect(() => {
+    if (cfg) setPos((p) => clampPos(cfg, p));
+  }, [cfg]);
   const [started, setStarted] = useState(false);
   const [blackout, setBlackout] = useState(false);
   // جولة الديمو: موقوفة أم تعمل، ومعالج التقدّم اليدوي داخل صفحتها
@@ -345,8 +368,13 @@ export default function ShowPlayer() {
                     if (!document.fullscreenElement) toggleFullscreen();
                   }}
                 >
-                  ابدأ العرض
+                  {pos.seg > 0 && current ? `استأنف من «${current.title}»` : 'ابدأ العرض'}
                 </button>
+                {pos.seg > 0 && (
+                  <button className="show-in show-help mt-[2vh] underline underline-offset-4" style={{ ['--i' as string]: 3 }} onClick={() => (setPos({ seg: 0, step: 0 }), setStarted(true))}>
+                    أو من البداية
+                  </button>
+                )}
                 <p className="show-in show-help mt-[4vh]" style={{ ['--i' as string]: 3 }}>
                   {list.length} فقرات · التالي: → أو PageDown أو المسافة · السابق: ← أو PageUp
                   <br />
