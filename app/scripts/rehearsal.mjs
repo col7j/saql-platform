@@ -87,24 +87,27 @@ for (const [i, a] of plan.entries()) {
   await evaluate(`new BroadcastChannel('saql-show').postMessage({ type: 'goto', pos: { seg: ${a.from}, step: 0 } }), 1`);
   await sleep(1500);
   await shot(`${String(i + 1).padStart(2, '0')}-${a.segs[0].type}`);
-  // كل نقرات الفقرة بالتساوي على مدتها
+  // نقرات الفقرة موزّعة على مدتها (انتظار ثم نقرة)، والانتقال للفقرة التالية في بداية دورتها
   const actions = [];
-  for (const s of a.segs) {
+  a.segs.forEach((s, k) => {
+    const last = k === a.segs.length - 1;
     if (s.type === 'launch') actions.push(['launch'], ['wait', 16000]);
     else if (s.type === 'demo') actions.push(['wait', 30000 * scale]);
-    else if (s.type === 'whoami') for (const hints of s.who) { actions.push(['next']); for (let h = 0; h < hints; h++) actions.push(['hint']); actions.push(['reveal'], ['next-only']); }
     else if (s.type === 'photo') actions.push(['photo'], ['wait', 6000]);
-    else if (a.segs[0].type !== 'launch') for (let k = 0; k < s.steps; k++) actions.push(['next']);
-  }
-  const gap = budget / Math.max(1, actions.length);
+    else if (s.type === 'whoami') s.who.forEach((hints, w) => { actions.push(['next']); for (let h = 0; h < hints; h++) actions.push(['hint']); actions.push(['reveal']); if (w === s.who.length - 1 && !last) actions.push(['next']); });
+    else if (a.segs[0].type !== 'launch') for (let j = 0; j < s.steps - (last ? 1 : 0); j++) actions.push(['next']);
+  });
+  const presses = actions.filter(([x]) => x !== 'wait').length;
+  const waits = actions.filter(([x]) => x === 'wait').reduce((n, [, ms]) => n + ms, 0);
+  const gap = Math.max(300, (budget - waits) / (presses + 1));
   for (const [act, ms] of actions) {
     if (act === 'wait') { await sleep(ms); continue; }
+    await sleep(gap);
     if (act === 'launch') await key('KeyL', 'l');
     else if (act === 'hint') await key('KeyH', 'h');
     else if (act === 'reveal') await key('KeyR', 'r');
     else if (act === 'photo') await key('KeyT', 't');
-    else if (act === 'next' || act === 'next-only') await key('ArrowRight', 'ArrowRight');
-    await sleep(Math.max(300, gap - 50));
+    else await key('ArrowRight', 'ArrowRight');
   }
   const left = budget - (Date.now() - start);
   if (left > 0) await sleep(left);
