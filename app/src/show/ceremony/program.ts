@@ -75,7 +75,7 @@ function S(c: Ctx, o: ShapeOpt): SlideElement {
 /** الخط الذهبي الفاصل */
 const rule = (c: Ctx, y: number, w = 160, delay = 300, step = 0, x = (W - w) / 2) => S(c, { x, y, w, h: 8, fill: 'gradGold', radius: 999, anim: 'wipe', delay, step });
 /** تذييل الشرائح الداخلية */
-const footer = (c: Ctx) => T(c, 'صقل 7 · اللقاء الافتتاحي', { x: M, y: H - 92, w: 700, h: 46, size: 30, weight: 500, align: 'start', anim: 'fade', delay: 900, color: 'fg' });
+const footer = (c: Ctx) => T(c, 'صقل 7 · اللقاء الافتتاحي', { x: W - M - 700, y: H - 92, w: 700, h: 46, size: 30, weight: 500, align: 'start', anim: 'fade', delay: 900, color: 'fg' });
 /** تمهيد العنوان (ذهبي) والعنوان */
 function heading(c: Ctx, kicker: string, title: string, y = 70) {
   return [
@@ -93,8 +93,8 @@ function s1(id: string): SlideSettings {
   return slide(
     [
       T(c, 'هلا بك في', { y: 230, h: 90, size: 64, weight: 500, delay: 100 }),
-      T(c, 'صقل', { x: 560, y: 320, w: 620, h: 330, size: 300, weight: 900, color: 'head', anim: 'scale', delay: 450, dur: 1400, line: 1 }),
-      T(c, '7', { x: 470, y: 320, w: 180, h: 330, size: 300, weight: 900, color: 'em', anim: 'scale', delay: 1100, dur: 1300, line: 1 }),
+      T(c, 'صقل', { x: 760, y: 320, w: 900, h: 330, size: 300, weight: 900, color: 'head', anim: 'scale', delay: 450, dur: 1400, line: 1, align: 'end' }),
+      T(c, '7', { x: 520, y: 320, w: 220, h: 330, size: 300, weight: 900, color: 'em', anim: 'scale', delay: 1100, dur: 1300, line: 1 }),
       rule(c, 700, 260, 1600),
       T(c, 'اللقاء الافتتاحي · برنامج التأهيل القيادي', { y: 740, h: 90, size: 52, weight: 500, delay: 1800 }),
     ],
@@ -182,9 +182,9 @@ function s6(id: string): SlideSettings {
 function s7(id: string): SlideSettings {
   const c = ctx(id);
   const cx = 960;
-  const cy = 650;
-  const R = 300;
-  const r = 140;
+  const cy = 680;
+  const R = 270;
+  const r = 130;
   const nodes: [string, number][] = [['تعلُّم', -90], ['تجربة', 30], ['تقييم', 150]];
   const pt = (deg: number, rad = R) => ({ x: cx + rad * Math.cos((deg * Math.PI) / 180), y: cy + rad * Math.sin((deg * Math.PI) / 180) });
   const els: SlideElement[] = [
@@ -210,11 +210,11 @@ function s7(id: string): SlideSettings {
 function s8(id: string): SlideSettings {
   const c = ctx(id);
   const steps: [string, string][] = [
-    ['الخطة الشخصية والميسّر', 'توجيهٌ شخصي، وتخطيطٌ متوازن'],
-    ['لقاءات التركيز', 'لبناتٌ معرفية ومهارية شاملة'],
-    ['ورشٌ ودورات تأسيسية', 'تأسيسٌ نظريّ للقيادة'],
-    ['رحلات داخل المدينة', 'تقودها المجموعات: تجربةٌ قيادية أولى مع الفريق'],
-    ['سفرتان خارج المدينة', 'تقودها المجموعات: تجربةٌ قيادية فعلية'],
+    ['الخطة الشخصية\nوالميسّر', 'توجيهٌ شخصي،\nوتخطيطٌ متوازن'],
+    ['لقاءات\nالتركيز', 'لبناتٌ معرفية\nومهارية شاملة'],
+    ['ورشٌ ودورات\nتأسيسية', 'تأسيسٌ نظريّ\nللقيادة'],
+    ['رحلات داخل\nالمدينة', 'تقودها المجموعات:\nتجربةٌ قيادية أولى مع الفريق'],
+    ['سفرتان خارج\nالمدينة', 'تقودها المجموعات:\nتجربةٌ قيادية فعلية'],
   ];
   const cw = 318;
   const gap = 26;
@@ -230,7 +230,7 @@ function s8(id: string): SlideSettings {
       S(c, { x, y, w: cw, h, fill: i === 4 ? 'gradTeal' : 'primary', opacity: i === 4 ? 1 : 0.24 + i * 0.1, radius: 36, step: i + 1, anim: 'up', dur: 900 }),
       T(c, ['١', '٢', '٣', '٤', '٥'][i], { x: x + 24, y: y + 26, w: 90, h: 90, size: 72, weight: 900, color: 'em', align: 'start', step: i + 1, delay: 200 }),
       T(c, title, { x: x + 24, y: y + 126, w: cw - 48, h: 110, size: 40, weight: 900, color: 'head', align: 'start', line: 1.3, step: i + 1, delay: 300 }),
-      T(c, sub, { x: x + 24, y: y + 240, w: cw - 48, h: 120, size: 30, weight: 500, align: 'start', line: 1.45, step: i + 1, delay: 420 }),
+      T(c, sub, { x: x + 24, y: y + 240, w: cw - 48, h: 140, size: 30, weight: 500, align: 'start', line: 1.45, step: i + 1, delay: 420 }),
     );
   });
   els.push(footer(c));
@@ -267,12 +267,17 @@ function s9(id: string): SlideSettings {
       els.push(T(c, m.note, { x: x + 18, y, w: cw - 36, h: 46, size: 30, weight: 700, color: 'em2', delay: d + 200 }));
       y += 54;
     }
+    // ارتفاع كل سطر بحسب طول نصه (تقدير عرض الحرف بنصف حجم الخط)، فلا يتراكب موعد طويل مع ما تحته
+    const lines = (t: string, size: number) => Math.max(1, Math.ceil((t.length * size * 0.5) / (cw - 40)));
+    const slot = (1035 - y) / m.items.length;
     for (const [when, what] of m.items) {
+      const hw = lines(when, 32) * 44;
+      const hd = lines(what, 30) * 41;
       els.push(
-        T(c, when, { x: x + 20, y, w: cw - 40, h: 46, size: 32, weight: 900, color: 'em', align: 'start', delay: d + 250 }),
-        T(c, what, { x: x + 20, y: y + 44, w: cw - 40, h: 92, size: 30, weight: 500, align: 'start', line: 1.35, delay: d + 300 }),
+        T(c, when, { x: x + 20, y, w: cw - 40, h: hw, size: 32, weight: 900, color: 'em', align: 'start', line: 1.3, delay: d + 250 }),
+        T(c, what, { x: x + 20, y: y + hw, w: cw - 40, h: hd, size: 30, weight: 500, align: 'start', line: 1.35, delay: d + 300 }),
       );
-      y += 150;
+      y += Math.min(Math.max(hw + hd + 26, 150), Math.max(hw + hd + 14, slot));
     }
   });
   return slide(els, { mark: false });
@@ -355,7 +360,9 @@ export interface CeremonyInput {
 export function welcomeSettings(id: string, i: CeremonyInput = {}): SlideSettings {
   const c = ctx(id);
   return slide([
-    makeElement('image', c.id(++c.n), { x: (W - 560) / 2, y: 110, w: 560, h: 360, anim: { type: 'scale', delay: 200, duration: 1800 }, name: 'شعار الجمعية', props: { media: i.orgLogo, fit: 'contain', radius: 0 } }),
+    i.orgLogo
+      ? makeElement('image', c.id(++c.n), { x: (W - 560) / 2, y: 110, w: 560, h: 360, anim: { type: 'scale', delay: 200, duration: 1800 }, name: 'شعار الجمعية', props: { media: i.orgLogo, fit: 'contain', radius: 0 } })
+      : makeElement('logo', c.id(++c.n), { x: (W - 340 * LOGO_RATIO.vertical) / 2, y: 120, w: Math.round(340 * LOGO_RATIO.vertical), h: 340, anim: { type: 'scale', delay: 200, duration: 1800 }, name: 'الشعار (استبدله بشعار الجمعية)', props: { kind: 'vertical', variant: 'auto' } }),
     T(c, i.org || 'اسم الجمعية', { y: 500, h: 90, size: 60, weight: 700, delay: 1100, name: 'اسم الجمعية' }),
     rule(c, 630, 220, 1700),
     T(c, i.title || 'اللقاء الافتتاحي · صقل 7', { y: 680, h: 150, size: 110, weight: 900, color: 'head', delay: 2000, dur: 1300, name: 'عنوان الحفل' }),
@@ -381,7 +388,9 @@ export function quranSettings(id: string, i: CeremonyInput = {}): SlideSettings 
 export function speakerSettings(id: string, i: CeremonyInput = {}): SlideSettings {
   const c = ctx(id);
   return slide([
-    makeElement('image', c.id(++c.n), { x: (W - 460) / 2, y: 150, w: 460, h: 300, anim: { type: 'scale', delay: 100, duration: 1500 }, name: 'شعار الجمعية', props: { media: i.orgLogo, fit: 'contain', radius: 0 } }),
+    i.orgLogo
+      ? makeElement('image', c.id(++c.n), { x: (W - 460) / 2, y: 150, w: 460, h: 300, anim: { type: 'scale', delay: 100, duration: 1500 }, name: 'شعار الجمعية', props: { media: i.orgLogo, fit: 'contain', radius: 0 } })
+      : makeElement('logo', c.id(++c.n), { x: (W - 290 * LOGO_RATIO.vertical) / 2, y: 160, w: Math.round(290 * LOGO_RATIO.vertical), h: 290, anim: { type: 'scale', delay: 100, duration: 1500 }, name: 'الشعار (استبدله بشعار الجمعية)', props: { kind: 'vertical', variant: 'auto' } }),
     T(c, 'كلمة الجمعية', { y: 500, h: 70, size: 44, weight: 700, color: 'em', delay: 600 }),
     T(c, i.speaker || 'اسم المتحدث', { y: 580, h: 150, size: 110, weight: 900, color: 'head', delay: 800, name: 'اسم المتحدث' }),
     rule(c, 750, 160, 1200),
@@ -409,11 +418,11 @@ export function closingSettings(id: string): SlideSettings {
   const h = 230;
   return slide(
     [
-      makeElement('logo', c.id(++c.n), { x: (W - h * LOGO_RATIO.vertical) / 2, y: 70, w: Math.round(h * LOGO_RATIO.vertical), h, props: { kind: 'vertical', variant: 'auto' } }),
-      T(c, 'شكراً لحضوركم', { y: 330, h: 140, size: 110, weight: 900, color: 'head', delay: 300 }),
-      rule(c, 480, 180, 700),
-      T(c, 'ونلتقي في رحلة صقل 7', { y: 510, h: 80, size: 52, weight: 500, delay: 900 }),
-      makeElement('logoGrid', c.id(++c.n), { x: M * 2, y: 640, w: W - M * 4, h: 360, anim: { type: 'fade', delay: 1200, duration: 800 }, name: 'شعارات الشركاء', props: { tiers: [{ title: 'شركاء النجاح', size: 'md', logos: [] }] } }),
+      makeElement('logo', c.id(++c.n), { x: (W - h * LOGO_RATIO.vertical) / 2, y: 110, w: Math.round(h * LOGO_RATIO.vertical), h, props: { kind: 'vertical', variant: 'auto' } }),
+      T(c, 'شكراً لحضوركم', { y: 380, h: 140, size: 110, weight: 900, color: 'head', delay: 300 }),
+      rule(c, 530, 180, 700),
+      T(c, 'ونلتقي في رحلة صقل 7', { y: 560, h: 80, size: 52, weight: 500, delay: 900 }),
+      makeElement('logoGrid', c.id(++c.n), { x: M * 2, y: 690, w: W - M * 4, h: 330, anim: { type: 'fade', delay: 1200, duration: 800 }, name: 'شعارات الشركاء', props: { tiers: [{ title: 'شركاء النجاح', size: 'md', logos: [] }] } }),
     ],
     { mark: false },
   );

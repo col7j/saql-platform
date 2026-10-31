@@ -8,7 +8,7 @@ export function stepSub(seg: Segment | undefined, step: number): string | undefi
   switch (seg.type) {
     case 'whoami': {
       const at = whoAt(seg.settings, step);
-      if (at.kind === 'intro') return `شاشة البداية · ${at.total} مشاركاً`;
+      if (at.kind === 'intro') return `شاشة البداية · ${at.total === 1 ? 'مشارك واحد' : at.total === 2 ? 'مشاركان' : at.total <= 10 ? `${at.total} مشاركين` : `${at.total} مشاركاً`}`;
       if (at.kind === 'reveal') return `${at.index + 1} من ${at.total} · كُشف`;
       return `${at.index + 1} من ${at.total} · المعلومة${at.hints.length ? ` · تلميح ${at.hintsShown} من ${at.hints.length}` : ''}`;
     }

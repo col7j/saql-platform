@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import type { AgreementsSegment, LaunchSegment, MediaRef, PhotoSegment, RosterSegment, ShowTheme, WhoAmISegment } from '../model';
 import { FitStage } from '../slides/SlideView';
 import { heroLogo } from '../segments/Fallback';
+import { LOGOS } from '../brand/brand';
 import { useMediaUrl } from '../segments/useMedia';
 import { LAUNCH_ANIM_MS, agreementAt, rosterGrid, rosterGroups, rosterPages, whoAt } from './logic';
 import { Confetti } from './fx';
@@ -43,7 +44,7 @@ function Img({ media, className, style, alt = '' }: { media?: MediaRef; classNam
   return url ? <img src={url} alt={alt} className={className} style={style} draggable={false} /> : null;
 }
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join(' ');
+const initials = (name: string) => name.trim().charAt(0);
 
 // ───────────── «من أنا؟» ─────────────
 
@@ -149,8 +150,9 @@ export function RosterView({ seg, step, theme }: CeremonyProps<RosterSegment>) {
 
 // ───────────── توقيع الاتفاقيات ─────────────
 
-function HostLogo({ s, theme, className }: { s: AgreementsSegment['settings']; theme: ShowTheme; className?: string }) {
-  return s.hostLogo ? <Img media={s.hostLogo} className={className} alt={s.hostName} /> : <img src={heroLogo(theme)} className={className} alt="" draggable={false} />;
+/** شعار الجمعية، وإن لم يُرفع فشعار البرنامج (الملوّن داخل البطاقات البيضاء) */
+function HostLogo({ s, theme, className, onCard }: { s: AgreementsSegment['settings']; theme: ShowTheme; className?: string; onCard?: boolean }) {
+  return s.hostLogo ? <Img media={s.hostLogo} className={className} alt={s.hostName} /> : <img src={onCard ? LOGOS.vertical.color : heroLogo(theme)} className={className} alt="" draggable={false} />;
 }
 
 function PartyLogo({ p, className }: { p: { name: string; logo?: MediaRef }; className?: string }) {
@@ -182,7 +184,7 @@ export function AgreementsView({ seg, step, theme }: CeremonyProps<AgreementsSeg
         <div className="cv-meet" key={p.id}>
           <div className="cv-meet-logo cv-from-start"><PartyLogo p={p} className="cv-meet-img" /></div>
           <span className="cv-meet-join" />
-          <div className="cv-meet-logo cv-from-end"><HostLogo s={s} theme={theme} className="cv-meet-img" /></div>
+          <div className="cv-meet-logo cv-from-end"><HostLogo s={s} theme={theme} className="cv-meet-img" onCard /></div>
         </div>
         <div className="cv-meet-text">
           <p className="cv-kicker cv-in" style={{ ['--d' as string]: '1200ms' }}>{p.name}</p>

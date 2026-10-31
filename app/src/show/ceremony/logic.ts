@@ -166,7 +166,7 @@ export function rosterGrid(n: number): { cols: number; rows: number } {
 }
 
 /** المجموعات بترتيب ظهورها، لكل مجموعة لون من ألوان الهوية */
-export const ROSTER_TONES = ['sky', 'gold', 'orange', 'teal', 'white', 'grey'] as const;
+export const ROSTER_TONES = ['sky', 'gold', 'orange', 'white', 'teal', 'grey'] as const;
 export function rosterGroups(people: RosterPerson[]) {
   const groups: string[] = [];
   for (const p of people) if (p.group && !groups.includes(p.group)) groups.push(p.group);

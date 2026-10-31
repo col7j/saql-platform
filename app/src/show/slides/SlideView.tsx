@@ -209,6 +209,8 @@ function ImageBody({ el, mode }: { el: ImageEl; mode: SlideMode }) {
 }
 
 const stop = (e: React.SyntheticEvent) => e.stopPropagation();
+/** مدة الشاشة البديلة حين لا يوجد ملف الفيديو أو يفشل */
+export const VIDEO_FALLBACK_MS = 4000;
 
 function VideoBody({ el, mode, active, visible, onSkip }: ElProps & { el: VideoEl }) {
   const { url, error } = useMediaUrl(el.props.media);
@@ -230,6 +232,13 @@ function VideoBody({ el, mode, active, visible, onSkip }: ElProps & { el: VideoE
       }
     });
   }, [playing, url, el.props.muted, mode]);
+  // بلا ملف أو فشل الملف: تبقى الشاشة البديلة (عنوان الشريحة خلف الفيديو) لحظات ثم يكمل العرض إن كان الانتقال التلقائي مفعّلاً
+  const missing = !el.props.media || failed || !!error;
+  useEffect(() => {
+    if (!playing || !missing || !el.props.autoAdvance) return;
+    const t = setTimeout(() => onSkip?.(), VIDEO_FALLBACK_MS);
+    return () => clearTimeout(t);
+  }, [playing, missing, el.props.autoAdvance, onSkip]);
   if (!url || failed) return mode === 'play' ? null : <div className="sl-placeholder">{el.props.media ? (error ?? (failed ? 'تعذّر تشغيل الفيديو' : '…')) : 'اختر فيديو'}</div>;
   return (
     <>

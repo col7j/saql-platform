@@ -38,7 +38,8 @@ describe('هيكل الحفل', () => {
     const prog = list.filter((s) => s.id.startsWith('c_prog'));
     expect(prog).toHaveLength(11);
     expect(PROGRAM_SLIDES).toHaveLength(11);
-    const text = JSON.stringify(prog);
+    // فواصل الأسطر للتصميم فقط، والنص نفسه كما هو
+    const text = JSON.stringify(prog).replace(/\\n/g, ' ');
     for (const t of ['هلا بك في', 'صَقَلَ', 'الشيءَ: جَلّاه، وأزال عنه الصدأَ والكَدَر', '«انتقينا معادنَ نفيسة»', 'القائدَ الإنسان', 'مع الفريق', 'تعلُّم', 'سفرتان خارج المدينة', 'حفل الختام وحصاد الرحلة', 'يُكوِّن', 'بنسخةٍ أفضلَ من نفسه'])
       expect(text, t).toContain(t);
     // لا صور مستوردة من pptx: كلها نصوص وأشكال

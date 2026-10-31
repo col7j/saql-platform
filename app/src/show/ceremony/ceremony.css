@@ -1,7 +1,7 @@
 /* شاشات فقرات الحفل على لوحة 1920×1080. كل لون وخط من رموز الهوية (tokens.css) فقط،
    وأصغر نص 30px على اللوحة (يبقى 28px أو أكثر على شاشة 1920). */
 .cv { display: block; }
-.cv-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 var(--b-safe); gap: 28px; }
+.cv-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 96px; gap: 28px; }
 
 .cv-kicker { font-size: 40px; font-weight: 700; color: rgb(var(--t-em)); letter-spacing: 0; }
 .cv-mega { font-size: 150px; font-weight: 900; line-height: 1.1; color: rgb(var(--t-head)); }
@@ -10,8 +10,8 @@
 .cv-sub { font-size: 44px; font-weight: 400; color: rgb(var(--t-fg) / var(--t-fg-soft)); }
 .cv-rule { display: block; width: 180px; height: 8px; border-radius: 999px; background: var(--b-grad-gold); }
 .cv-empty { position: absolute; inset: 400px 0 auto; text-align: center; font-size: 44px; color: rgb(var(--t-fg) / var(--t-fg-muted)); }
-.cv-counter { position: absolute; top: 64px; inset-inline-start: var(--b-safe); font-size: 34px; font-weight: 700; color: rgb(var(--t-fg) / var(--t-fg-muted)); padding: 10px 26px; border-radius: 999px; background: rgb(var(--t-fg) / .08); border: 2px solid rgb(var(--t-line) / .14); }
-.cv-page { position: absolute; top: 0; inset-inline-start: 0; font-size: 34px; font-weight: 700; color: rgb(var(--t-fg) / var(--t-fg-muted)); }
+.cv-counter { position: absolute; top: 64px; inset-inline-end: 96px; font-size: 34px; font-weight: 700; color: rgb(var(--t-fg) / var(--t-fg-muted)); padding: 10px 26px; border-radius: 999px; background: rgb(var(--t-fg) / .08); border: 2px solid rgb(var(--t-line) / .14); }
+.cv-page { position: absolute; top: 4px; inset-inline-end: 0; font-size: 34px; font-weight: 700; color: rgb(var(--t-fg) / var(--t-fg-muted)); }
 
 /* حركات الدخول */
 .cv-in { opacity: 0; animation: cv-up 1000ms var(--b-ease) var(--d, 0ms) both; }
@@ -40,7 +40,7 @@
 .cv-card-fact { margin-top: 22px; font-size: 40px; line-height: 1.5; color: rgb(var(--t-fg) / var(--t-fg-soft)); animation: cv-up 900ms 850ms var(--b-ease) both; }
 
 /* ── شبكة الأسماء ── */
-.cv-roster-head { position: absolute; top: 60px; left: var(--b-safe); right: var(--b-safe); display: flex; flex-direction: column; align-items: center; gap: 22px; }
+.cv-roster-head { position: absolute; top: 60px; left: 96px; right: 96px; display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
 .cv-roster-head .cv-title { font-size: 84px; }
 .cv-grid { position: absolute; top: 250px; left: 96px; right: 96px; bottom: 150px; display: grid; gap: 18px 22px; }
 .cv-person { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px 10px 16px; border-radius: 26px; background: rgb(var(--t-fg) / .06); border: 2px solid rgb(var(--t-line) / .14); text-align: center; overflow: hidden; }
@@ -61,21 +61,21 @@
 .cv-host-big { height: 300px; display: grid; place-items: center; }
 .cv-host-img { max-height: 300px; max-width: 700px; object-fit: contain; }
 .cv-meet { position: absolute; top: 210px; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 70px; }
-.cv-meet-logo { width: 520px; height: 360px; display: grid; place-items: center; border-radius: 48px; background: rgb(var(--b-white)); box-shadow: var(--b-shadow-media); padding: 44px; }
-.cv-meet-img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.cv-meet-logo { width: 520px; height: 360px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 48px; background: rgb(var(--b-white)); box-shadow: var(--b-shadow-media); padding: 44px; }
+.cv-meet-img { width: 100%; height: 100%; min-height: 0; object-fit: contain; }
 .cv-from-start { animation: cv-meet-a 1300ms cubic-bezier(.2, .9, .2, 1) both; }
 .cv-from-end { animation: cv-meet-b 1300ms cubic-bezier(.2, .9, .2, 1) both; }
 @keyframes cv-meet-a { from { opacity: 0; transform: translateX(520px) scale(.9); } to { opacity: 1; transform: none; } }
 @keyframes cv-meet-b { from { opacity: 0; transform: translateX(-520px) scale(.9); } to { opacity: 1; transform: none; } }
 .cv-meet-join { width: 90px; height: 90px; border-radius: 999px; background: var(--b-grad-gold); box-shadow: 0 0 60px rgb(var(--b-gold) / .7); animation: cv-pop 800ms 1000ms cubic-bezier(.2, 1.4, .3, 1) both; position: relative; }
 .cv-meet-join::after { content: ''; position: absolute; inset: 22px; border-radius: 999px; border: 7px solid rgb(var(--b-ink)); border-inline-start-color: transparent; transform: rotate(45deg); }
-.cv-meet-text { position: absolute; top: 640px; left: var(--b-safe); right: var(--b-safe); display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center; }
+.cv-meet-text { position: absolute; top: 650px; left: 96px; right: 96px; display: flex; flex-direction: column; align-items: center; gap: 18px; text-align: center; }
 .cv-meet-text .cv-title { font-size: 84px; }
 .cv-logo-ph { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 28px; border: 3px dashed rgb(var(--b-grey) / .7); color: rgb(var(--b-ink)); font-size: 40px; font-weight: 700; text-align: center; }
-.cv-host-row { position: absolute; top: 255px; left: 0; right: 0; display: flex; justify-content: center; }
-.cv-host-small { height: 150px; max-width: 520px; object-fit: contain; }
-.cv-logos { position: absolute; top: 450px; left: 140px; right: 140px; bottom: 110px; display: grid; gap: 36px; align-content: center; }
-.cv-logo-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; height: 100%; min-height: 0; max-height: 440px; padding: 28px; border-radius: 40px; background: rgb(var(--b-white)); box-shadow: var(--b-shadow-media); }
+.cv-host-row { position: absolute; top: 240px; left: 0; right: 0; display: flex; justify-content: center; }
+.cv-host-small { height: 190px; max-width: 520px; object-fit: contain; }
+.cv-logos { position: absolute; top: 490px; left: 140px; right: 140px; bottom: 90px; display: grid; gap: 36px; align-content: center; grid-auto-rows: minmax(0, 1fr); }
+.cv-logo-card { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; height: 100%; min-height: 0; max-height: 440px; box-sizing: border-box; padding: 28px; border-radius: 40px; background: rgb(var(--b-white)); box-shadow: var(--b-shadow-media); }
 .cv-logo-img { min-height: 0; flex: 1; width: 100%; object-fit: contain; }
 .cv-logo-card .cv-logo-ph { flex: 1; }
 .cv-logo-name { font-size: 32px; font-weight: 700; color: rgb(var(--b-ink)); text-align: center; }
