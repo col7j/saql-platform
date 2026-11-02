@@ -12,6 +12,7 @@ import { Badge, Button, Card, Checklist, Empty, Field, Icons, Input, KeyVal, Mod
 import { GroupBadge, PersonChip } from '@/ui/domain';
 import DocsTab from './DocsTab';
 import { TripLetters } from '../Letters';
+import CoordinationTab from './CoordinationTab';
 import ScheduleTab from './ScheduleTab';
 import PrepTab from './PrepTab';
 import DataTab from './DataTab';
@@ -19,7 +20,7 @@ import AttendanceTab from './AttendanceTab';
 import ClosureTab from './ClosureTab';
 import { RequestPanel, canSeeOwnerBudget } from '../RequestPanel';
 
-type TabKey = 'letters' | 'overview' | 'docs' | 'budget' | 'schedule' | 'prep' | 'data' | 'attendance' | 'closure';
+type TabKey = 'coord' | 'letters' | 'overview' | 'docs' | 'budget' | 'schedule' | 'prep' | 'data' | 'attendance' | 'closure';
 
 export default function TripDetail() {
   const { id } = useParams();
@@ -51,6 +52,7 @@ export default function TripDetail() {
   tabs.push({ key: 'data', label: canPlans ? 'بيانات الرحلة (للمشاركين)' : 'تفاصيل الرحلة' });
   if (canTakeTripAttendance(db, pid, trip) || me.isStaff || tripTeamLeaderId(db, trip) === pid) tabs.push({ key: 'attendance', label: 'الحضور' });
   if (canPlans && ['live', 'closing', 'closed'].includes(st)) tabs.push({ key: 'closure', label: 'الإغلاق والتقييم' });
+  if (trip.type === 'external' && canPlans) tabs.push({ key: 'coord', label: 'التنسيقات' });
   if (me.isStaff || isTripTeam(db, pid, trip) || tripTeamLeaderId(db, trip) === pid) tabs.push({ key: 'letters', label: 'الخطابات' });
   const activeTab = tabs.some((t) => t.key === tab) ? tab : tabs[0].key;
 
@@ -94,6 +96,7 @@ export default function TripDetail() {
 
       <Tabs value={activeTab} onChange={setTab} tabs={tabs} />
 
+      {activeTab === 'coord' && <CoordinationTab trip={trip} />}
       {activeTab === 'letters' && <TripLetters tripId={trip.id} />}
       {activeTab === 'overview' && <Overview tripId={trip.id} onTab={setTab} />}
       {activeTab === 'docs' && <DocsTab trip={trip} />}

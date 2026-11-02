@@ -12,7 +12,7 @@ import { buildTrips } from './seed-trips';
 import { seedMedia } from './seed-media';
 import { defaultLetterTypes } from '@/domain/letters';
 
-export const DB_VERSION = 16;
+export const DB_VERSION = 17;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -38,6 +38,7 @@ export function buildSeed(): DB {
   settings.evaluationLock = { locked: true, at: iso(addDays(T, -58)), by: LEADER_ID };
   const participants = persons.filter((p) => p.kind === 'participant');
   const { trips, docs, budgets, actual } = buildTrips(T, nowDate);
+  trips.forEach((t) => (t.docTemplate = structuredClone(settings.docTemplate)));
 
   // ── الحضور ──
   const attendance: Attendance[] = [];

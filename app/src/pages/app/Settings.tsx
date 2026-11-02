@@ -10,8 +10,9 @@ import type { EvaluationItem, NotificationType, ProofType, Settings, TaskTemplat
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Notice, PageHeader, ReasonModal, Select, Table, Tabs, Toggle } from '@/ui';
 import { PersonChip } from '@/ui/domain';
+import DocTemplateSettings from './DocTemplate';
 
-type Tab = 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'media';
+type Tab = 'doc' | 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'media';
 
 export default function SettingsPage() {
   const me = useMe();
@@ -23,6 +24,7 @@ export default function SettingsPage() {
     ...(leader ? [{ key: 'targets' as const, label: 'المستهدفات والأعداد' }] : []),
     ...(me.canManageScheduleCategories ? [{ key: 'categories' as const, label: 'تصنيفات الجدول' }] : []),
     ...(leader ? [{ key: 'templates' as const, label: 'قالب المهام التلقائية' }] : []),
+    ...(leader ? [{ key: 'doc' as const, label: 'قالب وثيقة الرحلة' }] : []),
     ...(leader ? [{ key: 'media' as const, label: 'المركز الإعلامي' }] : []),
     ...(tech ? [{ key: 'notifications' as const, label: 'الإشعارات' }] : []),
   ];
@@ -39,6 +41,7 @@ export default function SettingsPage() {
       {tab === 'templates' && <Templates />}
       {tab === 'notifications' && <Notifications />}
       {tab === 'media' && <MediaSettings />}
+      {tab === 'doc' && <DocTemplateSettings />}
     </div>
   );
 }

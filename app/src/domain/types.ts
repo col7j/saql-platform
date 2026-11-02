@@ -202,7 +202,7 @@ export type TripExecutor =
   | { kind: 'staff'; leaderId: ID; memberIds: ID[] };
 
 /** الموازنة لم تعد وثيقة في دورة الخطط، بل طلب ميزانية مستقل (BudgetRequest) */
-export type DocKind = 'document' | 'schedule' | 'final_report';
+export type DocKind = 'document' | 'detailed' | 'schedule' | 'final_report';
 export type DocStatus =
   | 'draft'
   | 'submitted' // بانتظار الميسّر (أو القائد العام في رحلات فريق العمل)
@@ -312,6 +312,8 @@ export interface Trip {
   guests: TripGuest[];
   /** أعضاء فريق من خارج المجموعة المنفذة (توزيع أعضاء المجموعة التي بلا رحلة خارجية) */
   extraMemberIds?: ID[];
+  /** نسخة قالب الوثيقة وقت إنشاء الرحلة: تغيير القالب لاحقاً يؤثر على الرحلات الجديدة فقط */
+  docTemplate?: DocSectionDef[];
   coordinationOwnerId?: ID;
   coordinations: Coordination[];
   attendanceTakerId?: ID;
@@ -1027,6 +1029,10 @@ export interface Settings {
   societyDelegateId?: ID;
   /** مقيّمو الرحلات (متوسط تقييماتهم درجة الرحلة). فارغ = القائد العام ومساعده */
   tripEvaluatorIds?: ID[];
+  /** بنية وثيقة الرحلة (أقسام وأعمدة جداولها): بيانات يعدّلها القائد العام أو مساعده */
+  docTemplate: DocSectionDef[];
+  /** الأهداف المقترحة (من محتوى البرنامج) تُختار وتُضاف */
+  suggestedGoals: { educational: string[]; social: string[] };
   /** رابط الداعم الثابت: حد للمحاولات الخاطئة ومدة القفل */
   supporterLink: { maxAttempts: number; lockMinutes: number; programIdea: string };
   /** المركز الإعلامي */
@@ -1343,4 +1349,24 @@ export interface Letter {
   issued?: { number: string; date: ISODate; file: Attachment; byId: ID; at: ISODateTime };
   deliveredAt?: ISODateTime;
   reminderSent?: boolean;
+}
+
+// ───────────── وثيقة الرحلة (على بنية نموذج إعداد الرحلة) ─────────────
+export type DocColumnType = 'text' | 'number' | 'yesno' | 'goal' | 'date' | 'person';
+export interface DocColumn {
+  key: string;
+  label: string;
+  type?: DocColumnType;
+}
+export interface DocSectionDef {
+  id: string;
+  title: string;
+  /** المبدئية = الأقسام 1 إلى 4، والتفصيلية = 5 إلى 10 */
+  stage: 'initial' | 'detailed';
+  /** fields حقول نصية، goals قوائم أهداف، table جدول صفوفه قابلة للإضافة والحذف، embed يعرض الجدول الزمني والموازنة */
+  kind: 'fields' | 'goals' | 'table' | 'embed';
+  fields?: { key: string; label: string; long?: boolean }[];
+  columns?: DocColumn[];
+  /** الأنواع التي يظهر لها القسم (يُخفى السكن والتواصل مع الأسر في الداخلية) */
+  tripTypes: TripType[];
 }

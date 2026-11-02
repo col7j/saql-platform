@@ -6,7 +6,8 @@ import type {
 export const tripTypeLabel: Record<TripType, string> = { internal: 'داخلية', external: 'خارجية' };
 
 export const docKindLabel: Record<DocKind, string> = {
-  document: 'وثيقة الرحلة',
+  document: 'الخطة المبدئية',
+  detailed: 'الخطة التفصيلية',
   schedule: 'الجدول الزمني',
   final_report: 'التقرير الختامي',
 };

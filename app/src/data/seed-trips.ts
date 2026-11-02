@@ -285,8 +285,32 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
   // 9) رحلة سَلع الخارجية — الخطة المبسطة مسودة
   {
     const d = addDays(T, 75);
-    trips.push(baseTrip({ id: 't9', title: 'رحلة سَلع الخارجية: أبها', type: 'external', executor: { kind: 'group', groupId: 'g3' }, startDate: d, endDate: addDays(d, 3), location: 'أبها' }, T));
-    doc('t9', 'document', 'draft', null, { location: 'أبها', titles: '', outline: '' });
+    trips.push(baseTrip({ id: 't9', title: 'رحلة رشد: القصيم (رفقة وأثر)', type: 'external', executor: { kind: 'group', groupId: 'g3' }, startDate: d, endDate: addDays(d, 2), location: 'القصيم' }, T));
+    const rows = (key: string, list: Record<string, string>[]) => ({ [`tbl:${key}`]: JSON.stringify(list.map((r, i) => ({ id: `${key}${i}`, ...r }))) });
+    const goalsEdu = ['الجانب الروحي والعبادي', 'تنمية مهارة قيادة الذات', 'قيادة الفريق', 'حل المشكلات واتخاذ القرار'];
+    doc('t9', 'document', 'draft', null, {
+      title: 'رشد', slogan: 'رشد رفقة وأثر', destination: 'القصيم', departure: d, returnDate: addDays(d, 2),
+      whyPlace: 'أجواء مناسبة توفر أماكن متعددة ومناسبة للشباب', whyDate: 'نهاية الأسبوع وقبل رمضان مناسب للمشاركين',
+      transportType: 'باص كوستر', whyTransport: 'تعزيز روح الفريق أثناء التنقل، وتكلفة مناسبة، وأمان أعلى بإذن الله',
+      goals: JSON.stringify({ educational: goalsEdu, social: ['تقوية الروابط بين المشاركين'] }),
+    });
+    doc('t9', 'detailed', 'draft', null, {
+      ...rows('activities', [
+        { goal: 'الجانب الروحي والعبادي', activity: 'جلسة تأمل', desc: 'جلسة تأمل آخر ساعة من الجمعة', count: '30', prep: 'مصلى', place: 'بيت الشباب', cost: '0' },
+        { goal: 'الجانب الروحي والعبادي', activity: 'قيام ليل', desc: 'كلمات بعد الصلاة وقيام الليل قبل الفجر', count: '30', prep: 'مصلى', place: 'بيت الشباب', cost: '0' },
+        { goal: 'قيادة الفريق', activity: 'قائد يومي متغير', desc: 'قائد يومي لكل فريق وتقييم أداء الفرق', count: '30', prep: 'استمارة تقييم', place: 'القاعة', cost: '100' },
+        { goal: 'حل المشكلات واتخاذ القرار', activity: 'جلسة محاكاة', desc: 'جلسة محاكاة لمشكلة افتراضية وتدريب على المشاورة والتصويت', count: '30', prep: 'بطاقات', place: 'القاعة', cost: '150' },
+        { goal: 'تنمية مهارة قيادة الذات', activity: 'مسابقة ثقافية', desc: 'قراءة كتيب أو مقال ومناقشته', count: '30', prep: 'كتيبات', place: 'القاعة', cost: '300' },
+      ]),
+      ...rows('approvals', [
+        { name: 'بيت الشباب', desc: 'تم حجز بيت الشباب بعدد 30 شخصاً', authority: 'بيت الشباب بريدة', done: 'yes', owner: 'u13', due: addDays(d, -20) },
+        { name: 'موافقة الباص', desc: 'تم حجز باص من شركة المهيع', authority: 'المدينة', done: 'yes', owner: 'u14', due: addDays(d, -20) },
+        { name: 'تصريح الأنشطة الخارجية', desc: 'موافقة الجهة على الأنشطة الميدانية', authority: 'الجمعية', done: 'no', reason: 'بانتظار رد الجهة', owner: 'u13', due: addDays(d, -7) },
+      ]),
+      ...rows('housing', [{ type: 'بيت الشباب', location: 'بريدة', units: '5', equipment: 'جاهزة ومقسمة', facilities: 'قاعة تدريبية 2، مصلى، صالة طعام', why: 'مناسب للعدد ولإقامة الفعاليات والميزانية' }]),
+      ...rows('families', [{ method: 'مجموعة واتساب', desc: 'تحديثات يومية وصور للأسر' }]),
+      ...rows('health', [{ item: 'حقيبة إسعافات أولية صغيرة', owner: 'u15', purpose: 'لأي طارئ لا سمح الله' }]),
+    });
   }
 
   // 10) رحلة العقيق الخارجية — الخطة المبسطة متأخرة عن موعدها
@@ -307,5 +331,11 @@ export function buildTrips(T: string, nowDate: Date): TripSeed {
     doc('t11', 'schedule', 'draft', null, { summary: '', details: '' });
   }
 
+  // الخطة التفصيلية لكل رحلة: تتبع حالة جدولها (معتمدة إن اعتُمد الجدول، وإلا مسودة) إن لم تُزرع صراحة
+  for (const t of trips) {
+    if (docs.some((x) => x.tripId === t.id && x.kind === 'detailed') || !docs.some((x) => x.tripId === t.id && x.kind === 'document')) continue;
+    const sch = docs.find((x) => x.tripId === t.id && x.kind === 'schedule');
+    docs.push({ id: nid('doc'), tripId: t.id, kind: 'detailed', status: sch?.status === 'approved' ? 'approved' : 'draft', version: 1, fields: {}, submittedAt: sch?.status === 'approved' ? sch.submittedAt : undefined, approvedAt: sch?.status === 'approved' ? sch.approvedAt : undefined, history: sch?.status === 'approved' ? sch.history : [] });
+  }
   return { trips, docs, budgets, actual };
 }

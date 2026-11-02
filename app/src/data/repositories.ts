@@ -557,7 +557,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
         const id = uid('t');
         mutate((d) => {
           const trip: Trip = {
-            id, ...input, createdAt: nowISO(), createdBy: me(), published: false,
+            id, ...input, createdAt: nowISO(), createdBy: me(), published: false, docTemplate: structuredClone(d.settings.docTemplate),
             schedule: { plans: [{ id: uid('pl'), name: 'الخطة أ', items: [] }, { id: uid('pl'), name: 'الخطة ب', items: [] }] },
             scheduleVisibility: 'hidden', sessions: [], guests: [],
             coordinations: input.type === 'external'
@@ -567,7 +567,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           };
           d.trips.push(trip);
           if (trip.executor.kind === 'staff') assertNoCapacityConflict(d, [trip.executor.leaderId, ...trip.executor.memberIds]);
-          (['document', 'schedule'] as const).forEach((kind) => d.docs.push({ id: uid('doc'), tripId: id, kind, status: 'draft', version: 1, fields: {}, history: [] }));
+          (['document', 'detailed', 'schedule'] as const).forEach((kind) => d.docs.push({ id: uid('doc'), tripId: id, kind, status: 'draft', version: 1, fields: {}, history: [] }));
           d.tasks.push(...tasksFromTemplates(d, trip, me()));
           const team = tripTeamIds(d, trip);
           pushNotification(d, team, 'general', `أُسندت إليكم رحلة جديدة: ${trip.title}`, `/app/trips/${id}`);

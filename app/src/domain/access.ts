@@ -5,7 +5,7 @@ import { canOpenFinance, canViewBudget, hasFinancePerm, isFinanceOwner } from '.
 import { seesAsLeader, can, isReadOnly } from './roles';
 import { canOpenMedia, hasMediaPerm, latestSnapshot } from './media';
 import {
-  canSeeCommittee, canSeePersonalPlan, canViewFocus, getCapabilities, groupsPublished, type Capabilities,
+  canSeeCommittee, canSeePersonalPlan, canViewTripPlans, canViewFocus, getCapabilities, groupsPublished, type Capabilities,
 } from './permissions';
 import type { DB, HomeWidget, ID, LayoutRole } from './types';
 
@@ -153,7 +153,7 @@ const STATIC_ROUTES: Record<string, string> = {
   individual: 'individual', plans: 'plans', library: 'library', surveys: 'surveys', groups: 'groups', leaderboard: 'leaderboard', tasks: 'tasks',
   requests: 'requests', profile: 'profile', contact: 'contact', tracker: 'tracker', committees: 'committees', people: 'people', insights: 'insights', inbox: 'inbox',
   'tracking-link': 'tracking_link', 'site-editor': 'site_editor', users: 'people', settings: 'settings', finance: 'finance', custody: 'requests',
-  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media', letters: 'letters',
+  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media', letters: 'letters', 'trip-print': 'trips',
 };
 
 export function meetingVisibleTo(db: DB, pid: ID, meetingId: ID): boolean {
@@ -190,6 +190,10 @@ export function routeAccess(db: DB, pid: ID, pathname: string, search = ''): boo
   switch (section) {
     case 'trips':
       return db.trips.some((t) => t.id === id);
+    case 'trip-print': {
+      const tr = db.trips.find((t) => t.id === id);
+      return !!tr && canViewTripPlans(db, pid, tr);
+    }
     case 'focus': {
       const fm = db.focusMeetings.find((f) => f.id === id);
       return !!fm && canViewFocus(db, pid, fm);

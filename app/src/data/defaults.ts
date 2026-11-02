@@ -1,3 +1,4 @@
+import { defaultDocTemplate, defaultSuggestedGoals } from '@/domain/tripDocument';
 // القيم الافتراضية للإعدادات. كلها تُنسخ إلى قاعدة البيانات وتُعدّل من شاشة الإعدادات.
 import type { BudgetCategory, CapacityRule, ProgramBudget, Settings, TaskTemplate, UiConfig } from '@/domain/types';
 
@@ -5,6 +6,8 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
   return {
     program: { name: 'صقل', cohort: 'الدفعة الأولى', startDate, endDate, participantsCount: 28 },
     split: { individual: 50, group: 50 },
+    docTemplate: defaultDocTemplate(),
+    suggestedGoals: defaultSuggestedGoals(),
     groupTripSplit: { internal: 40, external: 60 },
     // القالب الافتراضي للتقييم (وثيقة القرارات + س9 وس10). يضبطه القائد العام ثم يُقفل
     evaluationItems: [
