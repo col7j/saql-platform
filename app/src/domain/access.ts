@@ -134,6 +134,11 @@ export function navFor(db: DB, pid: ID): { sections: { title: string; items: Nav
     placed.add(key);
     let sec = sections.find((s) => s.title === title);
     if (!sec) sections.push((sec = { title, items: [] }));
+    // الرحلات قسمان منفصلان في القائمة: الداخلية والخارجية، لكل منهما أيقونة وهوية
+    if (key === 'trips') {
+      sec.items.push({ key: 'trips_internal', to: '/app/trips?type=internal', label: 'الرحلات الداخلية', icon: 'building' }, { key: 'trips_external', to: '/app/trips?type=external', label: 'الرحلات الخارجية', icon: 'route' });
+      return;
+    }
     sec.items.push({ key, to: cat.to, label: label ?? cat.label, icon: cat.icon });
   };
   for (const l of layouts) for (const s of l.sections) for (const i of s.items) if (!tail.has(i.key)) push(s.title, i.key, i.label);

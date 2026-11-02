@@ -17,7 +17,7 @@ describe('قواعد عامة لكل القوائم', () => {
       expect(n.sections[0].items.map((i) => i.label), p.name).toEqual(BASICS);
       expect(n.sections.length, p.name).toBeGreaterThanOrEqual(2);
       expect(n.sections.length, p.name).toBeLessThanOrEqual(7); // القائد يضيف قسم «اللقاءان»
-      n.sections.forEach((s) => expect(s.items.length, `${p.name}: ${s.title}`).toBeLessThanOrEqual(5));
+      n.sections.forEach((s) => expect(s.items.length, `${p.name}: ${s.title}`).toBeLessThanOrEqual(6));
       const tos = n.all.map((i) => i.to);
       expect(new Set(tos).size, p.name).toBe(tos.length);
     }
@@ -32,8 +32,8 @@ describe('قواعد عامة لكل القوائم', () => {
 
 describe('القائد العام', () => {
   it('18 عنصراً في خمس مجموعات بعد الأساسية (ومعها المركز الإعلامي)', () => {
-    expect(nav('p_lead').all.length).toBe(2 + 18 + 2);
-    expect(groupItems('p_lead', 'البرنامج')).toEqual(['الرحلات', 'المجموعات', 'لقاءات التركيز', 'الاجتماعات', 'الترتيب']);
+    expect(nav('p_lead').all.length).toBe(2 + 18 + 2 + 1);
+    expect(groupItems('p_lead', 'البرنامج')).toEqual(['الرحلات الداخلية', 'الرحلات الخارجية', 'المجموعات', 'لقاءات التركيز', 'الاجتماعات', 'الترتيب']);
     expect(groupItems('p_lead', 'المتابعة')).toEqual(['المؤشرات', 'المهام', 'بانتظار اعتمادي', 'المالية (مراقبة)']);
     expect(groupItems('p_lead', 'الأشخاص والصلاحيات')).toEqual(['الأشخاص والصلاحيات']);
     expect(groupItems('p_lead', 'التقييم')).toEqual(['الإعدادات والتقييم', 'الاستبيانات', 'الخطط الشخصية']);
@@ -60,7 +60,7 @@ describe('مسؤول المالية', () => {
 describe('مسؤول التقنية', () => {
   it('أدواته ثم «البرنامج (عرض)»', () => {
     expect(groupItems('s6', 'أدوات اللجنة التقنية')).toEqual(['الأشخاص والحسابات', 'إعدادات النظام', 'سجل التدقيق', 'لجنتي']);
-    expect(groupItems('s6', 'البرنامج (عرض)')).toEqual(['الرحلات', 'لقاءات التركيز', 'الاجتماعات']);
+    expect(groupItems('s6', 'البرنامج (عرض)')).toEqual(['الرحلات الداخلية', 'الرحلات الخارجية', 'لقاءات التركيز', 'الاجتماعات']);
     expect(routeAccess(db, 's6', '/app/audit')).toBe(true);
   });
 });
@@ -68,7 +68,7 @@ describe('مسؤول التقنية', () => {
 describe('الميسّر', () => {
   it('مجموعتي ثم البرنامج ثم المتابعة، وبلا المالية', () => {
     expect(groupItems('s1', 'مجموعتي')).toEqual(['مجموعتي', 'اللقاءات', 'اللقاءات الفردية', 'الخطط الشخصية']);
-    expect(groupItems('s1', 'البرنامج')).toEqual(['الرحلات', 'الاجتماعات', 'الاستبيانات', 'المكتبة']);
+    expect(groupItems('s1', 'البرنامج')).toEqual(['الرحلات الداخلية', 'الرحلات الخارجية', 'الاجتماعات', 'الاستبيانات', 'المكتبة']);
     expect(groupItems('s1', 'المتابعة')).toEqual(['طلباتي', 'المهام', 'الخطابات']); // s1 هو مندوب الجمعية
     expect(keys('s1')).not.toContain('finance');
     expect(routeAccess(db, 's1', '/app/finance')).toBe(false); // خرج من اللجنة المالية في البيانات التجريبية
@@ -77,12 +77,12 @@ describe('الميسّر', () => {
 
 describe('المشارك وقائد المجموعة والمتابع وعضو فريق العمل', () => {
   it('المشارك: عناصره الحالية في مجموعات، والتنقل السفلي الرحلات ولقاءات التركيز', () => {
-    expect(labels('u2')).toEqual(expect.arrayContaining(['الرحلات', 'لقاءات التركيز', 'خطتي', 'المكتبة', 'لقائي مع الميسّر', 'مهامي', 'الاستبيانات', 'المجموعات', 'الترتيب']));
-    expect(nav('u2').sections[1].items.slice(0, 2).map((i) => i.label)).toEqual(['الرحلات', 'لقاءات التركيز']);
+    expect(labels('u2')).toEqual(expect.arrayContaining(['الرحلات الداخلية', 'الرحلات الخارجية', 'لقاءات التركيز', 'خطتي', 'المكتبة', 'لقائي مع الميسّر', 'مهامي', 'الاستبيانات', 'المجموعات', 'الترتيب']));
+    expect(nav('u2').sections[1].items.slice(0, 3).map((i) => i.label)).toEqual(['الرحلات الداخلية', 'الرحلات الخارجية', 'لقاءات التركيز']);
   });
   it('قائد المجموعة: رحلتي وطلباتي أولاً، ولا يكرر عناصر المشارك', () => {
-    expect(nav('u1').sections[1].items.slice(0, 2).map((i) => i.label)).toEqual(['رحلتي', 'طلباتي']);
-    expect(labels('u1').filter((l) => l === 'الرحلات')).toHaveLength(0);
+    expect(nav('u1').sections[1].items.slice(0, 3).map((i) => i.label)).toEqual(['الرحلات الداخلية', 'الرحلات الخارجية', 'طلباتي']);
+    expect(labels('u1').filter((l) => l === 'رحلتي')).toHaveLength(0);
   });
   it('متابع الرحلات: متابعة الرحلات أولاً', () => {
     expect(nav('s7').all.map((i) => i.key)).toContain('tracker'); // المساعد يرى قائمة القائد ومعها المتابعة
