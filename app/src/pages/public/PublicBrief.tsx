@@ -4,8 +4,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { fmtDate, fmtDateTime } from '@/domain/dates';
-import { execOf, findLinkByToken, itemStatusLabel, latestSnapshot, linkState, publicContent, type ItemKind } from '@/domain/media';
-import { act, repos, useDB } from '@/state/store';
+import { execOf, findLinkByToken, itemKindLabel, itemStatusLabel, latestSnapshot, linkState, publicContent, type ItemKind } from '@/domain/media';
+import { repos, useDB } from '@/state/store';
 import { Badge, Button, Card, Field, Icons, Input, Toasts } from '@/ui';
 import { BriefDocument } from '@/pages/app/media/BriefDocument';
 import { ItemPanel, statusTone } from '@/pages/app/media/ItemPanel';
@@ -68,10 +68,9 @@ export default function PublicBrief() {
       <div className="mt-2 border-t border-ink-100 pt-2 no-print">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="flex items-center gap-1"><Badge tone={statusTone[e.status]}>{itemStatusLabel[e.status]}</Badge>{e.proofs.length > 0 && <span className="text-xs text-ink-500">{e.proofs.length} إثبات</span>}</span>
-          <button type="button" aria-expanded={open} onClick={() => setOpenId(open ? null : id)} className="inline-flex min-h-[44px] items-center rounded-full px-3 text-sm font-medium text-brand-700 hover:bg-brand-50">{open ? 'أغلق' : 'حدّث'}</button>
+          <button type="button" aria-label={`${open ? 'أغلق' : 'حدّث'} ${itemKindLabel[kind]}: ${title}`} aria-expanded={open} onClick={() => setOpenId(open ? null : id)} className="inline-flex min-h-[44px] items-center rounded-full px-3 text-sm font-medium text-brand-700 hover:bg-brand-50">{open ? 'أغلق' : 'حدّث'}</button>
         </div>
         {open && <div className="mt-2"><ItemPanel exec={e} onPatch={(p) => repos.media.publicAct(token, name, id, p)} /></div>}
-        <span className="sr-only">{kind} {title}</span>
       </div>
     );
   };
@@ -96,4 +95,3 @@ export default function PublicBrief() {
     </Shell>
   );
 }
-void act;

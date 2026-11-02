@@ -9,7 +9,7 @@ import {
   ALL_SPEND_KINDS, FINANCE_PERMS, allocatedFor, canOpenFinance, canViewBudget, financeCommitteeId, financePermsOf, hasFinancePerm, isFinanceOwner,
   ownerTitle, requestStage, spendKindGroup, spendKindLabel, spendKindOf,
 } from '@/domain/finance';
-import { activitySpend, budgetOverview, custodyTitle, openCustodyConflict, spentLines, walletBalance, walletFigures, WALLET_IN, walletKindLabel } from '@/domain/ledger';
+import { activitySpend, analysisLines, budgetOverview, custodyTitle, openCustodyConflict, spentLines, walletBalance, walletFigures, WALLET_IN, walletKindLabel } from '@/domain/ledger';
 import { custodyStatusLabel, custodyStatusTone } from '@/domain/labels';
 import { fmtDate, todayISO } from '@/domain/dates';
 import type { Attachment, BudgetOwnerKind, BudgetRequest, FeeRecord, FeeStatus, ProofKind, SpendKind } from '@/domain/types';
@@ -20,6 +20,8 @@ import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, MoreMenu, NavIc
 import { AuditLog } from './Audit';
 import { RequestsCustody } from './RequestsCustody';
 import { InvoiceTable } from './InvoiceTable';
+import { ExtraInvoicesTable } from './ExtraInvoices';
+import { visibleExtraInvoices } from '@/domain/media';
 import { PersonChip } from '@/ui/domain';
 import { BudgetWizard } from './BudgetWizard';
 import { CustodyCard, IssueCustodyModal, LinesEditor, categoryLabel, newLine, toLines } from './CustodyCard';
@@ -159,7 +161,15 @@ function SettingsSection() {
 // ───────────── الفواتير (مراجعة بنود الصرف) ─────────────
 function Invoices() {
   const db = useDB();
-  return <InvoiceTable forms={[...db.spendForms].reverse()} defaultStatus="pending" />;
+  const me = useMe();
+  const [t, setT] = useState<'lines' | 'extra'>('lines');
+  const extra = visibleExtraInvoices(db, me.person.id);
+  return (
+    <div>
+      <Tabs value={t} onChange={setT} tabs={[{ key: 'lines', label: 'بنود الصرف' }, { key: 'extra', label: `فواتير إضافية (${extra.filter((x) => !x.review).length})` }]} />
+      {t === 'lines' ? <InvoiceTable forms={[...db.spendForms].reverse()} defaultStatus="pending" /> : <ExtraInvoicesTable />}
+    </div>
+  );
 }
 
 // ───────────── المحفظة ─────────────
@@ -555,7 +565,9 @@ function Analysis() {
   const db = useDB();
   const [by, setBy] = useState<'category' | 'kind'>('category');
   const [kind, setKind] = useState<SpendKind | 'all'>('all');
-  const lines = spentLines(db).filter((l) => kind === 'all' || l.spendKind === kind);
+  const [withExtra, setWithExtra] = useState(false);
+  const extraTotal = Math.round(db.extraInvoices.reduce((t, x) => t + x.amount, 0) * 100) / 100;
+  const lines = analysisLines(db, withExtra).filter((l) => kind === 'all' || l.spendKind === kind);
   const groups = by === 'category'
     ? [...new Set(lines.map((l) => categoryLabel(db, l)))].map((name) => ({ name, ls: lines.filter((l) => categoryLabel(db, l) === name) }))
     : ALL_SPEND_KINDS.map((k) => ({ name: spendKindLabel[k], ls: lines.filter((l) => l.spendKind === k) }));
@@ -577,6 +589,13 @@ function Analysis() {
             ))}
           </div>
         )}
+      </Card>
+      <Card title="فواتير إضافية" subtitle="بند منفصل: فواتير رفعها أصحاب العهد خارج حساب العهدة، وتُستبعد افتراضياً من المصروف الفعلي">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="text-sm"><b className="num">{SAR(extraTotal)}</b> · <span className="num">{db.extraInvoices.length}</span> فواتير</span>
+          <Toggle checked={withExtra} onChange={setWithExtra} label="ضمّها للتحليل" />
+        </div>
+        {withExtra && <p className="mt-2 text-xs text-accent-700">الفواتير الإضافية مضمومة الآن في الصرف الفعلي أعلاه كتصنيفاتها، ولا تمس أي عهدة.</p>}
       </Card>
       <Card pad={false} title="جدول فواتير الرحلات" subtitle="كل بند معتمد بمورده وفاتورته ومصدره (عهدة أو مباشر)">
         <Table>

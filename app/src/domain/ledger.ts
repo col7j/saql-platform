@@ -163,6 +163,20 @@ export function spentLines(db: DB) {
   return [...fromCustody, ...fromDirect, ...fromContracts];
 }
 
+/**
+ * أسطر التحليل: المصروف الفعلي من العهد والصرف المباشر والعقود. الفواتير الإضافية خارجه افتراضياً،
+ * ومفتاح «ضمّها للتحليل» يضيفها كأسطر مصدرها 'extra' دون أن تمس حساب أي عهدة.
+ */
+export function analysisLines(db: DB, includeExtra = false) {
+  const base = spentLines(db);
+  if (!includeExtra) return base;
+  const extra = db.extraInvoices.map((x) => {
+    const c = db.custodies.find((v) => v.id === x.custodyId)!;
+    return { categoryId: x.categoryId, customCategory: x.categoryId ? undefined : 'غير مصنف', item: x.description || 'فاتورة إضافية', amount: x.amount, ownerKind: x.ownerKind, ownerId: x.ownerId, spendKind: c.spendKind, source: 'extra' as const, vendor: 'فاتورة إضافية', date: x.date, attachment: x.attachment };
+  });
+  return [...base, ...extra];
+}
+
 export function budgetOverview(db: DB) {
   const b = db.programBudget;
   const lines = spentLines(db);

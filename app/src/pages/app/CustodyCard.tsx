@@ -2,19 +2,21 @@
 import { useState } from 'react';
 import { fmtDate, fmtDateTime, todayISO } from '@/domain/dates';
 import { SAR, custodyStatusLabel, custodyStatusTone } from '@/domain/labels';
-import { hasFinancePerm, ownerTitle, spendKindOf } from '@/domain/finance';
+import { canOpenFinance, hasFinancePerm, ownerTitle, spendKindOf } from '@/domain/finance';
+import { visibleExtraInvoices } from '@/domain/media';
 import { uid } from '@/domain/id';
 import { CONTRACTS_CATEGORY, custodyCloseChecks, custodyFigures, formDuplicateWarnings, openCustodyConflict, splitWarning, walletBalance } from '@/domain/ledger';
 import type { Attachment, BudgetOwnerKind, Custody, ProofKind, SpendForm, SpendLine } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
-import { Badge, Button, Card, Checklist, Field, Icons, Input, Modal, Notice, ReasonModal, Select, askConfirm, cx } from '@/ui';
+import { Badge, Button, Card, Checklist, Field, Icons, Input, Modal, Notice, ReasonModal, Select, Tabs, askConfirm, cx } from '@/ui';
 import { AttachmentInput, AttachmentView } from '@/ui/attachments';
 import { PersonChip } from '@/ui/domain';
 import { InvoiceTable } from './InvoiceTable';
+import { ExtraInvoicesPanel } from './ExtraInvoices';
 
 export function categoryLabel(db: ReturnType<typeof useDB>, l: { categoryId?: string; customCategory?: string }) {
   if (l.categoryId) return db.budgetCategories.find((x) => x.id === l.categoryId)?.name ?? '—';
-  if (l.customCategory === CONTRACTS_CATEGORY) return l.customCategory;
+  if (l.customCategory === CONTRACTS_CATEGORY || l.customCategory === 'غير مصنف') return l.customCategory;
   return `غير موجود: ${l.customCategory ?? '—'}`;
 }
 
@@ -26,14 +28,19 @@ export function CustodyCard({ custody: c, embedded }: { custody: Custody; embedd
   const can = (p: Parameters<typeof hasFinancePerm>[2]) => hasFinancePerm(db, pid, p);
   const f = custodyFigures(db, c);
   const forms = db.spendForms.filter((x) => x.custodyId === c.id);
+  const [tab, setTab] = useState<'custody' | 'extra'>('custody');
   const [formOpen, setFormOpen] = useState(false);
   const [transfer, setTransfer] = useState(false);
   const [surplus, setSurplus] = useState<Attachment>();
   const [settle, setSettle] = useState(false);
   const checks = custodyCloseChecks(db, c);
 
+  const canExtra = isRecipient || canOpenFinance(db, pid);
+  const extraCount = visibleExtraInvoices(db, pid).filter((x) => x.custodyId === c.id).length;
   const body = (
     <div className="space-y-5">
+      {canExtra && <Tabs className="!mb-0" size="sm" value={tab} onChange={setTab} tabs={[{ key: 'custody', label: 'العهدة' }, { key: 'extra', label: `فواتير إضافية (${extraCount})` }]} />}
+      {tab === 'extra' ? <ExtraInvoicesPanel custody={c} /> : (<>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="flex items-center gap-2 text-sm"><Badge tone={custodyStatusTone[c.status]}>عهدة {custodyStatusLabel[c.status]}</Badge> <PersonChip id={c.recipientId} size={22} sub="صاحب العهدة والمسؤول عنها" /></span>
         {isRecipient && c.status === 'active' && <Button size="sm" variant="secondary" onClick={() => askConfirm({ title: 'طلب الإغلاق المالي', body: 'يتوقف الصرف فوراً، وتحسب المنصة الفائض أو العجز، ثم تراجع المالية وتعتمد الإغلاق.', cta: 'أرسل طلب الإغلاق', run: () => act(() => repos.finance.requestClose(c.id), 'أُرسل طلب الإغلاق') })}>اطلب الإغلاق</Button>}
@@ -102,6 +109,7 @@ export function CustodyCard({ custody: c, embedded }: { custody: Custody; embedd
         </div>
       </details>
 
+      </>)}
       {formOpen && <SpendFormModal custody={c} onClose={() => setFormOpen(false)} />}
       {transfer && <TransferModal custody={c} onClose={() => setTransfer(false)} />}
       {settle && <SettleModal custody={c} onClose={() => setSettle(false)} />}
