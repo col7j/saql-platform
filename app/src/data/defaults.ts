@@ -39,7 +39,7 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
         ],
       },
       { key: 'finance_manual', name: 'بنود المسؤول المالي', scope: 'group', weight: 20, mode: 'manual', enabled: true, description: 'بنود يحددها مسؤول المالية (مثل الترشيد) ويقيّم بها وحده.' },
-      { key: 'staff_rating', name: 'متوسط تقييم فريق العمل', scope: 'group', weight: 30, mode: 'manual', enabled: true, description: 'كل عضو في فريق العمل يقيّم الرحلة من 10، ويدخل المتوسط.' },
+      { key: 'staff_rating', name: 'متوسط تقييم فريق العمل', scope: 'group', weight: 30, mode: 'manual', enabled: true, description: 'يقيّم الرحلة من 10 المتابع (مساعد القائد العام) والقائد العام، ودرجة الرحلة متوسط تقييمهما، ويأخذها كل أعضاء فريقها.' },
     ],
     presentationCriteria: [
       { key: 'style', name: 'أسلوب الطرح' },
