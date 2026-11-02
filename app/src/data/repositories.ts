@@ -1306,6 +1306,10 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           const r = findRequest(d, requestId);
           if (r.status !== 'approved') throw new Error('لا تُصرف العهدة إلا بعد اعتماد الطلب');
           if (d.custodies.some((c) => c.requestId === r.id)) throw new Error('صُرفت عهدة هذا الطلب مسبقاً');
+          // المستلم يُحدَّد تلقائياً: من رفع الطلب (قائد المجموعة للرحلة، الميسّر للقاء التركيز)، وبياناته المالية من ملفه الشخصي
+          const holder = d.persons.find((p) => p.id === r.requestedBy);
+          if (!holder?.bank?.iban) throw new Error(`بيانات التحويل ناقصة: يكمل ${holder?.name ?? 'صاحب العهدة'} آيبانه واسم بنكه في ملفه الشخصي قبل الصرف`);
+          input = { ...input, recipientId: r.requestedBy };
           const c = openCustodyIn(d, me(), { ownerKind: r.ownerKind, ownerId: r.ownerId, requestId: r.id, recipientId: input.recipientId, approved: r.amount, amount: input.amount, attachment: input.attachment });
           r.history.push({ at: nowISO(), byId: me(), action: 'disbursed', note: input.amount < r.amount ? `دفعة أولى ${input.amount} من ${r.amount}` : undefined });
           audit(d, me(), 'صرف عهدة', `${ownerTitle(d, r.ownerKind, r.ownerId)} — ${input.amount} من ${r.amount} ر.س لـ ${personName(d, input.recipientId)}`);

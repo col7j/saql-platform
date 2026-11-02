@@ -33,7 +33,7 @@ const majors = ['هندسة برمجيات', 'إدارة أعمال', 'شريع�
 
 export function buildPeople(): Person[] {
   const leader: Person = { id: LEADER_ID, name: 'أحمد يحيى الحاج', kind: 'staff', isGeneralLeader: true, email: 'leader@saql.example', phone: '0550000001', title: 'القائد العام للبرنامج' };
-  const staff: Person[] = staffRaw.map(([id, name, title], i) => ({ id, name, kind: 'staff', ...(id === 's7' ? { isAssistant: true } : {}), ...(id === 's8' ? { isSupervisor: true } : {}), email: `${id}@saql.example`, phone: `05500000${10 + i}`, title }));
+  const staff: Person[] = staffRaw.map(([id, name, title], i) => ({ id, name, kind: 'staff', ...(id === 's7' ? { isAssistant: true } : {}), ...(id === 's8' ? { isSupervisor: true } : {}), email: `${id}@saql.example`, phone: `05500000${10 + i}`, title, bank: { iban: `SA0380000000608010${String(100000 + i).padStart(6, '0')}`, bankName: 'الراجحي' } }));
   const participants: Person[] = participantNames.map((name, i) => ({
     id: `u${i + 1}`,
     name,
