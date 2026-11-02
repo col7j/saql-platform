@@ -100,9 +100,9 @@ export function TripCard({ trip: t }: { trip: Trip }) {
   const next = tripDeadlines(db, t).find((d) => !d.done);
   const showPrep = team || me.isStaff;
   return (
-    <Link to={`/app/trips/${t.id}`} className="group flex flex-col rounded-2xl border border-ink-100 bg-white p-4 shadow-card transition hover:-translate-y-0.5 hover:border-brand-200">
+    <Link to={`/app/trips/${t.id}`} className={cx('group flex flex-col rounded-2xl border border-ink-100 border-s-4 bg-white p-4 shadow-card transition hover:-translate-y-0.5', t.type === 'external' ? 'border-s-accent-500 hover:border-accent-300' : 'border-s-brand-600 hover:border-brand-200')}>
       <div className="flex flex-wrap items-center gap-1.5">
-        <Badge tone={t.type === 'external' ? 'orange' : 'blue'}>{tripTypeLabel[t.type]}</Badge>
+        <Badge tone={t.type === 'external' ? 'orange' : 'blue'}>{t.type === 'external' ? <Icons.Route className="me-1 inline h-3 w-3" /> : <Icons.Building2 className="me-1 inline h-3 w-3" />}{tripTypeLabel[t.type]}</Badge>
         {t.executor.kind === 'staff' ? <Badge tone="purple">{t.type === 'internal' ? 'لقاء تطويري' : 'فريق العمل'}</Badge> : me.isParticipant && !groupsPublished(db) ? <Badge>مجموعة تُعلن يوم النشر</Badge> : <GroupBadge id={t.executor.groupId} />}
         {t.pair && <Badge tone="orange">مزدوجة</Badge>}
         {t.isPersonalPlanMeeting && <Badge tone="green">لقاء الخطة الشخصية</Badge>}

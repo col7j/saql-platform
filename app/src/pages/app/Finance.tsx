@@ -105,6 +105,7 @@ function Overview({ sections }: { sections: FinanceSection[] }) {
         <Stat label="طلبات تنتظرك" value={waitingReq} icon={<Icons.Inbox className="h-5 w-5" />} tone="accent" to={go('requests')} />
         <Stat label="عهد بطلب إغلاق" value={closing} icon={<Icons.LockKeyhole className="h-5 w-5" />} to={go('requests')} />
       </div>
+      {can('reports') && <Dashboard />}
       {sections.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-bold">الأقسام</h2>

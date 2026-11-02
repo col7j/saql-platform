@@ -1,3 +1,4 @@
+import { requestFor } from '@/domain/finance';
 // الاجتماعات: فريق العمل، ومع قادة المجموعات. مسؤول واحد يكتب المحضر.
 // الحالات: مخطَّط ← مُنعقد ← محضر مرفوع ← مُغلق
 import { useState } from 'react';
@@ -8,7 +9,7 @@ import { RequestPanel } from './RequestPanel';
 import { SAR } from '@/domain/labels';
 import type { Meeting, MeetingStatus } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
-import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Select, StatusPill, StepWizard, Tabs, Textarea, Toggle, askConfirm, cx } from '@/ui';
+import { BudgetBar, Badge, Button, Card, Empty, Field, Icons, Input, Modal, Notice, PageHeader, Select, StatusPill, StepWizard, Tabs, Textarea, Toggle, askConfirm, cx } from '@/ui';
 import type { Tone } from '@/domain/labels';
 import { PersonChip, TaskStatusBadge } from '@/ui/domain';
 
@@ -216,6 +217,7 @@ export function MeetingDetail() {
             {(ownerFin || me.isLeader || isOwner) && (
               <div className="mt-3 space-y-2 border-t border-ink-100 pt-3">
                 <div className="text-sm">المرصود: <b className="num">{SAR(m.allocated ?? db.programBudget.meetingDefault)}</b></div>
+                {(() => { const r = requestFor(db, 'meeting', m.id); const lim = m.allocated ?? db.programBudget.meetingDefault; return r && lim > 0 ? <BudgetBar spent={r.amount} limit={lim} /> : null; })()}
                 {ownerFin && <AllocationEditor meeting={m} />}
               </div>
             )}
