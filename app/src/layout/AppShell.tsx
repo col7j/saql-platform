@@ -14,6 +14,8 @@ export function AccountMenu() {
   const nav = useNavigate();
   const [open, setOpen] = useState(false);
   const [bell, setBell] = useState(false);
+  const loc = useLocation();
+  useEffect(() => { setOpen(false); setBell(false); }, [loc.pathname, loc.search]);
   const mine = db.notifications.filter((n) => n.toId === me.person.id);
   const unread = mine.filter((n) => !n.read).length;
   const go = (to: string) => { setOpen(false); setBell(false); nav(to); };

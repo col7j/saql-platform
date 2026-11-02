@@ -39,7 +39,7 @@ export default function DocsTab({ trip }: { trip: Trip }) {
   return (
     <div className="space-y-4">
       <Notice>
-        ثلاثة نماذج كلٌّ على حدة: <b>وثيقة الرحلة أولاً</b>، ثم الجدول الزمني، والميزانية (تبويب الميزانية). المسار: {trip.executor.kind === 'group' ? 'الميسّر ثم ' : ''}القائد العام، والرفض يعود لقائد الفريق. النشر لا يعمل إلا باكتمال الاعتمادات وبيانات الرحلة.
+        نماذج الرحلة كلٌّ على حدة: <b>الخطة المبدئية أولاً</b> (الأقسام 1 إلى 4)، ثم <b>الخطة التفصيلية</b> (5 إلى 10)، ثم الجدول الزمني والميزانية (تبويباهما). المسار: {trip.executor.kind === 'group' ? 'الميسّر ثم ' : ''}القائد العام، والرفض يعود لقائد الفريق. النشر لا يعمل إلا باكتمال الاعتمادات وبيانات الرحلة.
       </Notice>
       <div className="flex justify-end"><a href={`#/app/trip-print/${trip.id}`} target="_blank" rel="noreferrer" className="text-sm text-brand-700 underline">اطبع وثيقة الرحلة PDF</a></div>
       {docs.map((d) => (
