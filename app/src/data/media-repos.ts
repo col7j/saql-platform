@@ -260,7 +260,7 @@ export function createMediaRepos(mutate: Mutate, me: () => ID) {
         if (!m) throw new Error('الشخص ليس عضواً في اللجنة الإعلامية');
         if (m.role === 'leader') throw new Error('رئيس اللجنة يملك كل الصلاحيات');
         const ceiling = d.committees.find((c) => c.id === cid)?.grantedPerms;
-        if (on && ceiling && !ceiling.includes(perm)) throw new Error('هذه الصلاحية خارج ما منحه القائد العام للجنة الإعلامية');
+        if (on && ceiling && !ceiling.includes(perm)) throw new Error('هذه الصلاحية خارج سقف اللجنة الإعلامية');
         const cur = new Set(m.mediaPerms ?? []);
         if (on) cur.add(perm); else cur.delete(perm);
         m.mediaPerms = [...cur];

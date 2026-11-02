@@ -69,7 +69,7 @@ export function accessibleKeys(db: DB, pid: ID): Set<string> {
   add('tracking_link', c.isStaff);
   add('site_editor', c.isSiteEditor);
   add('integrations', c.isTechLead);
-  add('permissions', c.isLeader);
+  add('permissions', c.isLeader || c.isTechLead);
   add('audit', c.isTechLead); // السجل المركزي لمسؤول التقنية وحده
   add('settings', c.isLeader || c.isTechLead || c.canManageScheduleCategories);
   add('finance', canOpenFinance(db, pid));

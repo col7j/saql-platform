@@ -69,7 +69,7 @@ function MediaSettings() {
           {me.isLeader && <Button onClick={() => act(() => repos.media.saveSettings(m), 'حُفظت إعدادات المركز الإعلامي')}>احفظ</Button>}
         </div>
       </Card>
-      <Card title="صلاحيات أعضاء اللجنة الإعلامية" subtitle={canGrant ? 'امنح كل صلاحية على حدة ضمن سقف اللجنة. العضو بلا أي صلاحية لا يرى المركز' : 'يمنحها مسؤول اللجنة التقنية. العضو بلا أي صلاحية لا يرى المركز'}>
+      <Card title="صلاحيات أعضاء اللجنة الإعلامية" subtitle={canGrant ? 'امنح كل صلاحية على حدة (والسقف من شاشة «الصلاحيات»). العضو بلا أي صلاحية لا يرى المركز' : 'يمنحها مسؤول اللجنة التقنية. العضو بلا أي صلاحية لا يرى المركز'}>
         <ul className="space-y-3">
           {members.map((x) => (
             <li key={x.id} className="rounded-2xl border border-ink-100 p-3">

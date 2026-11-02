@@ -11,14 +11,15 @@ const catalogOf = (c: Committee): { key: string; label: string }[] => (c.kind ==
 export default function PermissionsPage() {
   const db = useDB();
   const me = useMe();
-  const canWrite = me.isGeneralLeader || me.isAssistant;
+  const canWrite = me.isTechLead;
+  const canDelegate = me.isGeneralLeader || me.isAssistant;
   const facilitators = db.groups.map((g) => g.facilitatorId).filter((x): x is string => !!x);
   return (
     <div className="space-y-4">
-      <PageHeader title="الصلاحيات" subtitle="تعيين الصفات ومنح الصلاحيات للجان وسحبها. كل تغيير يُسجَّل في السجل المركزي" />
-      {!canWrite && <Notice>عرض للقراءة فقط.</Notice>}
+      <PageHeader title="الصلاحيات" subtitle="ما يراه كل شخص وما يعدّله، يحدده مسؤول التقنية. كل تغيير يُسجَّل في السجل المركزي" />
+      {!canWrite && <Notice>عرض للقراءة فقط: الصلاحيات يحددها مسؤول التقنية.</Notice>}
       <Card title="مندوب الجمعية" subtitle="ميسّر واحد يصدر الخطابات، ويجوز تحويل الصفة لآخر">
-        <Select value={db.settings.societyDelegateId ?? ''} disabled={!canWrite} onChange={(e) => e.target.value && act(() => repos.letters.assignDelegate(e.target.value), 'عُيّن المندوب')}
+        <Select value={db.settings.societyDelegateId ?? ''} disabled={!canDelegate} onChange={(e) => e.target.value && act(() => repos.letters.assignDelegate(e.target.value), 'عُيّن المندوب')}
           options={[{ value: '', label: 'اختر ميسّراً' }, ...facilitators.map((id) => ({ value: id, label: personName(db, id) }))]} aria-label="مندوب الجمعية" />
       </Card>
       {db.committees.filter((c) => c.kind === 'finance' || c.kind === 'media').map((c) => {
@@ -26,7 +27,7 @@ export default function PermissionsPage() {
         const ceiling = c.grantedPerms ?? cat.map((p) => p.key);
         const members = db.memberships.filter((m) => m.committeeId === c.id);
         return (
-          <Card key={c.id} title={c.name} subtitle={c.kind === 'media' ? 'تحدد هنا سقف ما تملكه اللجنة، ويمنح مسؤول التقنية أعضاءها من «الإعدادات» ضمن هذا السقف' : 'ما منحته للجنة (سقف)، ثم ما يملكه كل عضو ضمنه. وتفويض مسؤول اللجنة داخلها يبقى ضمن هذا السقف'}>
+          <Card key={c.id} title={c.name} subtitle="ما منحته للجنة (سقف)، ثم ما يملكه كل عضو ضمنه. وتفويض مسؤول اللجنة داخلها يبقى ضمن هذا السقف">
             <div className="mb-3 flex flex-wrap gap-3">
               {cat.map((p) => (
                 <label key={p.key} className="flex min-h-[36px] items-center gap-1.5 text-sm">
@@ -46,7 +47,7 @@ export default function PermissionsPage() {
                         <td className="px-2 py-1">{personName(db, m.personId)} {m.role === 'leader' && <Badge tone="blue">مسؤول</Badge>}</td>
                         {cat.map((p) => (
                           <td key={p.key} className="px-2 py-1">
-                            <input type="checkbox" aria-label={`${p.label} — ${personName(db, m.personId)}`} disabled={!canWrite || c.kind === 'media' || m.role === 'leader' || !ceiling.includes(p.key)} checked={has(p.key)} onChange={(e) => act(() => repos.permissions.setMemberPerm(c.id, m.personId, p.key, e.target.checked), e.target.checked ? 'مُنحت الصلاحية' : 'سُحبت الصلاحية')} />
+                            <input type="checkbox" aria-label={`${p.label} — ${personName(db, m.personId)}`} disabled={!canWrite || m.role === 'leader' || !ceiling.includes(p.key)} checked={has(p.key)} onChange={(e) => act(() => repos.permissions.setMemberPerm(c.id, m.personId, p.key, e.target.checked), e.target.checked ? 'مُنحت الصلاحية' : 'سُحبت الصلاحية')} />
                           </td>
                         ))}
                       </tr>

@@ -38,8 +38,8 @@ describe('مفاتيح الربط', () => {
 });
 
 describe('شاشة الصلاحيات', () => {
-  it('القائد يمنح ويسحب صلاحية، ولا يستطيع مسؤول التقنية ذلك، والتفويض الداخلي ضمن السقف', () => {
-    const h = harness('p_lead');
+  it('مسؤول التقنية يمنح ويسحب صلاحية لا القائد، والتفويض الداخلي ضمن السقف', () => {
+    const h = harness('s6');
     const fin = h.db.committees.find((c) => c.kind === 'finance')!.id;
     h.repos.permissions.setMemberPerm(fin, 's3', 'review_invoices', true);
     expect(h.db.memberships.find((m) => m.committeeId === fin && m.personId === 's3')!.financePerms).toContain('review_invoices');
@@ -48,12 +48,12 @@ describe('شاشة الصلاحيات', () => {
     // سقف اللجنة: تقليصه يمنع التفويض الداخلي
     h.repos.permissions.setCommitteeCeiling(fin, ['view_budget']);
     h.as('s5');
-    expect(() => h.repos.finance.setPermission('s3', 'disburse', true)).toThrow(/القائد العام/);
+    expect(() => h.repos.finance.setPermission('s3', 'disburse', true)).toThrow(/مسؤول التقنية/);
     h.repos.finance.setPermission('s3', 'view_budget', true);
-    h.as('s6');
-    expect(() => h.repos.permissions.setMemberPerm(fin, 's3', 'view_budget', false)).toThrow(/مساعده/);
+    h.as('p_lead');
+    expect(() => h.repos.permissions.setMemberPerm(fin, 's3', 'view_budget', false)).toThrow(/التقنية/);
     expect(() => h.repos.permissions.setCommitteeCeiling(fin, [])).toThrow();
-    expect(routeAccess(h.db, 's6', '/app/permissions')).toBe(false);
+    expect(routeAccess(h.db, 's6', '/app/permissions')).toBe(true);
     expect(routeAccess(h.db, 'p_lead', '/app/permissions')).toBe(true);
     expect(routeAccess(h.db, 's7', '/app/permissions')).toBe(true);
     expect(h.db.audit.some((a) => a.action === 'منح صلاحية' && a.area === 'roles')).toBe(true);

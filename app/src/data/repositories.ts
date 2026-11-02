@@ -327,12 +327,12 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
         return this.createAccount({ role: input.kind === 'staff' ? 'staff' : 'participant', name: input.name, email: input.email, phone: input.phone, title: input.title }).id;
       },
     },
-    // ───────────── الصلاحيات المركزية (القائد العام ومساعده): تعيين الصفات ومنح الصلاحيات للجان وسحبها ─────────────
+    // ───────────── الصلاحيات المركزية (مسؤول التقنية): ما يراه كل شخص وما يعدّله، وسقف اللجان ─────────────
     permissions: {
       /** سقف ما تملك اللجنة تفويضه. تقليصه يسحب ما تجاوزه من الأعضاء */
       setCommitteeCeiling(committeeId: ID, perms: string[]) {
         mutate((d) => {
-          if (!isLeaderId(d, me())) throw new Error('منح الصلاحيات للجان للقائد العام أو مساعده');
+          if (!canManageAccounts(d, me())) throw new Error('تحديد ما يراه كل شخص ويعدّله لمسؤول اللجنة التقنية');
           const c = d.committees.find((x) => x.id === committeeId);
           if (!c || !['finance', 'media'].includes(c.kind)) throw new Error('الصلاحيات الدقيقة للجنتين المالية والإعلامية');
           c.grantedPerms = [...new Set(perms)];
@@ -346,11 +346,10 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       /** منح صلاحية لعضو أو سحبها، ضمن سقف اللجنة */
       setMemberPerm(committeeId: ID, personId: ID, perm: string, on: boolean) {
         mutate((d) => {
-          if (!isLeaderId(d, me())) throw new Error('منح الصلاحيات للقائد العام أو مساعده');
+          if (!canManageAccounts(d, me())) throw new Error('تحديد ما يراه كل شخص ويعدّله لمسؤول اللجنة التقنية');
           const c = d.committees.find((x) => x.id === committeeId);
           const m = d.memberships.find((x) => x.committeeId === committeeId && x.personId === personId);
           if (!c || !m) throw new Error('الشخص ليس عضواً في هذه اللجنة');
-          if (c.kind === 'media') throw new Error('يمنح صلاحيات المركز الإعلامي لأعضائه مسؤول اللجنة التقنية');
           if (m.role === 'leader') throw new Error('مسؤول اللجنة يملك كل ما منحته اللجنة');
           if (on && c.grantedPerms && !c.grantedPerms.includes(perm)) throw new Error('الصلاحية خارج ما منحته للجنة: أضفها إلى سقف اللجنة أولاً');
           if (c.kind === 'finance') {
@@ -359,6 +358,10 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
             if (on) set.add(perm as FinancePermission); else set.delete(perm as FinancePermission);
             m.financePerms = [...set];
             m.canSeeFinance = set.has('view_budget');
+          } else if (c.kind === 'media') {
+            const set = new Set(m.mediaPerms ?? []);
+            if (on) set.add(perm as MediaPermission); else set.delete(perm as MediaPermission);
+            m.mediaPerms = [...set];
           } else throw new Error('الصلاحيات الدقيقة للجنتين المالية والإعلامية');
           audit(d, me(), on ? 'منح صلاحية' : 'سحب صلاحية', `${perm} — ${personName(d, personId)} (${c.name})`, 'roles');
           pushNotification(d, [personId], 'general', `${on ? 'مُنحت' : 'سُحبت'} صلاحية في ${c.name}`, '/app');
@@ -1305,7 +1308,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           const m = d.memberships.find((x) => x.committeeId === cid && x.personId === personId);
           if (!m) throw new Error('الشخص ليس عضواً في اللجنة المالية');
           const ceiling = d.committees.find((c) => c.id === cid)?.grantedPerms;
-          if (on && ceiling && !ceiling.includes(perm)) throw new Error('هذه الصلاحية لم يمنحها القائد العام للجنة المالية: يمنحها من شاشة «الصلاحيات»');
+          if (on && ceiling && !ceiling.includes(perm)) throw new Error('هذه الصلاحية لم تُمنح للجنة المالية: يمنحها مسؤول التقنية من شاشة «الصلاحيات»');
           const set = new Set(m.financePerms ?? []);
           if (on) set.add(perm); else set.delete(perm);
           m.financePerms = [...set];
