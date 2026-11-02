@@ -27,6 +27,7 @@
 | `prompts/claude-code-finance-prompt.md` | معتمدة | إعادة هيكلة المالية وتبسيط الواجهة (ينفَّذ أولاً) |
 | `prompts/claude-code-media-center-prompt.md` | معتمدة | المركز الإعلامي والفواتير الإضافية (ثانياً) |
 | `prompts/claude-code-notes-prompt.md` | معتمدة (يغلبه الرئيسي) | الإشعارات والملف الشخصي والرحلات والتقارير (ثالثاً) |
+| `prompts/delta-for-claude-code.md` | معتمدة (تغلب `spec/` و`prompts/`) | تحديثات: تقييم الرحلة، والسجل المركزي، والمفاتيح، والصلاحيات |
 | `prompts/claude-code-architecture-prompt.md` | للمرجع فقط الآن | مرحلة المنصة الحقيقية. **لا يُنفَّذ** |
 | `inputs/trip-form-rashd.docx` و`.pdf` | معتمدة (مدخل) | نموذج رحلة «رشد - القصيم»، أساس وثيقة الرحلة |
 | `inputs/budget-form-reference.png` | معتمدة (مدخل) | شكل الموازنة التفصيلية بالتصنيفات |
