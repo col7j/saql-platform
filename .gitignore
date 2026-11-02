@@ -15,3 +15,8 @@ demo-snapshot*.json
 show-export*
 *participants*.csv
 *.pptx
+
+# أسرار الربط: لا تُرفع أبداً
+.env
+.env.*
+!.env.example

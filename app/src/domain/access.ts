@@ -68,7 +68,9 @@ export function accessibleKeys(db: DB, pid: ID): Set<string> {
   add('approvals', c.isLeader);
   add('tracking_link', c.isStaff);
   add('site_editor', c.isSiteEditor);
-  add('audit', c.isTechLead || c.isLeader);
+  add('integrations', c.isTechLead);
+  add('permissions', c.isLeader);
+  add('audit', c.isTechLead); // السجل المركزي لمسؤول التقنية وحده
   add('settings', c.isLeader || c.isTechLead || c.canManageScheduleCategories);
   add('finance', canOpenFinance(db, pid));
   add('media', canOpenMedia(db, pid));
@@ -160,7 +162,7 @@ const STATIC_ROUTES: Record<string, string> = {
   individual: 'individual', plans: 'plans', library: 'library', surveys: 'surveys', groups: 'groups', leaderboard: 'leaderboard', tasks: 'tasks',
   requests: 'requests', profile: 'profile', contact: 'contact', tracker: 'tracker', committees: 'committees', people: 'people', insights: 'insights', inbox: 'inbox',
   'tracking-link': 'tracking_link', 'site-editor': 'site_editor', users: 'people', settings: 'settings', finance: 'finance', custody: 'requests',
-  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media', letters: 'letters', 'finance-print': 'finance', opening: 'opening', closing: 'closing', 'trip-print': 'trips',
+  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media', letters: 'letters', integrations: 'integrations', permissions: 'permissions', 'finance-print': 'finance', opening: 'opening', closing: 'closing', 'trip-print': 'trips',
 };
 
 export function meetingVisibleTo(db: DB, pid: ID, meetingId: ID): boolean {

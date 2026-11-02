@@ -6,6 +6,8 @@ import { uid } from '@/domain/id';
 import { canManageCommittee, canManageFocus, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { isReadOnly, READ_ONLY_MESSAGE, leaderIds } from '@/domain/roles';
 import { ratingWindowOpen, tripEvaluatorIds } from '@/domain/collectiveEvaluation';
+import { vault } from './secrets';
+import { INTEGRATION_KEYS } from '@/domain/integrations';
 import { queueEmail } from '@/domain/notifyRules';
 import { applyFirstRun, type SetupInput } from '@/domain/setup';
 import { canRequestLetter, isDelegate, lettersFor } from '@/domain/letters';
@@ -18,7 +20,7 @@ import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, evaluationS
 import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, focusDone, focusIsPast, tasksFromTemplates, tripCloseBlock, type DocAction } from '@/domain/workflow';
 import type {
-  Letter, LetterType, PersonKind, AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
+  MediaPermission, Letter, LetterType, PersonKind, AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
   LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ProgramEvent, SchedulePlan, Settings,
   Attendance, StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
 } from '@/domain/types';
@@ -322,6 +324,68 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
         return this.createAccount({ role: input.kind === 'staff' ? 'staff' : 'participant', name: input.name, email: input.email, phone: input.phone, title: input.title }).id;
       },
     },
+    // ───────────── الصلاحيات المركزية (القائد العام ومساعده): تعيين الصفات ومنح الصلاحيات للجان وسحبها ─────────────
+    permissions: {
+      /** سقف ما تملك اللجنة تفويضه. تقليصه يسحب ما تجاوزه من الأعضاء */
+      setCommitteeCeiling(committeeId: ID, perms: string[]) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('منح الصلاحيات للجان للقائد العام أو مساعده');
+          const c = d.committees.find((x) => x.id === committeeId);
+          if (!c || !['finance', 'media'].includes(c.kind)) throw new Error('الصلاحيات الدقيقة للجنتين المالية والإعلامية');
+          c.grantedPerms = [...new Set(perms)];
+          d.memberships.filter((m) => m.committeeId === c.id).forEach((m) => {
+            if (c.kind === 'finance' && m.financePerms) { m.financePerms = m.financePerms.filter((p) => c.grantedPerms!.includes(p)); m.canSeeFinance = m.financePerms.includes('view_budget'); }
+            if (c.kind === 'media' && m.mediaPerms) m.mediaPerms = m.mediaPerms.filter((p) => c.grantedPerms!.includes(p));
+          });
+          audit(d, me(), 'تحديد صلاحيات اللجنة', `${c.name}: ${c.grantedPerms.length} صلاحية`, 'roles');
+        });
+      },
+      /** منح صلاحية لعضو أو سحبها، ضمن سقف اللجنة */
+      setMemberPerm(committeeId: ID, personId: ID, perm: string, on: boolean) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('منح الصلاحيات للقائد العام أو مساعده');
+          const c = d.committees.find((x) => x.id === committeeId);
+          const m = d.memberships.find((x) => x.committeeId === committeeId && x.personId === personId);
+          if (!c || !m) throw new Error('الشخص ليس عضواً في هذه اللجنة');
+          if (m.role === 'leader') throw new Error('مسؤول اللجنة يملك كل ما منحته اللجنة');
+          if (on && c.grantedPerms && !c.grantedPerms.includes(perm)) throw new Error('الصلاحية خارج ما منحته للجنة: أضفها إلى سقف اللجنة أولاً');
+          if (c.kind === 'finance') {
+            if (!FINANCE_PERMS.some((p) => p.key === perm)) throw new Error('صلاحية غير معروفة');
+            const set = new Set(m.financePerms ?? []);
+            if (on) set.add(perm as FinancePermission); else set.delete(perm as FinancePermission);
+            m.financePerms = [...set];
+            m.canSeeFinance = set.has('view_budget');
+          } else if (c.kind === 'media') {
+            const set = new Set(m.mediaPerms ?? []);
+            if (on) set.add(perm as MediaPermission); else set.delete(perm as MediaPermission);
+            m.mediaPerms = [...set];
+          } else throw new Error('الصلاحيات الدقيقة للجنتين المالية والإعلامية');
+          audit(d, me(), on ? 'منح صلاحية' : 'سحب صلاحية', `${perm} — ${personName(d, personId)} (${c.name})`, 'roles');
+          pushNotification(d, [personId], 'general', `${on ? 'مُنحت' : 'سُحبت'} صلاحية في ${c.name}`, '/app');
+        });
+      },
+    },
+    // ───────────── الربط والتكاملات: كتابة فقط، والقيمة لا تُعرض بعد الحفظ ─────────────
+    integrations: {
+      save(key: string, value: string) {
+        mutate((d) => {
+          techOnly(d, me());
+          if (!INTEGRATION_KEYS.some((k) => k.key === key)) throw new Error('مفتاح غير معروف');
+          if (!value.trim()) throw new Error('اكتب قيمة المفتاح');
+          vault.set(key, value.trim());
+          d.integrations = { ...(d.integrations ?? {}), [key]: { set: true, updatedAt: nowISO(), updatedBy: me() } };
+          audit(d, me(), 'ضبط مفتاح ربط', INTEGRATION_KEYS.find((k) => k.key === key)!.label, 'settings');
+        });
+      },
+      remove(key: string) {
+        mutate((d) => {
+          techOnly(d, me());
+          vault.clear(key);
+          d.integrations = { ...(d.integrations ?? {}), [key]: { set: false, updatedAt: nowISO(), updatedBy: me() } };
+          audit(d, me(), 'حذف مفتاح ربط', key, 'settings');
+        });
+      },
+    },
     setup: {
       /** أول تشغيل: ينشئ مسؤول اللجنة التقنية كأول حساب (بلا مستخدم حالي بعد) */
       firstRun(input: SetupInput): ID {
@@ -484,6 +548,13 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           if (personId === me() && disabled) throw new Error('لا تعطّل حسابك بنفسك');
           Object.assign(accountFor(d, personId), { disabled, updatedAt: nowISO(), updatedBy: me() });
           audit(d, me(), disabled ? 'تعطيل حساب' : 'تفعيل حساب', personName(d, personId), 'accounts');
+        });
+      },
+      /** تسجيل الدخول في السجل المركزي (لا يمر بحارس القراءة: دخول المشرف يُسجَّل أيضاً) */
+      recordLogin(personId: ID) {
+        rawMutate((d) => {
+          if (!d.persons.some((p) => p.id === personId)) return false;
+          audit(d, personId, 'دخول', personName(d, personId), 'login');
         });
       },
       /** صاحب الحساب يغيّر كلمته (مطلوب بعد إعادة التعيين) */
@@ -664,6 +735,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           Object.assign(doc, updated);
           doc = updated;
           const label = `${docKindLabel[doc.kind]} — ${trip.title}`;
+          audit(d, me(), { submit: 'رفع للاعتماد', facilitator_approve: 'موافقة الميسّر', facilitator_reject: 'رفض الميسّر', leader_approve: 'اعتماد', leader_edit_approve: 'تعديل واعتماد', leader_reject: 'رفض' }[action.type], label, 'approvals');
           const link = `/app/trips/${trip.id}`;
           const team = tripTeamIds(d, trip);
           const teamLead = tripTeamLeaderId(d, trip)!;
@@ -1232,6 +1304,8 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           const cid = d.committees.find((c) => c.kind === 'finance')!.id;
           const m = d.memberships.find((x) => x.committeeId === cid && x.personId === personId);
           if (!m) throw new Error('الشخص ليس عضواً في اللجنة المالية');
+          const ceiling = d.committees.find((c) => c.id === cid)?.grantedPerms;
+          if (on && ceiling && !ceiling.includes(perm)) throw new Error('هذه الصلاحية لم يمنحها القائد العام للجنة المالية: يمنحها من شاشة «الصلاحيات»');
           const set = new Set(m.financePerms ?? []);
           if (on) set.add(perm); else set.delete(perm);
           m.financePerms = [...set];

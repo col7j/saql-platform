@@ -201,6 +201,8 @@ export function defaultUiConfig(): UiConfig {
       { key: 'media', to: '/app/media', label: 'المركز الإعلامي', icon: 'film', section: 'المحتوى' },
       { key: 'opening', to: '/app/opening', label: 'اللقاء الافتتاحي', icon: 'calendar', section: 'البرنامج' },
       { key: 'closing', to: '/app/closing', label: 'اللقاء الختامي', icon: 'calendar', section: 'البرنامج' },
+      { key: 'permissions', to: '/app/permissions', label: 'الصلاحيات', icon: 'key', section: 'الأشخاص والصلاحيات' },
+      { key: 'integrations', to: '/app/integrations', label: 'الربط والتكاملات', icon: 'key', section: 'النظام' },
       { key: 'letters', to: '/app/letters', label: 'الخطابات', icon: 'stamp', section: 'المتابعة' },
       fin('overview', 'نظرة عامة', 'chart'),
       fin('requests', 'الطلبات والعهد', 'receipt'),
@@ -234,7 +236,7 @@ export function defaultUiConfig(): UiConfig {
           basics,
           { title: P, items: [k('trips'), k('groups'), k('focus'), k('meetings'), k('leaderboard')] },
           { title: 'المتابعة', items: [k('insights'), k('tasks'), k('approvals'), k('finance', 'المالية (مراقبة)')] },
-          { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص والصلاحيات'), k('tracker')] },
+          { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص'), k('permissions'), k('tracker')] },
           { title: 'التقييم', items: [k('settings', 'الإعدادات والتقييم'), k('surveys'), k('plans')] },
           { title: 'المحتوى', items: [k('media'), k('tracking_link'), k('site_editor'), k('library'), k('inbox')] },
         ],
@@ -286,6 +288,6 @@ export function defaultUiConfig(): UiConfig {
         ],
       },
     ],
-    extras: [{ key: 'opening', section: 'اللقاءان' }, { key: 'closing', section: 'اللقاءان' }, { key: 'tracker', section: 'المتابعة' }, { key: 'letters', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
+    extras: [{ key: 'integrations', section: 'النظام' }, { key: 'opening', section: 'اللقاءان' }, { key: 'closing', section: 'اللقاءان' }, { key: 'tracker', section: 'المتابعة' }, { key: 'letters', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
   };
 }

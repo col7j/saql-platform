@@ -135,6 +135,8 @@ export interface Committee {
   kind: CommitteeKind;
   description?: string;
   kpis: CommitteeKPI[];
+  /** سقف الصلاحيات التي منحها القائد العام للجنة (المالية أو الإعلامية). غير محدد = كلها. التفويض الداخلي يكون ضمنه */
+  grantedPerms?: string[];
 }
 /** صلاحيات مالية يفوّضها مسؤول اللجنة المالية لأعضاء لجنته، كل واحدة على حدة */
 export type FinancePermission = 'view_budget' | 'manage_categories' | 'approve_within' | 'disburse' | 'review_invoices' | 'close_custody';
@@ -719,7 +721,7 @@ export interface AuditEntry {
   action: string;
   detail: string;
   /** المجال: المالية، الأدوار والصفات، الحسابات، الإعدادات (السجلات القديمة بلا مجال = المالية) */
-  area?: 'finance' | 'roles' | 'accounts' | 'settings';
+  area?: 'finance' | 'roles' | 'accounts' | 'settings' | 'approvals' | 'login';
 }
 
 /** السجلات المعتمدة لا تُعدَّل مباشرة: يُرفع طلب تعديل يوافق عليه القائد العام أو يرفضه */
@@ -1330,6 +1332,7 @@ export interface DB {
   letterTypes: LetterType[];
   letters: Letter[];
   emailLog: EmailLogEntry[];
+  integrations: Record<string, IntegrationKeyMeta>;
   mediaTemplates: MediaTemplate[];
   mediaBriefs: MediaBrief[];
   mediaLinks: MediaLink[];
@@ -1420,4 +1423,12 @@ export interface EmailLogEntry {
   status: EmailStatus;
   reason?: string;
   test?: boolean;
+}
+
+// ───────────── الربط والتكاملات (مسؤول التقنية وحده) ─────────────
+export interface IntegrationKeyMeta {
+  /** هل ضُبط المفتاح. القيمة نفسها لا تُحفظ هنا ولا تُعرض بعد الحفظ */
+  set: boolean;
+  updatedAt?: ISODateTime;
+  updatedBy?: ID;
 }

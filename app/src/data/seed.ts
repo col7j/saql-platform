@@ -557,6 +557,7 @@ export function buildSeed(): DB {
     finalFiles: [],
     extraInvoices: [],
     emailLog: [],
+    integrations: {},
     letterTypes: defaultLetterTypes(),
     letters: (() => {
       const gt = trips.filter((t) => t.executor.kind === 'group' && t.type === 'external');

@@ -27,6 +27,8 @@ import LibraryPage from './pages/app/Library';
 import Setup from './pages/public/Setup';
 import { ClosingPage, OpeningPage } from './pages/app/ProgramEvents';
 import { FinancePrint } from './pages/app/FinanceReports';
+import IntegrationsPage from './pages/app/Integrations';
+import PermissionsPage from './pages/app/Permissions';
 import LettersPage from './pages/app/Letters';
 import PrintTripDoc from './pages/app/trip/PrintTripDoc';
 import GroupsPage from './pages/app/Groups';
@@ -110,6 +112,8 @@ export default function App() {
           <Route path="opening" element={<OpeningPage />} />
           <Route path="closing" element={<ClosingPage />} />
           <Route path="finance-print" element={<FinancePrint />} />
+          <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="permissions" element={<PermissionsPage />} />
           <Route path="letters" element={<LettersPage />} />
           <Route path="trip-print/:id" element={<PrintTripDoc />} />
           <Route path="profile" element={<ProfilePage />} />

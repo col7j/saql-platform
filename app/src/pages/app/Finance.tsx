@@ -18,7 +18,6 @@ import { AttachmentInput, AttachmentView } from '@/ui/attachments';
 import { EditRequestButton, EditRequestsList } from './EditRequest';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Modal, MoreMenu, NavIcon, Notice, PageHeader, Progress, Select, Stat, StatusPill, Table, Tabs, Toggle, askConfirm, cx } from '@/ui';
-import { AuditLog } from './Audit';
 import { RequestsCustody } from './RequestsCustody';
 import { InvoiceTable } from './InvoiceTable';
 import { ExtraInvoicesTable } from './ExtraInvoices';
@@ -125,11 +124,11 @@ function Overview({ sections }: { sections: FinanceSection[] }) {
 
 // ───────────── التقارير: التحليلات + سجل التدقيق ─────────────
 function Reports() {
-  const [t, setT] = useState<'dashboard' | 'report' | 'analysis' | 'audit'>('dashboard');
+  const [t, setT] = useState<'dashboard' | 'report' | 'analysis'>('dashboard');
   return (
     <div>
-      <Tabs value={t} onChange={setT} tabs={[{ key: 'dashboard', label: 'اللوحة المالية' }, { key: 'report', label: 'تقرير بفرز' }, { key: 'analysis', label: 'التحليلات' }, { key: 'audit', label: 'سجل التدقيق' }]} />
-      {t === 'dashboard' ? <Dashboard /> : t === 'report' ? <ReportBuilder /> : t === 'analysis' ? <Analysis /> : <AuditLog areas={['finance']} subtitle="من، ماذا، متى: كل تفويض وكل قرار وكل صرف" />}
+      <Tabs value={t} onChange={setT} tabs={[{ key: 'dashboard', label: 'اللوحة المالية' }, { key: 'report', label: 'تقرير بفرز' }, { key: 'analysis', label: 'التحليلات' }]} />
+      {t === 'dashboard' ? <Dashboard /> : t === 'report' ? <ReportBuilder /> : <Analysis />}
     </div>
   );
 }
