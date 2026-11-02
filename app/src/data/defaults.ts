@@ -112,6 +112,8 @@ export const defaultBudgetCategories: BudgetCategory[] = [
   { id: 'bc_guests', name: 'مكافآت الضيوف', items: [{ id: 'bi_lecturer', name: 'محاضر' }, { id: 'bi_trainer', name: 'مدرب ورشة' }] },
   { id: 'bc_tickets', name: 'تذاكر ودخول', items: [{ id: 'bi_entry', name: 'رسوم دخول' }] },
   { id: 'bc_print', name: 'أدوات ومطبوعات', items: [{ id: 'bi_print', name: 'مطبوعات' }, { id: 'bi_gifts', name: 'دروع وهدايا' }] },
+  { id: 'bc_fun', name: 'الترفيه', items: [{ id: 'bi_activities', name: 'أنشطة وألعاب' }, { id: 'bi_prizes', name: 'جوائز' }] },
+  { id: 'bc_emergency', name: 'الطوارئ', items: [{ id: 'bi_firstaid', name: 'إسعافات أولية' }, { id: 'bi_reserve', name: 'احتياطي طارئ' }] },
   { id: 'bc_other', name: 'أخرى', items: [] },
 ];
 
