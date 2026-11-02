@@ -5,6 +5,7 @@ import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { canManageCommittee, canManageFocus, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { isReadOnly, READ_ONLY_MESSAGE, leaderIds } from '@/domain/roles';
+import { applyFirstRun, type SetupInput } from '@/domain/setup';
 import { canRequestLetter, isDelegate, lettersFor } from '@/domain/letters';
 import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
@@ -314,6 +315,14 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       /** مسار قديم: ينشئ الحساب بلا كلمة مرور فتُعيَّن بعدها. لمسؤول اللجنة التقنية وحده أيضاً */
       create(input: Omit<Person, 'id' | 'isGeneralLeader'>): ID {
         return this.createAccount({ role: input.kind === 'staff' ? 'staff' : 'participant', name: input.name, email: input.email, phone: input.phone, title: input.title }).id;
+      },
+    },
+    setup: {
+      /** أول تشغيل: ينشئ مسؤول اللجنة التقنية كأول حساب (بلا مستخدم حالي بعد) */
+      firstRun(input: SetupInput): ID {
+        let id = '';
+        rawMutate((d) => { id = applyFirstRun(d, input, nowISO()); });
+        return id;
       },
     },
     // ───────────── الخطابات ─────────────

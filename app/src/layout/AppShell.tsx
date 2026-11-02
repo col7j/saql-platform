@@ -109,6 +109,7 @@ export function RoleSwitcher() {
             ))}
           </select>
         </label>
+        <button onClick={() => { if (confirm('بدء منصة فارغة بمعالج أول تشغيل؟ ستُفقد البيانات التجريبية الحالية.')) { useStore.getState().resetFirstRun(); nav('/setup'); } }} className="inline-flex items-center gap-1 rounded-md px-2 py-1 hover:bg-white/10">أول تشغيل</button>
         {stale && <span className="hidden text-accent-300 md:inline">البيانات وُلّدت في يوم سابق</span>}
         <button
           onClick={() => { if (confirm('إعادة توليد البيانات التجريبية؟ ستُفقد كل التعديلات.')) { reset(); } }}

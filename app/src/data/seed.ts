@@ -580,3 +580,14 @@ export function buildSeed(): DB {
   seedMedia(db, T);
   return db;
 }
+
+/** منصة فارغة بلا أي حساب: تبدأ بمعالج «إعداد أول مرة». تحتفظ بالإعدادات والتصنيفات والقوالب واللجان فقط */
+export function buildFirstRunDB(): DB {
+  const full = buildSeed() as unknown as Record<string, unknown>;
+  const keep = new Set(['committees', 'budgetCategories', 'capacityRules', 'letterTypes', 'taskTemplates', 'mediaTemplates', 'settings']);
+  const db: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(full)) db[k] = Array.isArray(v) && !keep.has(k) ? [] : v;
+  const out = db as unknown as DB;
+  out.settings = { ...out.settings, trackerId: undefined, societyDelegateId: undefined };
+  return out;
+}

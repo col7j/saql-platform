@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { loadDB, loadViewAs, resetDB, saveDB, saveViewAs } from '@/data/db';
+import { buildFirstRunDB } from '@/data/seed';
 import { createLocalRepositories, type Repositories } from '@/data/repositories';
 import { getCapabilities } from '@/domain/permissions';
 import { computeScores } from '@/domain/points';
@@ -20,6 +21,7 @@ interface State {
   setUser: (id: string | null) => void;
   commit: (db: DB) => void;
   reset: () => void;
+  resetFirstRun: () => void;
   toast: (text: string, tone?: Toast['tone']) => void;
   dismiss: (id: number) => void;
 }
@@ -37,6 +39,7 @@ export const useStore = create<State>((set, get) => ({
     set({ db });
   },
   reset: () => set({ db: resetDB() }),
+  resetFirstRun: () => { const db = buildFirstRunDB(); saveDB(db); saveViewAs(null); set({ db, userId: null }); },
   toast: (text, tone = 'ok') => {
     const id = Date.now() + Math.random();
     set({ toasts: [...get().toasts, { id, text, tone }] });

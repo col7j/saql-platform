@@ -24,6 +24,7 @@ import IndividualPage from './pages/app/Individual';
 import PlansPage, { PlanOf } from './pages/app/Plans';
 import SurveysPage from './pages/app/Surveys';
 import LibraryPage from './pages/app/Library';
+import Setup from './pages/public/Setup';
 import LettersPage from './pages/app/Letters';
 import PrintTripDoc from './pages/app/trip/PrintTripDoc';
 import GroupsPage from './pages/app/Groups';
@@ -51,6 +52,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<PublicHome />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={<Setup />} />
         <Route path="/supporter" element={<TrackingPage />} />
         <Route path="/brief/:token" element={<PublicBrief />} />
         <Route path="/t/:token" element={<Navigate to="/supporter" replace />} />
