@@ -1,7 +1,7 @@
-// الصلاحيات (شاشة مركزية للقائد العام ومساعده): تعيين الصفات ومنح الصلاحيات للجان وسحبها. مسؤول التقنية لا يمنح صلاحيات برنامج
+// الصلاحيات (شاشة مركزية لمسؤول التقنية): من يرى أي شاشة، وسقف اللجان وصلاحيات أعضائها. القائد العام يطّلع فقط
 import { FINANCE_PERMS } from '@/domain/finance';
 import { MEDIA_PERMS } from '@/domain/media';
-import type { Committee } from '@/domain/types';
+import type { Committee, LayoutRole } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Card, Notice, PageHeader, Select } from '@/ui';
 import { Link } from 'react-router-dom';
@@ -59,9 +59,45 @@ export default function PermissionsPage() {
           </Card>
         );
       })}
+      <RoleScreens canWrite={canWrite} />
       <Card title="صلاحيات مؤقتة وصفات أخرى">
         <p className="text-sm text-ink-600">الصلاحيات المؤقتة (تحرير الموقع، تصنيفات الجدول) وقواعد تعارض الصفات وتشكيل اللجان من <Link className="text-brand-700 underline" to="/app/people">الأشخاص</Link>.</p>
       </Card>
     </div>
+  );
+}
+
+const ROLE_LABELS: { role: LayoutRole; label: string }[] = [
+  { role: 'leader', label: 'القائد العام' }, { role: 'finance_head', label: 'مسؤول المالية' }, { role: 'media_head', label: 'مسؤول الإعلام' },
+  { role: 'tech_head', label: 'مسؤول التقنية' }, { role: 'facilitator', label: 'الميسّر' }, { role: 'tracker', label: 'متابع الرحلات' },
+  { role: 'group_leader', label: 'قائد المجموعة' }, { role: 'staff', label: 'فريق العمل' }, { role: 'participant', label: 'المشارك' },
+];
+
+/** من يرى أي شاشة: مصفوفة الأدوار × الشاشات. الظهور في القائمة يبقى مشروطاً بصلاحية الشخص الفعلية */
+function RoleScreens({ canWrite }: { canWrite: boolean }) {
+  const db = useDB();
+  const { navCatalog, layouts } = db.settings.ui;
+  const shown = (role: LayoutRole, key: string) => !!layouts.find((l) => l.role === role)?.sections.some((s) => s.items.some((i) => i.key === key)) || !!layouts.find((l) => l.role === role)?.tail?.includes(key);
+  const items = navCatalog.filter((i) => !['notifications', 'profile'].includes(i.key));
+  return (
+    <Card title="من يرى أي شاشة" subtitle="يحدد مسؤول التقنية الشاشات الظاهرة في قائمة كل دور. من لا يملك صلاحية شاشة لا تظهر له حتى لو أُدرجت هنا">
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead><tr className="text-xs text-ink-500"><th className="px-2 py-1 text-start font-medium">الشاشة</th>{ROLE_LABELS.map((r) => <th key={r.role} className="px-2 py-1 text-start font-medium">{r.label}</th>)}</tr></thead>
+          <tbody>
+            {items.map((i) => (
+              <tr key={i.key} className="border-t border-ink-100">
+                <td className="px-2 py-1">{i.label}</td>
+                {ROLE_LABELS.map((r) => (
+                  <td key={r.role} className="px-2 py-1">
+                    <input type="checkbox" aria-label={`${i.label} — ${r.label}`} disabled={!canWrite} checked={shown(r.role, i.key)} onChange={(e) => act(() => repos.permissions.setRoleScreen(r.role, i.key, e.target.checked), e.target.checked ? 'أُظهرت الشاشة' : 'أُخفيت الشاشة')} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Card>
   );
 }

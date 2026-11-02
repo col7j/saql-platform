@@ -1,3 +1,4 @@
+import { navFor } from '@/domain/access';
 // سيناريوهات قبول التحديث (delta): السجل المركزي، والمفاتيح، وشاشة الصلاحيات
 import { describe, expect, it } from 'vitest';
 import { routeAccess } from '@/domain/access';
@@ -57,5 +58,19 @@ describe('شاشة الصلاحيات', () => {
     expect(routeAccess(h.db, 'p_lead', '/app/permissions')).toBe(true);
     expect(routeAccess(h.db, 's7', '/app/permissions')).toBe(true);
     expect(h.db.audit.some((a) => a.action === 'منح صلاحية' && a.area === 'roles')).toBe(true);
+  });
+
+  it('مسؤول التقنية يحدد من يرى أي شاشة في القائمة، ويسند الصفات', () => {
+    const h = harness('p_lead');
+    expect(() => h.repos.permissions.setRoleScreen('facilitator', 'insights', true)).toThrow(/التقنية/);
+    const fin = h.db.committees.find((c) => c.kind === 'finance')!.id;
+    h.as('s6');
+    expect(navFor(h.db, 's1').all.some((i) => i.key === 'tasks')).toBe(true);
+    h.repos.permissions.setRoleScreen('facilitator', 'tasks', false);
+    expect(navFor(h.db, 's1').all.some((i) => i.key === 'tasks')).toBe(false);
+    h.repos.permissions.setRoleScreen('facilitator', 'tasks', true);
+    expect(navFor(h.db, 's1').all.some((i) => i.key === 'tasks')).toBe(true);
+    h.repos.committees.addMember(fin, 'u9', 'member', false);
+    expect(h.db.memberships.some((m) => m.committeeId === fin && m.personId === 'u9')).toBe(true);
   });
 });

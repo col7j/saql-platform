@@ -19,7 +19,7 @@ import { findSupporterByPassword, supporterLocked } from '@/domain/supporter';
 import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, evaluationSettingsError, isEvaluationKey, settingsKeyBlockReason, type EvaluationKey, type EvaluationSettings } from '@/domain/settings';
 import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, focusDone, focusIsPast, tasksFromTemplates, tripCloseBlock, type DocAction } from '@/domain/workflow';
-import type {
+import type { LayoutRole,
   MediaPermission, Letter, LetterType, PersonKind, AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
   LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ProgramEvent, SchedulePlan, Settings,
   Attendance, StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
@@ -341,6 +341,28 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
             if (c.kind === 'media' && m.mediaPerms) m.mediaPerms = m.mediaPerms.filter((p) => c.grantedPerms!.includes(p));
           });
           audit(d, me(), 'تحديد صلاحيات اللجنة', `${c.name}: ${c.grantedPerms.length} صلاحية`, 'roles');
+        });
+      },
+      /** من يرى أي شاشة في القائمة: إضافة عنصر إلى ترتيب دور أو إزالته منه */
+      setRoleScreen(role: LayoutRole, key: string, on: boolean) {
+        mutate((d) => {
+          if (!canManageAccounts(d, me())) throw new Error('تحديد من يرى أي شاشة لمسؤول اللجنة التقنية');
+          const ui = d.settings.ui;
+          const layout = ui.layouts.find((l) => l.role === role);
+          const cat = ui.navCatalog.find((i) => i.key === key);
+          if (!layout || !cat) throw new Error('دور أو شاشة غير معروفة');
+          if (on) {
+            if (!layout.sections.some((s) => s.items.some((i) => i.key === key))) {
+              const sec = layout.sections.find((s) => s.title === cat.section) ?? layout.sections[layout.sections.length - 1];
+              sec.items.push({ key });
+            }
+            layout.tail = (layout.tail ?? []).filter((x) => x !== key);
+          } else {
+            layout.sections.forEach((s) => { s.items = s.items.filter((i) => i.key !== key); });
+            layout.tail = (layout.tail ?? []).filter((x) => x !== key);
+            ui.extras = (ui.extras ?? []).filter((x) => x.key !== key);
+          }
+          audit(d, me(), on ? 'إظهار شاشة لدور' : 'إخفاء شاشة عن دور', `${cat.label} — ${role}`, 'roles');
         });
       },
       /** منح صلاحية لعضو أو سحبها، ضمن سقف اللجنة */
@@ -1757,7 +1779,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       },
       addMember(committeeId: ID, personId: ID, role: 'leader' | 'member', canSeeFinance: boolean) {
         mutate((d) => {
-          if (!isLeaderId(d, me())) deny();
+          if (!isLeaderId(d, me()) && !canManageAccounts(d, me())) deny();
           d.memberships = d.memberships.filter((m) => !(m.committeeId === committeeId && m.personId === personId));
           d.memberships.push({ id: uid('cm'), committeeId, personId, role, canSeeFinance });
           assertNoCapacityConflict(d, [personId]);
@@ -1766,7 +1788,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       },
       removeMember(committeeId: ID, personId: ID) {
         mutate((d) => {
-          if (!isLeaderId(d, me())) deny();
+          if (!isLeaderId(d, me()) && !canManageAccounts(d, me())) deny();
           d.memberships = d.memberships.filter((m) => !(m.committeeId === committeeId && m.personId === personId));
         });
       },
@@ -1779,7 +1801,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       },
       decideRequest(requestId: ID, approve: boolean, role: 'leader' | 'member' = 'member', canSeeFinance = false) {
         mutate((d) => {
-          if (!isLeaderId(d, me())) deny();
+          if (!isLeaderId(d, me()) && !canManageAccounts(d, me())) deny();
           const r = d.memberRequests.find((x) => x.id === requestId)! as MemberRequest;
           r.status = approve ? 'approved' : 'rejected';
           r.decidedAt = nowISO();
