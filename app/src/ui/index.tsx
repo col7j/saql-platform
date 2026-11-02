@@ -11,7 +11,7 @@ const iconMap: Record<string, L.LucideIcon> = {
   home: L.Home, calendar: L.CalendarDays, bell: L.Bell, map: L.MapPinned, target: L.Target, users: L.UsersRound, compass: L.Compass,
   clipboard: L.ClipboardList, book: L.LibraryBig, grid: L.LayoutGrid, trophy: L.Trophy, radar: L.Radar, message: L.MessagesSquare,
   check: L.ListChecks, layers: L.Layers, contact: L.Contact, wallet: L.Wallet, receipt: L.Receipt, link: L.Link2, globe: L.Globe,
-  settings: L.Settings2, key: L.KeyRound, meeting: L.Presentation, chart: L.ChartNoAxesColumn, more: L.LayoutGrid, stamp: L.Stamp, history: L.History, film: L.Clapperboard,
+  settings: L.Settings2, key: L.KeyRound, meeting: L.Presentation, chart: L.ChartNoAxesColumn, more: L.LayoutGrid, stamp: L.Stamp, history: L.History, film: L.Clapperboard, building: L.Building2, route: L.Route,
 };
 export function NavIcon({ name, className }: { name: string; className?: string }) {
   const I = iconMap[name] ?? L.Circle;
@@ -130,6 +130,23 @@ export function Progress({ value, tone = 'brand', className, label }: { value: n
         <div className={cx('h-full rounded-full transition-all', bar)} style={{ width: `${v}%` }} />
       </div>
       {label && <span className="num w-9 text-end text-xs text-ink-500">{Math.round(v)}%</span>}
+    </div>
+  );
+}
+
+/** شريط الميزانية بوضوح هادئ: يمتلئ حتى الحد، ويظهر الجزء الزائد بكهرماني بخطوط خفيفة مع نص بلا بنر أحمر ولا وميض */
+export function BudgetBar({ spent, limit, className }: { spent: number; limit: number; className?: string }) {
+  const over = Math.max(0, spent - limit);
+  const total = Math.max(spent, limit) || 1;
+  const within = Math.min(spent, limit);
+  const pct = limit > 0 ? Math.round((over / limit) * 100) : 0;
+  return (
+    <div className={className}>
+      <div className="flex h-3 overflow-hidden rounded-full bg-ink-100" role="img" aria-label={over ? `تجاوز الميزانية بمقدار ${over} ر.س` : 'ضمن الميزانية'}>
+        <div className="h-full bg-brand-600" style={{ width: `${(within / total) * 100}%` }} />
+        {over > 0 && <div className="h-full bg-accent-400" style={{ width: `${(over / total) * 100}%`, backgroundImage: 'repeating-linear-gradient(135deg, rgba(255,255,255,.45) 0 4px, transparent 4px 8px)' }} />}
+      </div>
+      {over > 0 && <p className="mt-1 text-xs text-accent-700">تجاوز الميزانية بمقدار <span className="num font-bold">{over.toLocaleString('en-US')}</span> ر.س (<span className="num">{pct}%</span>)</p>}
     </div>
   );
 }

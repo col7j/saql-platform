@@ -23,9 +23,10 @@ export default function GroupsPage() {
     );
   return (
     <div>
-      <PageHeader title="المجموعات" subtitle="أربع مجموعات، لكل منها قائد من المشاركين وميسّر من فريق العمل" />
+      <PageHeader title="المجموعات" subtitle={`${db.groups.length} مجموعات، لكل منها قائد من المشاركين وميسّر من فريق العمل`} />
       {me.isLeader && <Tabs value={tab} onChange={setTab} tabs={[{ key: 'list', label: 'المجموعات' }, { key: 'formation', label: 'التشكيل والنشر' }, { key: 'transfers', label: `سجل النقل (${db.transfers.length})` }]} />}
       {tab === 'list' && <GroupList />}
+      {tab === 'list' && me.isLeader && !me.isSupervisor && <Distribution />}
       {tab === 'formation' && <Formation />}
       {tab === 'transfers' && (
         <Card pad={false}>
@@ -125,5 +126,41 @@ function Formation() {
         <p className="mt-2 text-xs text-ink-400">سيرى الميسّر الجديد سجل الملاحظات السابق.</p>
       </Modal>
     </div>
+  );
+}
+
+/** مجموعة بلا رحلة خارجية: يوزَّع أعضاؤها على رحلات خارجية لمجموعات أخرى فيصيرون في فرقها */
+function Distribution() {
+  const db = useDB();
+  const external = db.trips.filter((t) => t.type === 'external' && t.executor.kind === 'group');
+  const hasExternal = (gid: string) => external.some((t) => t.executor.kind === 'group' && t.executor.groupId === gid);
+  const groups = db.groups.filter((g) => !hasExternal(g.id));
+  const [pick, setPick] = useState<Record<string, string>>({});
+  if (!groups.length) return null;
+  return (
+    <Card title="توزيع أعضاء مجموعات بلا رحلة خارجية" subtitle="يصير العضو في فريق الرحلة التي توزَّعه عليها: يراها ويشارك في مهامها، ويأخذ نقاطها، ويبقى في مجموعته لكل شيء آخر" className="mt-4">
+      {groups.map((g) => (
+        <div key={g.id} className="mb-4">
+          <div className="mb-2 text-sm font-bold" style={{ color: g.color }}>{g.name}</div>
+          {!g.memberIds.length && <p className="text-xs text-ink-500">لا أعضاء بعد في هذه المجموعة</p>}
+          <ul className="space-y-2">
+            {g.memberIds.map((m) => {
+              const current = external.find((t) => (t.extraMemberIds ?? []).includes(m));
+              return (
+                <li key={m} className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-[10rem] text-sm">{personName(db, m)}</span>
+                  {current ? <Badge tone="green">موزَّع على {current.title}</Badge> : (
+                    <>
+                      <Select value={pick[m] ?? ''} onChange={(e) => setPick({ ...pick, [m]: e.target.value })} options={[{ value: '', label: 'اختر رحلة خارجية' }, ...external.map((t) => ({ value: t.id, label: t.title }))]} aria-label="الرحلة" />
+                      <Button disabled={!pick[m]} onClick={() => act(() => repos.trips.assignExternalMember(pick[m], m), 'وُزّع العضو على الرحلة')}>وزّع</Button>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+    </Card>
   );
 }

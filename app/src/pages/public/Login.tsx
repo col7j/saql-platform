@@ -19,6 +19,7 @@ export default function Login() {
   const quick = ['p_lead', 's5', 's6', 's7', 's1', 'u1', 'u7', 'u6'];
 
   const login = (id: string) => {
+    try { repos.accounts.recordLogin(id); } catch { /* السجل لا يمنع الدخول */ }
     setUser(id);
     nav('/app');
   };

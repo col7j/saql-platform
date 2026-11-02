@@ -10,8 +10,10 @@ import type { EvaluationItem, NotificationType, ProofType, Settings, TaskTemplat
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Notice, PageHeader, ReasonModal, Select, Table, Tabs, Toggle } from '@/ui';
 import { PersonChip } from '@/ui/domain';
+import DocTemplateSettings from './DocTemplate';
+import NotifyAdmin from './NotifyAdmin';
 
-type Tab = 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'media';
+type Tab = 'doc' | 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'media';
 
 export default function SettingsPage() {
   const me = useMe();
@@ -23,6 +25,7 @@ export default function SettingsPage() {
     ...(leader ? [{ key: 'targets' as const, label: 'المستهدفات والأعداد' }] : []),
     ...(me.canManageScheduleCategories ? [{ key: 'categories' as const, label: 'تصنيفات الجدول' }] : []),
     ...(leader ? [{ key: 'templates' as const, label: 'قالب المهام التلقائية' }] : []),
+    ...(leader ? [{ key: 'doc' as const, label: 'قالب وثيقة الرحلة' }] : []),
     ...(leader ? [{ key: 'media' as const, label: 'المركز الإعلامي' }] : []),
     ...(tech ? [{ key: 'notifications' as const, label: 'الإشعارات' }] : []),
   ];
@@ -37,8 +40,9 @@ export default function SettingsPage() {
       {tab === 'targets' && <Targets />}
       {tab === 'categories' && <Categories />}
       {tab === 'templates' && <Templates />}
-      {tab === 'notifications' && <Notifications />}
+      {tab === 'notifications' && <NotifyAdmin />}
       {tab === 'media' && <MediaSettings />}
+      {tab === 'doc' && <DocTemplateSettings />}
     </div>
   );
 }
@@ -335,11 +339,10 @@ function Notifications() {
 /** متابع الرحلات الدائم (يُعرض في شاشة الأشخاص والصلاحيات) */
 export function Tracker() {
   const db = useDB();
-  const staff = db.persons.filter((p) => p.kind === 'staff' && !p.isGeneralLeader);
+  const assistant = db.persons.find((p) => p.isAssistant);
   return (
-    <Card title="متابع الرحلات الدائم" subtitle="شخص ثابت لا يكون ميسّراً ولا مسؤول لجنة (يجوز عضواً). عند غيابه عن رحلة يُكلَّف بديل لها فقط">
-      <Field label="المتابع" className="max-w-sm"><Select value={db.settings.trackerId ?? ''} onChange={(e) => act(() => repos.settings.setTracker(e.target.value), 'عُيّن المتابع')} options={[{ value: '', label: '—' }, ...staff.map((p) => ({ value: p.id, label: p.name }))]} /></Field>
-      <p className="mt-2 text-xs text-ink-400">قواعد التعارض تُطبَّق عند الاختيار: يظهر سبب المنع إن كان للشخص صفة لا تجتمع مع المتابعة.</p>
+    <Card title="متابع الرحلات" subtitle="هو مساعد القائد العام، ويُحدَّد من حسابه الذي ينشئه مسؤول اللجنة التقنية">
+      <p className="text-sm">{assistant ? assistant.name : 'لا يوجد حساب مساعد بعد'}</p>
     </Card>
   );
 }

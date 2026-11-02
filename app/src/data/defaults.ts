@@ -1,3 +1,5 @@
+import { defaultEmailSettings, defaultNotifyRules } from '@/domain/notifyRules';
+import { defaultDocTemplate, defaultSuggestedGoals } from '@/domain/tripDocument';
 // القيم الافتراضية للإعدادات. كلها تُنسخ إلى قاعدة البيانات وتُعدّل من شاشة الإعدادات.
 import type { BudgetCategory, CapacityRule, ProgramBudget, Settings, TaskTemplate, UiConfig } from '@/domain/types';
 
@@ -5,6 +7,8 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
   return {
     program: { name: 'صقل', cohort: 'الدفعة الأولى', startDate, endDate, participantsCount: 28 },
     split: { individual: 50, group: 50 },
+    docTemplate: defaultDocTemplate(),
+    suggestedGoals: defaultSuggestedGoals(),
     groupTripSplit: { internal: 40, external: 60 },
     // القالب الافتراضي للتقييم (وثيقة القرارات + س9 وس10). يضبطه القائد العام ثم يُقفل
     evaluationItems: [
@@ -35,7 +39,7 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
         ],
       },
       { key: 'finance_manual', name: 'بنود المسؤول المالي', scope: 'group', weight: 20, mode: 'manual', enabled: true, description: 'بنود يحددها مسؤول المالية (مثل الترشيد) ويقيّم بها وحده.' },
-      { key: 'staff_rating', name: 'متوسط تقييم فريق العمل', scope: 'group', weight: 30, mode: 'manual', enabled: true, description: 'كل عضو في فريق العمل يقيّم الرحلة من 10، ويدخل المتوسط.' },
+      { key: 'staff_rating', name: 'متوسط تقييم فريق العمل', scope: 'group', weight: 30, mode: 'manual', enabled: true, description: 'يقيّم الرحلة من 10 المتابع (مساعد القائد العام) والقائد العام، ودرجة الرحلة متوسط تقييمهما، ويأخذها كل أعضاء فريقها.' },
     ],
     presentationCriteria: [
       { key: 'style', name: 'أسلوب الطرح' },
@@ -74,7 +78,11 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     ],
     scheduleRevealHours: 24,
     tripRatingQuorum: 0.5,
+    tripRatingWindowDays: 7,
+    excludeTripFacilitator: false,
     trackingCommentsNeedReview: true,
+    notifyRules: defaultNotifyRules(),
+    email: defaultEmailSettings(),
     importantNotifications: ['budget_request', 'approval_rejected', 'deadline_passed', 'custody_issued', 'groups_published', 'leader_absent_focus', 'committee_member_request'],
     showHijri: true,
     feesInPlatform: false,
@@ -109,6 +117,8 @@ export const defaultBudgetCategories: BudgetCategory[] = [
   { id: 'bc_guests', name: 'مكافآت الضيوف', items: [{ id: 'bi_lecturer', name: 'محاضر' }, { id: 'bi_trainer', name: 'مدرب ورشة' }] },
   { id: 'bc_tickets', name: 'تذاكر ودخول', items: [{ id: 'bi_entry', name: 'رسوم دخول' }] },
   { id: 'bc_print', name: 'أدوات ومطبوعات', items: [{ id: 'bi_print', name: 'مطبوعات' }, { id: 'bi_gifts', name: 'دروع وهدايا' }] },
+  { id: 'bc_fun', name: 'الترفيه', items: [{ id: 'bi_activities', name: 'أنشطة وألعاب' }, { id: 'bi_prizes', name: 'جوائز' }] },
+  { id: 'bc_emergency', name: 'الطوارئ', items: [{ id: 'bi_firstaid', name: 'إسعافات أولية' }, { id: 'bi_reserve', name: 'احتياطي طارئ' }] },
   { id: 'bc_other', name: 'أخرى', items: [] },
 ];
 
@@ -189,6 +199,11 @@ export function defaultUiConfig(): UiConfig {
       { key: 'settings', to: '/app/settings', label: 'الإعدادات', icon: 'settings', section: 'التقييم' },
       { key: 'finance', to: '/app/finance', label: 'المالية', icon: 'wallet', section: 'المتابعة' },
       { key: 'media', to: '/app/media', label: 'المركز الإعلامي', icon: 'film', section: 'المحتوى' },
+      { key: 'opening', to: '/app/opening', label: 'اللقاء الافتتاحي', icon: 'calendar', section: 'البرنامج' },
+      { key: 'closing', to: '/app/closing', label: 'اللقاء الختامي', icon: 'calendar', section: 'البرنامج' },
+      { key: 'permissions', to: '/app/permissions', label: 'الصلاحيات', icon: 'key', section: 'الأشخاص والصلاحيات' },
+      { key: 'integrations', to: '/app/integrations', label: 'الربط والتكاملات', icon: 'key', section: 'النظام' },
+      { key: 'letters', to: '/app/letters', label: 'الخطابات', icon: 'stamp', section: 'المتابعة' },
       fin('overview', 'نظرة عامة', 'chart'),
       fin('requests', 'الطلبات والعهد', 'receipt'),
       fin('invoices', 'مراجعة الفواتير', 'clipboard'),
@@ -221,7 +236,7 @@ export function defaultUiConfig(): UiConfig {
           basics,
           { title: P, items: [k('trips'), k('groups'), k('focus'), k('meetings'), k('leaderboard')] },
           { title: 'المتابعة', items: [k('insights'), k('tasks'), k('approvals'), k('finance', 'المالية (مراقبة)')] },
-          { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص والصلاحيات')] },
+          { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص'), k('permissions'), k('tracker')] },
           { title: 'التقييم', items: [k('settings', 'الإعدادات والتقييم'), k('surveys'), k('plans')] },
           { title: 'المحتوى', items: [k('media'), k('tracking_link'), k('site_editor'), k('library'), k('inbox')] },
         ],
@@ -273,6 +288,6 @@ export function defaultUiConfig(): UiConfig {
         ],
       },
     ],
-    extras: [{ key: 'tracker', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
+    extras: [{ key: 'integrations', section: 'النظام' }, { key: 'opening', section: 'اللقاءان' }, { key: 'closing', section: 'اللقاءان' }, { key: 'tracker', section: 'المتابعة' }, { key: 'letters', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
   };
 }

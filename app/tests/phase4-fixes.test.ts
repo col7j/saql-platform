@@ -108,15 +108,11 @@ describe('التقديم المتكرر', () => {
 });
 
 describe('إغلاق الرحلة', () => {
-  it('لا تُغلق قبل اكتمال نصاب تقييمات فريق العمل', () => {
+  it('الإغلاق لا ينتظر التقييمات (نافذتها بعد الإغلاق)، ولغير الفريق المنفذ ممنوع', () => {
     const h = harness('p_lead');
     const t = h.db.trips.find((x) => x.id === 't3')!;
     t.evaluation.staffRatings = {};
     delete t.closedAt;
-    expect(() => h.repos.trips.close('t3')).toThrow(/تقييمات فريق العمل/);
-    const staff = h.db.persons.filter((p) => p.kind === 'staff');
-    const needed = Math.ceil(staff.length * h.db.settings.tripRatingQuorum);
-    staff.slice(0, needed).forEach((p) => (h.db.trips.find((x) => x.id === 't3')!.evaluation.staffRatings[p.id] = { score: 8, at: nowISO() }));
     expect(tripCloseBlock(h.db, h.db.trips.find((x) => x.id === 't3')!) ?? '').not.toMatch(/تقييمات فريق العمل/);
     h.as('u2');
     expect(() => h.repos.trips.close('t3')).toThrow(/لقائد فريقها أو القائد العام/);

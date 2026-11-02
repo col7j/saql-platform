@@ -6,15 +6,11 @@ import { getCapabilities } from '@/domain/permissions';
 import { harness } from './helpers/harness';
 
 describe('الصلاحيات المؤقتة', () => {
-  it('تسجيل المشاركين بصلاحية مؤقتة، ولا تشمل فريق العمل', () => {
+  it('تسجيل المشاركين لمسؤول التقنية وحده، ولا تغني عنه منحة مؤقتة', () => {
     const h = harness('p_lead');
-    h.as('s2');
-    expect(() => h.repos.people.create({ kind: 'participant', name: 'أ', email: 'a1@x.io' })).toThrow(/صلاحية مؤقتة/);
-    h.as('p_lead');
     h.repos.grants.grant('s2', 'register_participants', addDays(todayISO(), 7));
     h.as('s2');
-    h.repos.people.create({ kind: 'participant', name: 'أ', email: 'a1@x.io' });
-    expect(() => h.repos.people.create({ kind: 'staff', name: 'ب', email: 'b1@x.io' })).toThrow(/للقائد العام/);
+    expect(() => h.repos.people.create({ kind: 'participant', name: 'أ', email: 'a1@x.io' })).toThrow(/التقنية/);
   });
   it('تنتهي بتاريخها وتُسحب', () => {
     const h = harness('p_lead');

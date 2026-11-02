@@ -10,14 +10,20 @@ import { harness } from './helpers/harness';
 const att = (n: string): Attachment => ({ name: n, type: 'image/jpeg', size: 10, hash: sha256Hex(n) });
 
 describe('أول دخول للمشارك', () => {
-  it('لا يكتمل الملف بلا صورة وآيبان صحيح', () => {
+  it('المشارك العادي يكمل ملفه بالصورة، ولا بيانات مالية له', () => {
     const h = harness('u24');
     expect(h.db.persons.find((p) => p.id === 'u24')!.profileCompletedAt).toBeUndefined();
-    expect(() => h.repos.profile.saveOwn({ bank: { iban: 'SA12' } }, true)).toThrow(/آيبان/);
-    expect(() => h.repos.profile.saveOwn({ bank: { iban: 'SA0380000000608010167519' } }, true)).toThrow(/صورتك/);
-    h.repos.profile.saveOwn({ photo: att('me'), bank: { iban: 'SA03 8000 0000 6080 1016 7519' } }, true);
-    expect(h.db.persons.find((p) => p.id === 'u24')).toMatchObject({ bank: { iban: 'SA0380000000608010167519' } });
+    expect(() => h.repos.profile.saveOwn({ bank: { iban: 'SA0380000000608010167519' } })).toThrow(/قادة المجموعات/);
+    expect(() => h.repos.profile.saveOwn({}, true)).toThrow(/صورتك/);
+    h.repos.profile.saveOwn({ photo: att('me') }, true);
     expect(h.db.persons.find((p) => p.id === 'u24')!.profileCompletedAt).toBeTruthy();
+  });
+  it('قائد المجموعة آيبانه صحيح ويُسجَّل تعديله في التدقيق', () => {
+    const h = harness('u1');
+    expect(() => h.repos.profile.saveOwn({ bank: { iban: 'SA12' } })).toThrow(/آيبان/);
+    h.repos.profile.saveOwn({ bank: { iban: 'SA03 8000 0000 6080 1016 7519' } });
+    expect(h.db.persons.find((p) => p.id === 'u1')).toMatchObject({ bank: { iban: 'SA0380000000608010167519' } });
+    expect(h.db.audit.some((a) => a.byId === 'u1' && a.action === 'تعديل البيانات المالية')).toBe(true);
   });
 });
 

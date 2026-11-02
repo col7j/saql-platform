@@ -7,7 +7,7 @@ import { Badge, Card, DataTable, Empty, FilterPills, PageHeader } from '@/ui';
 import { PersonChip } from '@/ui/domain';
 
 type Area = NonNullable<AuditEntry['area']>;
-const areaLabel: Record<Area, string> = { roles: 'الأدوار والصفات', accounts: 'الحسابات', settings: 'الإعدادات', finance: 'المالية' };
+const areaLabel: Record<Area, string> = { roles: 'الأدوار والصفات', accounts: 'الحسابات', settings: 'الإعدادات', approvals: 'الاعتمادات', login: 'الدخول', finance: 'المالية' };
 
 /** السجل بفلتر المجال. areas تحدد المجالات المعروضة لصاحب الشاشة */
 export function AuditLog({ areas, title = 'سجل التدقيق', subtitle }: { areas: Area[]; title?: string; subtitle?: string }) {
@@ -35,13 +35,12 @@ export function AuditLog({ areas, title = 'سجل التدقيق', subtitle }: {
   );
 }
 
-/** شاشة السجل لمسؤول التقنية والقائد العام: كل المجالات عدا المالية (سجلها في تقارير المالية) */
+/** السجل المركزي الواحد لكل المنصة (اعتماد، صرف، تعديل، تفويض، صلاحيات، دخول): يراه ويديره مسؤول اللجنة التقنية وحده */
 export default function AuditPage() {
-  const me = useMe();
   return (
     <div>
-      <PageHeader title="سجل التدقيق" subtitle="الأدوار والحسابات والإعدادات" />
-      <AuditLog areas={me.isLeader ? ['roles', 'accounts', 'settings', 'finance'] : ['roles', 'accounts', 'settings']} />
+      <PageHeader title="سجل التدقيق المركزي" subtitle="كل ما يجري في المنصة: من، ماذا، متى" />
+      <AuditLog areas={['approvals', 'finance', 'roles', 'accounts', 'settings', 'login']} />
     </div>
   );
 }

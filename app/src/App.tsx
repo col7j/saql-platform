@@ -24,6 +24,13 @@ import IndividualPage from './pages/app/Individual';
 import PlansPage, { PlanOf } from './pages/app/Plans';
 import SurveysPage from './pages/app/Surveys';
 import LibraryPage from './pages/app/Library';
+import Setup from './pages/public/Setup';
+import { ClosingPage, OpeningPage } from './pages/app/ProgramEvents';
+import { FinancePrint } from './pages/app/FinanceReports';
+import IntegrationsPage from './pages/app/Integrations';
+import PermissionsPage from './pages/app/Permissions';
+import LettersPage from './pages/app/Letters';
+import PrintTripDoc from './pages/app/trip/PrintTripDoc';
 import GroupsPage from './pages/app/Groups';
 import PersonPage from './pages/app/Person';
 import LeaderboardPage from './pages/app/Leaderboard';
@@ -49,6 +56,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<PublicHome />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/setup" element={<Setup />} />
         <Route path="/supporter" element={<TrackingPage />} />
         <Route path="/brief/:token" element={<PublicBrief />} />
         <Route path="/t/:token" element={<Navigate to="/supporter" replace />} />
@@ -101,6 +109,13 @@ export default function App() {
             <Route path="metrics" element={<MetricsPage />} />
             <Route path="print/:id" element={<PrintBrief />} />
           </Route>
+          <Route path="opening" element={<OpeningPage />} />
+          <Route path="closing" element={<ClosingPage />} />
+          <Route path="finance-print" element={<FinancePrint />} />
+          <Route path="integrations" element={<IntegrationsPage />} />
+          <Route path="permissions" element={<PermissionsPage />} />
+          <Route path="letters" element={<LettersPage />} />
+          <Route path="trip-print/:id" element={<PrintTripDoc />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

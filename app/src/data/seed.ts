@@ -10,8 +10,9 @@ import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, de
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 import { seedMedia } from './seed-media';
+import { defaultLetterTypes } from '@/domain/letters';
 
-export const DB_VERSION = 14;
+export const DB_VERSION = 18;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -32,10 +33,12 @@ export function buildSeed(): DB {
   const { committees, memberships } = buildCommittees();
   const settings = defaultSettings(addDays(T, -60), addDays(T, 150));
   settings.trackerId = 's7';
+  settings.societyDelegateId = 's1';
   // البرنامج جارٍ: حفظ القائد العام إعدادات التقييم فأُقفلت
   settings.evaluationLock = { locked: true, at: iso(addDays(T, -58)), by: LEADER_ID };
   const participants = persons.filter((p) => p.kind === 'participant');
   const { trips, docs, budgets, actual } = buildTrips(T, nowDate);
+  trips.forEach((t) => (t.docTemplate = structuredClone(settings.docTemplate)));
 
   // ── الحضور ──
   const attendance: Attendance[] = [];
@@ -553,6 +556,21 @@ export function buildSeed(): DB {
     supporterAccess: { failed: 0 },
     finalFiles: [],
     extraInvoices: [],
+    emailLog: [],
+    integrations: {},
+    letterTypes: defaultLetterTypes(),
+    letters: (() => {
+      const gt = trips.filter((t) => t.executor.kind === 'group' && t.type === 'external');
+      const t0 = gt[0];
+      const lead = t0 && t0.executor.kind === 'group' ? groups.find((g) => g.id === (t0.executor as { groupId: string }).groupId)?.leaderId : undefined;
+      const mate = t0 && t0.executor.kind === 'group' ? groups.find((g) => g.id === (t0.executor as { groupId: string }).groupId)?.memberIds[2] : undefined;
+      if (!t0 || !lead || !mate) return [];
+      return [
+        { id: 'lt_d1', tripId: t0.id, typeId: 'lt2', addressee: 'إدارة فندق الضيافة', purpose: 'حجز 6 وحدات لمشاركي الرحلة', neededBy: addDays(T, 5), attachments: [], requestedBy: mate, createdAt: iso(addDays(T, -1)), status: 'submitted' as const },
+        { id: 'lt_d2', tripId: t0.id, typeId: 'lt1', addressee: 'إمارة المنطقة', purpose: 'تسهيل مهمة الفريق', neededBy: addDays(T, -2), attachments: [], requestedBy: lead, createdAt: iso(addDays(T, -6)), status: 'issued' as const,
+          issued: { number: '1447/112', date: addDays(T, -3), file: { name: 'خطاب-تسهيل.pdf', type: 'application/pdf', size: 52000, hash: 'seed_letter_1' }, byId: 's1', at: iso(addDays(T, -3)) } },
+      ];
+    })(),
     mediaTemplates: [],
     mediaBriefs: [],
     mediaLinks: [],
@@ -563,4 +581,15 @@ export function buildSeed(): DB {
   db.trips.filter((t) => closureChecks(db, t).every((c) => c.ok)).forEach((t) => Object.assign(t, { closedAt: iso(addDays(t.endDate, 3)), closedBy: LEADER_ID }));
   seedMedia(db, T);
   return db;
+}
+
+/** منصة فارغة بلا أي حساب: تبدأ بمعالج «إعداد أول مرة». تحتفظ بالإعدادات والتصنيفات والقوالب واللجان فقط */
+export function buildFirstRunDB(): DB {
+  const full = buildSeed() as unknown as Record<string, unknown>;
+  const keep = new Set(['committees', 'budgetCategories', 'capacityRules', 'letterTypes', 'taskTemplates', 'mediaTemplates', 'settings']);
+  const db: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(full)) db[k] = Array.isArray(v) && !keep.has(k) ? [] : v;
+  const out = db as unknown as DB;
+  out.settings = { ...out.settings, trackerId: undefined, societyDelegateId: undefined };
+  return out;
 }

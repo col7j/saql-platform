@@ -2,9 +2,10 @@
 // - ما يملكه الشخص يُحسب هنا من صفاته (منطق)، وترتيب القائمة والرئيسية لكل دور يُقرأ من settings.ui (بيانات).
 // - routeAccess يفحص أي عنوان يُكتب يدوياً، ويُستخدم في التوجيه وفي طبقة البيانات معاً.
 import { canOpenFinance, canViewBudget, hasFinancePerm, isFinanceOwner } from './finance';
+import { seesAsLeader, can, isReadOnly } from './roles';
 import { canOpenMedia, hasMediaPerm, latestSnapshot } from './media';
 import {
-  canSeeCommittee, canSeePersonalPlan, canViewFocus, getCapabilities, groupsPublished, type Capabilities,
+  canSeeCommittee, canSeePersonalPlan, canViewTripPlans, canViewFocus, getCapabilities, groupsPublished, type Capabilities,
 } from './permissions';
 import type { DB, HomeWidget, ID, LayoutRole } from './types';
 
@@ -23,7 +24,7 @@ export function financeTabsFor(db: DB, pid: ID): FinanceSection[] {
   if (!canOpenFinance(db, pid)) return [];
   const view = canViewBudget(db, pid);
   const p = (k: Parameters<typeof hasFinancePerm>[2]) => hasFinancePerm(db, pid, k);
-  const leader = !!db.persons.find((x) => x.id === pid)?.isGeneralLeader;
+  const leader = seesAsLeader(db, pid);
   const owner = isFinanceOwner(db, pid);
   const tabs: [FinanceSection, boolean][] = [
     ['overview', true],
@@ -67,10 +68,15 @@ export function accessibleKeys(db: DB, pid: ID): Set<string> {
   add('approvals', c.isLeader);
   add('tracking_link', c.isStaff);
   add('site_editor', c.isSiteEditor);
-  add('audit', c.isTechLead || c.isLeader);
+  add('integrations', c.isTechLead);
+  add('permissions', c.isLeader);
+  add('audit', c.isTechLead); // السجل المركزي لمسؤول التقنية وحده
   add('settings', c.isLeader || c.isTechLead || c.canManageScheduleCategories);
   add('finance', canOpenFinance(db, pid));
   add('media', canOpenMedia(db, pid));
+  add('letters', c.isDelegate || c.isLeader);
+  add('opening', c.isLeader);
+  add('closing', c.isLeader);
   financeTabsFor(db, pid).forEach((t) => keys.add(`finance_${t}`));
   return keys;
 }
@@ -88,7 +94,7 @@ export function layoutRolesOf(db: DB, pid: ID): LayoutRole[] {
     ['media_head', head('media')],
     ['leader', c.isLeader],
     ['facilitator', c.facilitatorOf.length],
-    ['tracker', c.isTracker],
+    ['tracker', c.isTracker && !c.isLeader],
     ['group_leader', c.leaderOf],
     ['staff', c.isStaff],
     ['participant', c.isParticipant],
@@ -122,6 +128,7 @@ export function navFor(db: DB, pid: ID): { sections: { title: string; items: Nav
   const placed = new Set<string>();
   const sections: { title: string; items: NavItem[] }[] = [];
   const push = (title: string, key: string, label?: string) => {
+    if (key === 'notifications' || key === 'profile') return; // تُفتح من قائمة الحساب
     const cat = catalog.get(key);
     if (!cat || placed.has(key) || !allowed.has(key)) return;
     // عنصران لنفس الشاشة (مثل «اللجان» و«لجنتي») لا يظهران معاً
@@ -129,10 +136,15 @@ export function navFor(db: DB, pid: ID): { sections: { title: string; items: Nav
     placed.add(key);
     let sec = sections.find((s) => s.title === title);
     if (!sec) sections.push((sec = { title, items: [] }));
+    // الرحلات قسمان منفصلان في القائمة: الداخلية والخارجية، لكل منهما أيقونة وهوية
+    if (key === 'trips') {
+      sec.items.push({ key: 'trips_internal', to: '/app/trips?type=internal', label: 'الرحلات الداخلية', icon: 'building' }, { key: 'trips_external', to: '/app/trips?type=external', label: 'الرحلات الخارجية', icon: 'route' });
+      return;
+    }
     sec.items.push({ key, to: cat.to, label: label ?? cat.label, icon: cat.icon });
   };
   for (const l of layouts) for (const s of l.sections) for (const i of s.items) if (!tail.has(i.key)) push(s.title, i.key, i.label);
-  for (const x of ui.extras ?? []) push(x.section, x.key);
+  for (const x of ui.extras ?? []) if (x.key !== 'letters' || getCapabilities(db, pid).isDelegate) push(x.section, x.key);
   for (const key of tail) push(sections[sections.length - 1]?.title ?? 'أخرى', key);
   return { sections: sections.filter((s) => s.items.length), all: sections.flatMap((s) => s.items) };
 }
@@ -150,7 +162,7 @@ const STATIC_ROUTES: Record<string, string> = {
   individual: 'individual', plans: 'plans', library: 'library', surveys: 'surveys', groups: 'groups', leaderboard: 'leaderboard', tasks: 'tasks',
   requests: 'requests', profile: 'profile', contact: 'contact', tracker: 'tracker', committees: 'committees', people: 'people', insights: 'insights', inbox: 'inbox',
   'tracking-link': 'tracking_link', 'site-editor': 'site_editor', users: 'people', settings: 'settings', finance: 'finance', custody: 'requests',
-  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media',
+  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media', letters: 'letters', integrations: 'integrations', permissions: 'permissions', 'finance-print': 'finance', opening: 'opening', closing: 'closing', 'trip-print': 'trips',
 };
 
 export function meetingVisibleTo(db: DB, pid: ID, meetingId: ID): boolean {
@@ -187,6 +199,10 @@ export function routeAccess(db: DB, pid: ID, pathname: string, search = ''): boo
   switch (section) {
     case 'trips':
       return db.trips.some((t) => t.id === id);
+    case 'trip-print': {
+      const tr = db.trips.find((t) => t.id === id);
+      return !!tr && canViewTripPlans(db, pid, tr);
+    }
     case 'focus': {
       const fm = db.focusMeetings.find((f) => f.id === id);
       return !!fm && canViewFocus(db, pid, fm);

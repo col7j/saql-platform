@@ -6,7 +6,11 @@ import type { Committee, DB, FocusMeeting, Group, ID, Material, Person, Trip, Tr
 
 export interface Capabilities {
   person: Person;
-  isLeader: boolean; // القائد العام
+  isLeader: boolean; // يرى ما يراه القائد العام: هو أو مساعده أو المشرف العام (الكتابة تُفحص بـisAssistant/isReadOnly)
+  isGeneralLeader: boolean; // القائد العام نفسه
+  isAssistant: boolean; // مساعد القائد العام (متابع الرحلات)
+  isSupervisor: boolean; // المشرف العام: قراءة فقط
+  isDelegate: boolean; // مندوب الجمعية
   isStaff: boolean; // عضو إدارة (يشمل القائد العام)
   isParticipant: boolean;
   facilitatorOf: Group[]; // المجموعات التي يُيسّرها
@@ -41,7 +45,11 @@ export function groupsPublished(db: DB): boolean {
 
 export function getCapabilities(db: DB, personId: ID): Capabilities {
   const person = db.persons.find((p) => p.id === personId) ?? db.persons[0];
-  const isLeader = !!person.isGeneralLeader;
+  const isGeneralLeader = !!person.isGeneralLeader;
+  const isAssistant = !!person.isAssistant;
+  const isSupervisor = !!person.isSupervisor;
+  const isLeader = isGeneralLeader || isAssistant || isSupervisor;
+  const isDelegate = db.settings.societyDelegateId === person.id;
   const isStaff = person.kind === 'staff';
   const isParticipant = person.kind === 'participant';
   const facilitatorOf = db.groups.filter((g) => g.facilitatorId === person.id);
@@ -57,7 +65,7 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
   const isFinanceLead = isFinanceOwner(db, person.id);
   const isMedia = committees.some((c) => c.committee.kind === 'media');
   const isTechLead = committees.some((c) => c.committee.kind === 'tech' && c.role === 'leader');
-  const isTracker = db.settings.trackerId === person.id;
+  const isTracker = isAssistant;
   const isSiteEditor = hasTempGrant(db, person.id, 'edit_site');
   const canRegisterParticipants = hasTempGrant(db, person.id, 'register_participants');
   const canManageScheduleCategories = hasTempGrant(db, person.id, 'manage_schedule_categories');
@@ -66,7 +74,9 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
   const presenterIn = db.focusMeetings.filter((f) => f.presenterIds.includes(person.id));
 
   const labels: string[] = [];
-  if (isLeader) labels.push('القائد العام');
+  if (isGeneralLeader) labels.push('القائد العام');
+  else if (isAssistant) labels.push('مساعد القائد العام');
+  else if (isSupervisor) labels.push('المشرف العام');
   else if (isStaff) labels.push('عضو إدارة');
   else labels.push('مشارك');
   facilitatorOf.forEach((g) => labels.push(`ميسّر ${g.name}`));
@@ -75,12 +85,13 @@ export function getCapabilities(db: DB, personId: ID): Capabilities {
     .filter((c) => c.committee.kind !== 'general')
     .forEach((c) => labels.push(c.committee.kind === 'finance' && c.role === 'leader' ? 'مسؤول المالية' : `${c.role === 'leader' ? 'مسؤول' : 'عضو'} ${c.committee.name}`));
   if (isTracker) labels.push('متابع الرحلات');
+  if (isDelegate) labels.push('مندوب الجمعية');
   if (isSiteEditor && !isLeader) labels.push('محرّر الموقع (مؤقت)');
   if (canRegisterParticipants && !isLeader) labels.push('تسجيل المشاركين (مؤقت)');
   if (staffTripsLed.length) labels.push('قائد فريق رحلة');
 
   return {
-    person, isLeader, isStaff, isParticipant, facilitatorOf, leaderOf, group, committees,
+    person, isLeader, isGeneralLeader, isAssistant, isSupervisor, isDelegate, isStaff, isParticipant, facilitatorOf, leaderOf, group, committees,
     isFinance, isFinanceLead, isMedia, isTechLead, isTracker, isSiteEditor, canRegisterParticipants, canManageScheduleCategories, staffTripsLed, staffTripsMember, presenterIn, labels,
   };
 }
@@ -104,7 +115,7 @@ export function tripTeamLeaderId(db: DB, trip: Trip): ID | undefined {
 export function tripTeamIds(db: DB, trip: Trip): ID[] {
   if (trip.executor.kind === 'staff') return [trip.executor.leaderId, ...trip.executor.memberIds];
   const groupId = trip.executor.groupId;
-  return db.groups.find((g) => g.id === groupId)?.memberIds ?? [];
+  return [...new Set([...(db.groups.find((g) => g.id === groupId)?.memberIds ?? []), ...(trip.extraMemberIds ?? [])])];
 }
 
 export function isTripTeam(db: DB, personId: ID, trip: Trip): boolean {
@@ -114,7 +125,7 @@ export function isTripTeam(db: DB, personId: ID, trip: Trip): boolean {
 /** المتابع الفعلي للرحلة: البديل المعتمد إن وُجد، وإلا المتابع الثابت */
 export function effectiveTrackerId(db: DB, trip: Trip): ID | undefined {
   if (trip.trackerSubstitute?.status === 'approved') return trip.trackerSubstitute.candidateId;
-  return db.settings.trackerId;
+  return db.persons.find((p) => p.isAssistant)?.id ?? db.settings.trackerId;
 }
 
 /** شروط تعيين المتابع: ليس ميسّر الرحلة، وليس القائد العام في رحلات فريق العمل */

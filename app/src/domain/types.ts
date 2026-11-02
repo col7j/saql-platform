@@ -12,7 +12,11 @@ export interface Person {
   id: ID;
   name: string;
   kind: PersonKind;
-  isGeneralLeader?: boolean; // القائد العام = المشرف العام
+  isGeneralLeader?: boolean; // القائد العام (لم يعد يساوي المشرف العام)
+  /** المشرف العام: قراءة فقط تُفرض في طبقة البيانات */
+  isSupervisor?: boolean;
+  /** مساعد القائد العام ومسؤول التدريب والتطوير: هو متابع الرحلات */
+  isAssistant?: boolean;
   email: string;
   phone?: string;
   university?: string;
@@ -131,6 +135,8 @@ export interface Committee {
   kind: CommitteeKind;
   description?: string;
   kpis: CommitteeKPI[];
+  /** سقف الصلاحيات التي منحها القائد العام للجنة (المالية أو الإعلامية). غير محدد = كلها. التفويض الداخلي يكون ضمنه */
+  grantedPerms?: string[];
 }
 /** صلاحيات مالية يفوّضها مسؤول اللجنة المالية لأعضاء لجنته، كل واحدة على حدة */
 export type FinancePermission = 'view_budget' | 'manage_categories' | 'approve_within' | 'disburse' | 'review_invoices' | 'close_custody';
@@ -198,7 +204,7 @@ export type TripExecutor =
   | { kind: 'staff'; leaderId: ID; memberIds: ID[] };
 
 /** الموازنة لم تعد وثيقة في دورة الخطط، بل طلب ميزانية مستقل (BudgetRequest) */
-export type DocKind = 'document' | 'schedule' | 'final_report';
+export type DocKind = 'document' | 'detailed' | 'schedule' | 'final_report';
 export type DocStatus =
   | 'draft'
   | 'submitted' // بانتظار الميسّر (أو القائد العام في رحلات فريق العمل)
@@ -306,6 +312,10 @@ export interface Trip {
   scheduleStartedNotified?: boolean;
   sessions: TripSession[];
   guests: TripGuest[];
+  /** أعضاء فريق من خارج المجموعة المنفذة (توزيع أعضاء المجموعة التي بلا رحلة خارجية) */
+  extraMemberIds?: ID[];
+  /** نسخة قالب الوثيقة وقت إنشاء الرحلة: تغيير القالب لاحقاً يؤثر على الرحلات الجديدة فقط */
+  docTemplate?: DocSectionDef[];
   coordinationOwnerId?: ID;
   coordinations: Coordination[];
   attendanceTakerId?: ID;
@@ -711,7 +721,7 @@ export interface AuditEntry {
   action: string;
   detail: string;
   /** المجال: المالية، الأدوار والصفات، الحسابات، الإعدادات (السجلات القديمة بلا مجال = المالية) */
-  area?: 'finance' | 'roles' | 'accounts' | 'settings';
+  area?: 'finance' | 'roles' | 'accounts' | 'settings' | 'approvals' | 'login';
 }
 
 /** السجلات المعتمدة لا تُعدَّل مباشرة: يُرفع طلب تعديل يوافق عليه القائد العام أو يرفضه */
@@ -797,6 +807,10 @@ export interface ProgramEvent {
   attendees?: number;
   createdBy: ID;
   createdAt: ISODateTime;
+  /** حقول الافتتاحي فقط */
+  opening?: { programIntro?: string; groupsAnnouncement?: string; participantsDistribution?: string };
+  /** حقول الختامي فقط */
+  closing?: { rankingAnnouncement?: string; honorsAndCertificates?: string; finalReport?: string };
 }
 
 export interface PointsEntry {
@@ -850,6 +864,9 @@ export type NotificationType =
   | 'invoice_rejected'
   | 'budget_request'
   | 'meeting'
+  | 'letter_request'
+  | 'letter_issued'
+  | 'letter_reminder'
   | 'general';
 
 export interface Notification {
@@ -1003,6 +1020,9 @@ export interface Settings {
   trackingCommentsNeedReview: boolean; // 20.8
   /** ما يصل بالإيميل عند ربطه لاحقاً (يحدده مسؤول اللجنة التقنية). حالياً كل الإشعارات داخل المنصة فقط */
   importantNotifications: NotificationType[];
+  /** قواعد الإشعارات والبريد (مسؤول اللجنة التقنية وحده) */
+  notifyRules: NotificationRule[];
+  email: EmailSettings;
   showHijri: boolean; // 20.11
   feesInPlatform: boolean; // 20.12
   feeAmount: number;
@@ -1012,7 +1032,22 @@ export interface Settings {
     splitAlert: { maxAmount: number; windowDays: number; minCount: number }; // تنبيه تجزئة المصروف
     evalItems: { key: string; name: string }[]; // بنود المالية في تقييم الرحلة (مثل الترشيد) يقيّم بها وحده
   };
+  /** متابع الرحلات = مساعد القائد العام (يُشتق من حسابه ولا يُعيَّن يدوياً) */
   trackerId?: ID;
+  /** مندوب الجمعية: ميسّر واحد يصدر الخطابات */
+  societyDelegateId?: ID;
+  /** مقيّمو الرحلات (متوسط تقييماتهم درجة الرحلة). فارغ = القائد العام ومساعده */
+  tripEvaluatorIds?: ID[];
+  /** نافذة التقييم بعد إغلاق الرحلة بالأيام (7). من لم يرسل خلالها لا يدخل في المتوسط */
+  tripRatingWindowDays?: number;
+  /** استبعاد ميسّر المجموعة المنفذة من مقيّمي رحلتها (معطّل افتراضياً) */
+  excludeTripFacilitator?: boolean;
+  /** عدد الحجوزات الفردية النشطة المسموحة لكل مشارك (الافتراضي 1) يعدّلها ميسّره */
+  bookingLimits?: Record<ID, number>;
+  /** بنية وثيقة الرحلة (أقسام وأعمدة جداولها): بيانات يعدّلها القائد العام أو مساعده */
+  docTemplate: DocSectionDef[];
+  /** الأهداف المقترحة (من محتوى البرنامج) تُختار وتُضاف */
+  suggestedGoals: { educational: string[]; social: string[] };
   /** رابط الداعم الثابت: حد للمحاولات الخاطئة ومدة القفل */
   supporterLink: { maxAttempts: number; lockMinutes: number; programIdea: string };
   /** المركز الإعلامي */
@@ -1294,9 +1329,106 @@ export interface DB {
   supporterAccess: { failed: number; lockedUntil?: ISODateTime };
   finalFiles: FinalFile[];
   extraInvoices: ExtraInvoice[];
+  letterTypes: LetterType[];
+  letters: Letter[];
+  emailLog: EmailLogEntry[];
+  integrations: Record<string, IntegrationKeyMeta>;
   mediaTemplates: MediaTemplate[];
   mediaBriefs: MediaBrief[];
   mediaLinks: MediaLink[];
   mediaActivity: MediaActivity[];
   settings: Settings;
+}
+
+// ───────────── الخطابات (مندوب الجمعية) ─────────────
+export interface LetterType {
+  id: ID;
+  name: string;
+  /** نص مقترح قابل للتعديل يساعد في الصياغة */
+  suggestedText: string;
+}
+export type LetterStatus = 'submitted' | 'preparing' | 'issued' | 'delivered' | 'needs_edit';
+export interface Letter {
+  id: ID;
+  tripId: ID;
+  typeId: ID;
+  addressee: string;
+  purpose: string;
+  /** الحاجة قبل هذا التاريخ */
+  neededBy: ISODate;
+  /** مرفقات اختيارية: ملف أو رابط */
+  attachments: { name: string; link?: string }[];
+  requestedBy: ID;
+  createdAt: ISODateTime;
+  status: LetterStatus;
+  editReason?: string;
+  /** الخطاب الصادر: يُصدر خارج المنصة بترويسة الجمعية، وتحفظه المنصة وتتابعه */
+  issued?: { number: string; date: ISODate; file: Attachment; byId: ID; at: ISODateTime };
+  deliveredAt?: ISODateTime;
+  reminderSent?: boolean;
+}
+
+// ───────────── وثيقة الرحلة (على بنية نموذج إعداد الرحلة) ─────────────
+export type DocColumnType = 'text' | 'number' | 'yesno' | 'goal' | 'date' | 'person';
+export interface DocColumn {
+  key: string;
+  label: string;
+  type?: DocColumnType;
+}
+export interface DocSectionDef {
+  id: string;
+  title: string;
+  /** المبدئية = الأقسام 1 إلى 4، والتفصيلية = 5 إلى 10 */
+  stage: 'initial' | 'detailed';
+  /** fields حقول نصية، goals قوائم أهداف، table جدول صفوفه قابلة للإضافة والحذف، embed يعرض الجدول الزمني والموازنة */
+  kind: 'fields' | 'goals' | 'table' | 'embed';
+  fields?: { key: string; label: string; long?: boolean }[];
+  columns?: DocColumn[];
+  /** الأنواع التي يظهر لها القسم (يُخفى السكن والتواصل مع الأسر في الداخلية) */
+  tripTypes: TripType[];
+}
+
+// ───────────── قواعد الإشعارات والبريد (اللجنة التقنية وحدها) ─────────────
+export type RecipientRole = 'participant' | 'group_leader' | 'facilitator' | 'staff' | 'leader' | 'finance' | 'media';
+export interface NotificationRule {
+  type: NotificationType;
+  /** مفتاح تشغيل الحدث. القناة داخل المنصة دائماً */
+  enabled: boolean;
+  email: boolean;
+  /** تذكيرات قبل الموعد بالساعات (يمكن أكثر من واحد) */
+  reminders: number[];
+  /** الأدوار التي يصلها بالبريد (فارغ = كل المستلمين) */
+  recipients: RecipientRole[];
+}
+export interface SendWindow { days: number[]; from: string; to: string }
+export interface EmailSettings {
+  /** إيقاف كل البريد */
+  masterOff: boolean;
+  dailyCap: number;
+  perUserCap: number;
+  /** عند بلوغ السقف: تأجيل للنافذة التالية أو تخطٍّ */
+  onCap: 'defer' | 'skip';
+  windows: SendWindow[];
+  /** استثناءات بتواريخ: closed = لا إرسال في ذلك اليوم */
+  exceptions: { date: ISODate; closed: boolean }[];
+  templates: Record<string, { subject: string; body: string }>;
+}
+export type EmailStatus = 'sent' | 'deferred' | 'skipped' | 'disabled';
+export interface EmailLogEntry {
+  id: ID;
+  at: ISODateTime;
+  toId: ID;
+  type: NotificationType;
+  subject: string;
+  status: EmailStatus;
+  reason?: string;
+  test?: boolean;
+}
+
+// ───────────── الربط والتكاملات (مسؤول التقنية وحده) ─────────────
+export interface IntegrationKeyMeta {
+  /** هل ضُبط المفتاح. القيمة نفسها لا تُحفظ هنا ولا تُعرض بعد الحفظ */
+  set: boolean;
+  updatedAt?: ISODateTime;
+  updatedBy?: ID;
 }

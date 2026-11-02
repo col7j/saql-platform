@@ -1,5 +1,6 @@
+import { ratingWindowOpen, tripEvaluatorIds } from './collectiveEvaluation';
 // "المطلوب منك الآن": الإجراءات المعلّقة لكل شخص حسب صفاته، مرتبة بالأولوية، ولكل إجراء زر يبدأ بفعل
-import { addDays, todayISO } from './dates';
+import { addDays, nowISO, todayISO } from './dates';
 import { SAR, docKindLabel } from './labels';
 import { getCapabilities, tripFacilitatorId, tripTeamLeaderId, effectiveTrackerId } from './permissions';
 import { canPublish, dueSteps, isPlanUnlocked, isTaskLate, surveysForPerson, tripStage, materialState, focusIsPast } from './workflow';
@@ -117,7 +118,7 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
 
   // ── تقييم الرحلة: كل فريق العمل، وبنود المالية لمسؤولها ──
   if (c.isStaff)
-    db.trips.filter((t) => ['closing', 'closed'].includes(tripStage(db, t)) && !t.evaluation.staffRatings[personId]).forEach((t) => add({ id: `sr_${t.id}`, title: `قيّم ${t.title} (من 10)`, hint: 'متوسط تقييم فريق العمل يدخل في نقاط الرحلة', cta: 'قيّم الرحلة', link: `/app/trips/${t.id}?tab=closure`, tone: 'blue', group: 'الرحلات' }));
+    db.trips.filter((t) => ['closing', 'closed'].includes(tripStage(db, t)) && !t.evaluation.staffRatings[personId] && tripEvaluatorIds(db, t).includes(personId) && ratingWindowOpen(db, t, nowISO())).forEach((t) => add({ id: `sr_${t.id}`, title: `قيّم ${t.title} (من 10)`, hint: 'متوسط تقييم فريق العمل يدخل في نقاط الرحلة', cta: 'قيّم الرحلة', link: `/app/trips/${t.id}?tab=closure`, tone: 'blue', group: 'الرحلات' }));
   if (isFinanceOwner(db, personId))
     db.trips.filter((t) => t.executor.kind === 'group' && ['closing', 'closed'].includes(tripStage(db, t)) && db.settings.finance.evalItems.some((i) => t.evaluation.finance[i.key] == null)).forEach((t) => add({ id: `fe_${t.id}`, title: `بنود المالية لتقييم ${t.title}`, cta: 'قيّم البنود', link: `/app/trips/${t.id}?tab=closure`, tone: 'blue', group: 'المالية' }));
 

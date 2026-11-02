@@ -108,19 +108,24 @@ describe('محرك النقاط', () => {
     expect(() => h.repos.leaderEval.save('u3', scores)).toThrow(/للقائد العام/);
   });
   it('الجماعي: متوسط تقييم فريق العمل وبنود المالية (لمسؤولها وحده)', () => {
-    const h = harness('s5');
+    const h = harness('s1');
     const g = () => computeScores(h.db).groups.find((x) => x.groupId === 'g1')!.internal.trips.find((t) => t.tripId === 't3')!.items;
     expect(g().find((i) => i.key === 'staff_rating')!.detail).toMatch(/متوسط/);
+    h.db.trips.find((x) => x.id === 't3')!.evaluation.staffRatings = {};
+    h.db.trips.find((x) => x.id === 't3')!.closedAt = new Date().toISOString(); // نافذة التقييم مفتوحة
     h.repos.trips.rateTrip('t3', 10);
     expect(() => h.repos.trips.rateTrip('t3', 9)).toThrow(/من قبل/);
+    h.as('s5');
+    expect(() => h.repos.trips.rateTrip('t3', 9)).toThrow(/فريق العمل/); // مسؤول المالية ليس ميسّراً ولا قائداً
     h.as('s1');
     expect(() => h.repos.trips.rateTripFinance('t3', 'rationing', 5)).toThrow();
   });
   it('الحضور لا يؤثر على الجماعي', () => {
     const h = harness('p_lead');
-    const before = computeScores(h.db).groups.map((g) => g.total);
+    const coll = () => computeScores(h.db).persons.map((p) => p.groupShare);
+    const before = coll();
     h.db.attendance.filter((a) => a.eventKind === 'trip').forEach((a) => Object.assign(a, { status: 'absent', present: false }));
-    expect(computeScores(h.db).groups.map((g) => g.total)).toEqual(before);
+    expect(coll()).toEqual(before);
   });
 });
 

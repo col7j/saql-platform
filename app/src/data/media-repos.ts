@@ -1,6 +1,7 @@
 // طبقة بيانات المركز الإعلامي والفواتير الإضافية. تُركَّب في createLocalRepositories.
 // الدوال العامة (public*) تعمل بلا حساب: يدخل الفريق المتعاقد بالرابط فقط، وفي المنصة الحقيقية يتحقق منها الخادم
 // (تجزئة حقيقية، تحديد معدل الطلبات، وفحص الصلاحية على الخادم).
+import { hasLeaderPowers } from '@/domain/roles';
 import { ACCESS_DENIED } from '@/domain/access';
 import { nowISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
@@ -18,7 +19,7 @@ import { pushNotification, type Mutate } from './repositories';
 const audit = (d: DB, byId: ID, action: string, detail: string, area: AuditEntry['area']) => d.audit.unshift({ id: uid('au'), at: nowISO(), byId, action, detail, area });
 const nameOf = (d: DB, id: ID) => d.persons.find((p) => p.id === id)?.name ?? '—';
 const leaderOf = (d: DB) => d.persons.find((p) => p.isGeneralLeader)!.id;
-const isLeader = (d: DB, id: ID) => !!d.persons.find((p) => p.id === id)?.isGeneralLeader;
+const isLeader = (d: DB, id: ID) => hasLeaderPowers(d, id);
 const mediaIds = (d: DB, perm: MediaPermission) => d.persons.filter((p) => hasMediaPerm(d, p.id, perm)).map((p) => p.id);
 
 export function createMediaRepos(mutate: Mutate, me: () => ID) {

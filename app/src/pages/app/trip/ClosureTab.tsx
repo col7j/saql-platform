@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { isFinanceOwner } from '@/domain/finance';
 import { tripTeamLeaderId } from '@/domain/permissions';
 import { fmtDateTime } from '@/domain/dates';
-import { closeDeadline, closureChecks, isApproved, staffRatingCount, tripCloseBlock, tripHasEnded } from '@/domain/workflow';
+import { ratingWindowEnd, ratingWindowOpen, tripEvaluatorAverage, tripEvaluatorIds } from '@/domain/collectiveEvaluation';
+import { closeDeadline, closureChecks, isApproved, tripCloseBlock, tripHasEnded } from '@/domain/workflow';
 import type { Trip } from '@/domain/types';
 import { act, repos, useDB, useMe, useScores } from '@/state/store';
 import { Badge, Button, Card, Checklist, Field, Icons, Input, Notice, Stars, Textarea } from '@/ui';
@@ -16,7 +17,9 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
   const finOwner = isFinanceOwner(db, me.person.id);
   const mine = trip.evaluation.staffRatings[me.person.id];
   const ratings = Object.entries(trip.evaluation.staffRatings);
-  const count = staffRatingCount(db, trip);
+  const evalState = tripEvaluatorAverage(db, trip);
+  const isEvaluator = tripEvaluatorIds(db, trip).includes(me.person.id);
+  const windowEnd = ratingWindowEnd(db, trip);
   const [forms, setForms] = useState({ teamEvalForm: trip.closure.teamEvalForm ?? '', experienceForm: trip.closure.experienceForm ?? '', publicReport: trip.closure.publicReport ?? '' });
   const [rating, setRating] = useState({ score: 8, note: '' });
   const groupScore = trip.executor.kind === 'group' ? scores.groups.find((g) => g.groupId === (trip.executor as { groupId: string }).groupId) : undefined;
@@ -44,18 +47,24 @@ export default function ClosureTab({ trip }: { trip: Trip }) {
         </Card>
 
         <MediaCard trip={trip} />
-        <Card title="تقييم الرحلة" subtitle={`يقيّمها كل فريق العمل (من 10) ويُجمع المتوسط مع النقاط التلقائية ونقاط المالية · ${count.rated} من ${count.staff}، والإغلاق بعد ${count.needed} على الأقل`}>
-          {me.isStaff && (mine ? (
+        <Card title="تقييم الرحلة" subtitle="يقيّمها كل فريق العمل (الميسّرون والقائد العام ومساعده) كلٌّ مستقلاً من 10، ودرجتها المتوسط البسيط لمن أرسل">
+          <p className="mb-2 text-sm"><b className="num">قيّم {evalState.rated} من {evalState.total}</b>
+            {evalState.provisional ? <Badge tone="orange" className="ms-2">الدرجة مؤقتة قبل إغلاق الرحلة</Badge> : <Badge tone="green" className="ms-2">الدرجة النهائية</Badge>}
+            {evalState.avg != null && <span className="ms-2 text-ink-600">المتوسط الحالي <span className="num">{Math.round(evalState.avg * 100) / 100}</span> من 10</span>}
+          </p>
+          {windowEnd && <p className="mb-2 text-xs text-ink-500">تُغلق نافذة التقييم {fmtDateTime(windowEnd)}، ومن لم يرسل خلالها لا يدخل في المتوسط.</p>}
+          {isEvaluator && (mine ? (
             <p className="rounded-xl bg-emerald-50 p-3 text-sm">قيّمتها <b className="num">{mine.score}</b> من 10{mine.note ? ` · ${mine.note}` : ''}</p>
-          ) : !tripHasEnded(trip) ? <Notice>يُفتح التقييم بعد انتهاء الرحلة.</Notice> : (
+          ) : !tripHasEnded(trip) ? <Notice>يُفتح التقييم بعد انتهاء الرحلة.</Notice> : !ratingWindowOpen(db, trip, new Date().toISOString()) ? <Notice tone="orange">انتهت نافذة التقييم.</Notice> : (
             <div className="grid gap-2 rounded-xl bg-ink-50 p-3 sm:grid-cols-[110px_1fr_auto]">
               <Input className="num" type="number" min={0} max={10} step={0.5} value={rating.score} onChange={(e) => setRating({ ...rating, score: +e.target.value })} aria-label="التقييم من 10" />
               <Input placeholder="ملاحظة (اختياري)" value={rating.note} onChange={(e) => setRating({ ...rating, note: e.target.value })} />
-              <Button onClick={() => act(() => repos.trips.rateTrip(trip.id, rating.score, rating.note || undefined), 'حُفظ تقييمك')}>قيّم الرحلة</Button>
+              <Button onClick={() => act(() => repos.trips.rateTrip(trip.id, rating.score, rating.note || undefined), 'أُرسل تقييمك')}>أرسل التقييم</Button>
             </div>
           ))}
-          {me.isLeader && ratings.length > 0 && (
-            <ul className="mt-3 space-y-1 text-sm">{ratings.map(([pid, r]) => <li key={pid} className="flex justify-between"><span>{db.persons.find((p) => p.id === pid)?.name}{r.note ? <span className="text-xs text-ink-500"> · {r.note}</span> : null}</span><b className="num">{r.score}</b></li>)}</ul>
+          {isEvaluator && !mine && <p className="mt-1 text-xs text-ink-500">لا ترى تقييمات غيرك قبل أن ترسل تقييمك.</p>}
+          {(mine || me.isLeader) && ratings.length > 0 && (me.isLeader || mine) && (
+            <ul className="mt-3 space-y-1 text-sm">{(me.isLeader && !mine && isEvaluator ? [] : ratings).map(([pid, r]) => <li key={pid} className="flex justify-between"><span>{db.persons.find((p) => p.id === pid)?.name}{r.note ? <span className="text-xs text-ink-500"> · {r.note}</span> : null}</span><span className="num font-bold">{r.score}</span></li>)}</ul>
           )}
           {trip.executor.kind === 'group' && (
             <div className="mt-5">

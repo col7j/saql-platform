@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { addDays, fmtDate, relativeDays, todayISO } from '@/domain/dates';
 import { tripTypeLabel } from '@/domain/labels';
 import { groupsPublished, isTripTeam, tripTeamLeaderId, trackerConflict } from '@/domain/permissions';
@@ -15,14 +15,25 @@ export default function TripsPage() {
   const [tab, setTab] = useState<'upcoming' | 'mine' | 'past' | 'all'>('upcoming');
   const [creating, setCreating] = useState(false);
   const today = todayISO();
+
+  const [qs] = useSearchParams();
+  const type = qs.get('type') === 'internal' || qs.get('type') === 'external' ? (qs.get('type') as 'internal' | 'external') : null;
+  const themed = type === 'internal' ? 'from-brand-600 to-sky-400' : 'from-accent-500 to-yellow-400';
   const sorted = [...db.trips].sort((a, b) => a.startDate.localeCompare(b.startDate));
-  const list = sorted.filter((t) =>
-    tab === 'upcoming' ? t.endDate >= today : tab === 'past' ? t.endDate < today : tab === 'mine' ? isTripTeam(db, me.person.id, t) : true,
-  );
+  const list = sorted.filter((t) => (!type || t.type === type) && (
+    tab === 'upcoming' ? t.endDate >= today : tab === 'past' ? t.endDate < today : tab === 'mine' ? isTripTeam(db, me.person.id, t) : true
+  ));
   const counts = db.settings.programCounts;
 
   return (
     <div>
+      {type && (
+        <div className={`mb-4 flex items-center gap-3 rounded-2xl bg-gradient-to-l ${themed} px-5 py-4 text-white`} role="banner">
+          {type === 'internal' ? <Icons.Building2 className="h-6 w-6" /> : <Icons.Route className="h-6 w-6" />}
+          <span className="text-lg font-bold">{type === 'internal' ? 'الرحلات الداخلية' : 'الرحلات الخارجية'}</span>
+          <span className="text-sm opacity-90">{type === 'internal' ? 'داخل المدينة، يوم واحد' : 'خارج المدينة، سفر وسكن'}</span>
+        </div>
+      )}
       <PageHeader
         title="الرحلات"
         subtitle={`داخلية بفريق العمل (لقاء تطويري): ${counts.staffInternal} · داخلية بالمجموعات: ${counts.groupInternal * db.groups.length} · خارجية بالمجموعات: ${counts.groupExternal * db.groups.length} · خارجية بفريق العمل: ${counts.staffExternal}`}

@@ -10,6 +10,8 @@ import type { DocKind, Trip, TripDoc } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Field, Icons, Input, Modal, Notice, ReasonModal, Steps, Textarea } from '@/ui';
 import { CommentThread } from '@/ui/domain';
+import { docGaps, docKindStage } from '@/domain/tripDocument';
+import { DocSections } from './DocSections';
 
 const FIELDS: Record<DocKind, { key: string; label: string; long?: boolean }[]> = {
   document: [
@@ -17,6 +19,7 @@ const FIELDS: Record<DocKind, { key: string; label: string; long?: boolean }[]> 
     { key: 'titles', label: 'الأهداف والمحاور' },
     { key: 'outline', label: 'وصف الرحلة كاملة (الخطة الواحدة: التنقل، الضيوف، الترتيبات)', long: true },
   ],
+  detailed: [],
   schedule: [
     { key: 'summary', label: 'ملاحظات على الجدول', long: true },
     { key: 'details', label: 'الخطة البديلة ومتى تُفعَّل', long: true },
@@ -30,14 +33,15 @@ const FIELDS: Record<DocKind, { key: string; label: string; long?: boolean }[]> 
 
 export default function DocsTab({ trip }: { trip: Trip }) {
   const db = useDB();
-  const kinds: DocKind[] = ['document', 'schedule', 'final_report'];
+  const kinds: DocKind[] = ['document', 'detailed', 'schedule', 'final_report'];
   const docs = kinds.map((k) => docFor(db, trip.id, k)).filter(Boolean) as TripDoc[];
   const [open, setOpen] = useState<string | null>(docs.find((d) => d.status !== 'approved')?.id ?? docs[0]?.id ?? null);
   return (
     <div className="space-y-4">
       <Notice>
-        ثلاثة نماذج كلٌّ على حدة: <b>وثيقة الرحلة أولاً</b>، ثم الجدول الزمني، والميزانية (تبويب الميزانية). المسار: {trip.executor.kind === 'group' ? 'الميسّر ثم ' : ''}القائد العام، والرفض يعود لقائد الفريق. النشر لا يعمل إلا باكتمال الاعتمادات وبيانات الرحلة.
+        نماذج الرحلة كلٌّ على حدة: <b>الخطة المبدئية أولاً</b> (الأقسام 1 إلى 4)، ثم <b>الخطة التفصيلية</b> (5 إلى 10)، ثم الجدول الزمني والميزانية (تبويباهما). المسار: {trip.executor.kind === 'group' ? 'الميسّر ثم ' : ''}القائد العام، والرفض يعود لقائد الفريق. النشر لا يعمل إلا باكتمال الاعتمادات وبيانات الرحلة.
       </Notice>
+      <div className="flex justify-end"><a href={`#/app/trip-print/${trip.id}`} target="_blank" rel="noreferrer" className="text-sm text-brand-700 underline">اطبع وثيقة الرحلة PDF</a></div>
       {docs.map((d) => (
         <DocCard key={d.id} trip={trip} doc={d} open={open === d.id} onToggle={() => setOpen(open === d.id ? null : d.id)} />
       ))}
@@ -60,14 +64,19 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
     doc.kind === 'document' ? null
       : doc.kind === 'final_report' ? (tripHasEnded(trip) ? null : 'يُرفع التقرير الختامي بعد انتهاء الرحلة')
         : docFor(db, trip.id, 'document')?.submittedAt ? null : 'ارفع وثيقة الرحلة أولاً: هي أول ما يُرفع';
+  const stage = docKindStage(doc.kind);
   const needsSchedule = doc.kind === 'schedule' && !hasSchedule(trip);
-  const deadline = doc.kind === 'document' ? trip.deadlines.document : doc.kind === 'final_report' ? undefined : trip.deadlines.schedule;
+  const deadline = doc.kind === 'document' || doc.kind === 'detailed' ? trip.deadlines.document : doc.kind === 'final_report' ? undefined : trip.deadlines.schedule;
 
   const save = () => act(() => {
     repos.trips.updateDocFields(doc.id, fields);
   }, 'حُفظت المسودة');
   const submit = () => act(() => {
     if (prereq) throw new Error(prereq);
+    if (stage) {
+      const gaps = docGaps(db, trip, { ...doc, fields });
+      if (gaps.length) throw new Error(`أكمل أقسام الوثيقة قبل الرفع: ${gaps.slice(0, 3).join('، ')}${gaps.length > 3 ? ` و${gaps.length - 3} أخرى` : ''}`);
+    }
     if (needsSchedule) throw new Error('أضف الجدول الزمني أولاً من تبويب الجدول');
     repos.trips.updateDocFields(doc.id, fields);
     repos.trips.docAction(doc.id, { type: 'submit' });
@@ -97,7 +106,8 @@ function DocCard({ trip, doc, open, onToggle }: { trip: Trip; doc: TripDoc; open
             </Notice>
           )}
 
-          {(
+          {stage && <DocSections trip={trip} doc={doc} fields={fields} editable={editable} setFields={setFields} stage={stage} />}
+          {!stage && (
             <div className="grid gap-3">
               {FIELDS[doc.kind].map((f) =>
                 editable ? (

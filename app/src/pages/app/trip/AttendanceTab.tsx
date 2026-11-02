@@ -52,10 +52,12 @@ export default function AttendanceTab({ trip }: { trip: Trip }) {
               <div className="grid gap-2 md:grid-cols-2">
                 {g.memberIds.map((pid) => {
                   const r = rec(pid);
+                  // الغائب عن الرحلة معطّل في جلساتها الداخلية بسبب ظاهر
+                  const absentFromTrip = !!sessionId && db.attendance.some((a) => a.eventKind === 'trip' && a.eventId === trip.id && a.personId === pid && !a.present);
                   return (
                     <div key={pid} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink-100 px-3 py-2">
                       <PersonChip id={pid} size={26} />
-                      {canTake && started ? (
+                      {absentFromTrip ? <span className="rounded-full bg-ink-100 px-3 py-1 text-xs text-ink-500" title="لا يُحضَّر في جلسات الرحلة">غائب عن الرحلة</span> : canTake && started ? (
                         <div className="flex overflow-hidden rounded-lg border border-ink-200 text-xs">
                           {states.map((st) => (
                             <button key={st.key} onClick={() => act(() => repos.trips.setAttendance(kind, trip.id, pid, st.key, sessionId))} className={cx('px-2 py-1', r?.status === st.key ? st.tone : 'hover:bg-ink-50')}>{st.label}</button>

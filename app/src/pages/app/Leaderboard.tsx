@@ -58,12 +58,22 @@ export default function LeaderboardPage() {
                       <div className="flex justify-between text-xs"><span>{i.name} {i.mode === 'auto' ? <Badge className="ms-1">تلقائي</Badge> : <Badge tone="orange" className="ms-1">يدوي</Badge>}</span><span className="num">{i.points}/{i.maxPoints}</span></div>
                       <Progress value={Math.min(100, (i.points / (i.maxPoints || 1)) * 100)} className="mt-0.5" />
                       <div className="text-xs text-ink-400">{i.detail}</div>
+                      <div className="text-xs text-ink-500">كسبت <span className="num">{i.points}</span> من <span className="num">{i.maxPoints}</span> · المتبقي <span className="num">{Math.max(0, Math.round((i.maxPoints - i.points) * 100) / 100)}</span></div>
                     </div>
                   ))}
                   <div className="flex justify-between border-t border-ink-100 pt-2 text-sm"><span>الجماعي (من مجموعتي)</span><span className="num font-bold">{mine.groupShare}</span></div>
                 </div>
               </Card>
             )}
+            <Card title="بنود التقييم وآلية كل بند" subtitle="للقراءة فقط">
+              <ul className="space-y-3 text-sm">
+                {(mine?.individual ?? []).map((i) => {
+                  const item = s.evaluationItems.find((x) => x.key === i.key);
+                  return <li key={i.key}><div className="flex justify-between font-medium"><span>{i.name}</span><span className="num">{i.maxPoints} نقطة</span></div><p className="text-xs text-ink-500">{item?.description}</p></li>;
+                })}
+                {s.evaluationItems.filter((x) => x.scope === 'group' && x.enabled && x.weight > 0).map((x) => <li key={x.key}><div className="font-medium">{x.name} <span className="text-xs text-ink-400">(جماعي: لكل رحلة في فريقك)</span></div><p className="text-xs text-ink-500">{x.description}</p></li>)}
+              </ul>
+            </Card>
             <Card title="أفضل 5 أفراد">
               <ol className="space-y-2">
                 {persons.slice(0, 5).map((p) => (
@@ -82,7 +92,7 @@ export default function LeaderboardPage() {
       {tab === 'groups' && (
         <div className="space-y-4">
           {groups.map((g) => (
-            <Card key={g.groupId} title={<GroupBadge id={g.groupId} />} subtitle={`المجموع ${g.total} من ${s.split.group} · يُوزَّع على الأعضاء بالتساوي`}>
+            <Card key={g.groupId} title={<GroupBadge id={g.groupId} />} subtitle={`الدرجة ${g.total} · متوسط نقاط أعضائها (الفردي + الجماعي)`}>
               <div className="grid gap-4 md:grid-cols-2">
                 {(['internal', 'external'] as const).map((k) => (
                   <div key={k}>

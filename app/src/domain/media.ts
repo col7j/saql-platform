@@ -3,6 +3,7 @@
 // - الفعاليات والجداول تُقرأ حياً من الرحلات ولقاءات التركيز واللقاءين الافتتاحي والختامي ولا تُنسخ.
 // - الاعتماد يجمّد لقطة بإصدار، وأي تغيير في الجدول بعده يظهر «تغييراً معلّقاً» ولا يمس الرابط حتى يؤكده المسؤول.
 // - المؤشرات تُحسب من اللقطة المعتمدة وحالات التنفيذ، وتفرّق بين «لم تُنفَّذ» و«نُفّذت بلا إثبات».
+import { seesAsLeader } from './roles';
 import { sha256Hex } from './crypto';
 import { addDays, fmtDate, now, parseDate, todayISO } from './dates';
 import { uid } from './id';
@@ -28,7 +29,7 @@ export function isMediaHead(db: DB, pid: ID): boolean {
   return db.memberships.some((m) => m.committeeId === cid && m.personId === pid && m.role === 'leader');
 }
 function isLeaderId(db: DB, pid: ID) {
-  return !!db.persons.find((p) => p.id === pid)?.isGeneralLeader;
+  return seesAsLeader(db, pid);
 }
 export function mediaPermsOf(db: DB, pid: ID): MediaPermission[] {
   if (isLeaderId(db, pid) || isMediaHead(db, pid)) return MEDIA_PERMS.map((p) => p.key);

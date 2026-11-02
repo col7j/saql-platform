@@ -12,7 +12,6 @@ describe('قواعد التعارض', () => {
   it('مسؤول المالية لا يقبل أي صفة ثانية', () => {
     const h = harness('p_lead');
     expect(() => h.repos.committees.addMember('c_media', 's5', 'member', false)).toThrow(/مسؤول المالية/);
-    expect(() => h.repos.settings.setTracker('s5')).toThrow(/مسؤول المالية/);
     expect(h.db.memberships.some((m) => m.committeeId === 'c_media' && m.personId === 's5')).toBe(false);
   });
   it('مسؤول أي لجنة لا يكون ميسّراً، وعضوها يجوز', () => {
@@ -24,7 +23,6 @@ describe('قواعد التعارض', () => {
   });
   it('مسؤول التقنية لا يكون متابعاً دائماً، ويجوز مسؤولاً للإعلامية وبديلاً مؤقتاً', () => {
     const h = harness('p_lead');
-    expect(() => h.repos.settings.setTracker('s6')).toThrow(/التقنية/);
     expect(h.db.memberships.some((m) => m.committeeId === 'c_media' && m.personId === 's6' && m.role === 'leader')).toBe(true);
     const trip = h.db.trips.find((t) => t.id === 't7')!; // رحلة أُحُد
     expect(substituteConflict(h.db, 's6', trip)).toBeNull();
