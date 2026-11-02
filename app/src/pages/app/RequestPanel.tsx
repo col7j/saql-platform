@@ -9,7 +9,7 @@ import { SAR } from '@/domain/labels';
 import { tripTeamLeaderId } from '@/domain/permissions';
 import type { BudgetLine, BudgetOwnerKind, BudgetRequest, ID } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
-import { Button, Card, Field, Icons, Input, Modal, Notice, ReasonModal, Select, StatusPill, Textarea, Toggle, askConfirm } from '@/ui';
+import { BudgetBar, Button, Card, Field, Icons, Input, Modal, Notice, ReasonModal, Select, StatusPill, Textarea, Toggle, askConfirm } from '@/ui';
 import { BudgetEditor } from './BudgetEditor';
 import { CustodyCard, IssueCustodyModal } from './CustodyCard';
 
@@ -85,6 +85,7 @@ export function RequestPanel({ ownerKind, ownerId, title = 'الميزانية' 
         {/* إجراءات من بيده القرار */}
         {r && canFacilitatorDecide(db, pid, r) && (
           <div className="space-y-2">
+            {r.allocated > 0 && <BudgetBar spent={r.amount} limit={r.allocated} className="mb-2" />}
             {r.amount > r.allocated && <p className="text-sm text-accent-700">الميزانية {SAR(r.amount)} تتجاوز المرصود {SAR(r.allocated)}، وسيُنبَّه القائد العام بذلك.</p>}
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => act(() => repos.finance.facilitatorDecide(r.id, true), 'اعتمدتها وذهبت للقائد العام')} icon={<Icons.Check className="h-4 w-4" />}>اعتمد الميزانية</Button>

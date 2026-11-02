@@ -134,6 +134,23 @@ export function Progress({ value, tone = 'brand', className, label }: { value: n
   );
 }
 
+/** شريط الميزانية بوضوح هادئ: يمتلئ حتى الحد، ويظهر الجزء الزائد بكهرماني بخطوط خفيفة مع نص بلا بنر أحمر ولا وميض */
+export function BudgetBar({ spent, limit, className }: { spent: number; limit: number; className?: string }) {
+  const over = Math.max(0, spent - limit);
+  const total = Math.max(spent, limit) || 1;
+  const within = Math.min(spent, limit);
+  const pct = limit > 0 ? Math.round((over / limit) * 100) : 0;
+  return (
+    <div className={className}>
+      <div className="flex h-3 overflow-hidden rounded-full bg-ink-100" role="img" aria-label={over ? `تجاوز الميزانية بمقدار ${over} ر.س` : 'ضمن الميزانية'}>
+        <div className="h-full bg-brand-600" style={{ width: `${(within / total) * 100}%` }} />
+        {over > 0 && <div className="h-full bg-accent-400" style={{ width: `${(over / total) * 100}%`, backgroundImage: 'repeating-linear-gradient(135deg, rgba(255,255,255,.45) 0 4px, transparent 4px 8px)' }} />}
+      </div>
+      {over > 0 && <p className="mt-1 text-xs text-accent-700">تجاوز الميزانية بمقدار <span className="num font-bold">{over.toLocaleString('en-US')}</span> ر.س (<span className="num">{pct}%</span>)</p>}
+    </div>
+  );
+}
+
 export function Avatar({ name, size = 32, color }: { name: string; size?: number; color?: string }) {
   const parts = name.split(' ');
   const initials = (parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '');
