@@ -2,6 +2,7 @@
 // - ما يملكه الشخص يُحسب هنا من صفاته (منطق)، وترتيب القائمة والرئيسية لكل دور يُقرأ من settings.ui (بيانات).
 // - routeAccess يفحص أي عنوان يُكتب يدوياً، ويُستخدم في التوجيه وفي طبقة البيانات معاً.
 import { canOpenFinance, canViewBudget, hasFinancePerm, isFinanceOwner } from './finance';
+import { seesAsLeader, can, isReadOnly } from './roles';
 import { canOpenMedia, hasMediaPerm, latestSnapshot } from './media';
 import {
   canSeeCommittee, canSeePersonalPlan, canViewFocus, getCapabilities, groupsPublished, type Capabilities,
@@ -23,7 +24,7 @@ export function financeTabsFor(db: DB, pid: ID): FinanceSection[] {
   if (!canOpenFinance(db, pid)) return [];
   const view = canViewBudget(db, pid);
   const p = (k: Parameters<typeof hasFinancePerm>[2]) => hasFinancePerm(db, pid, k);
-  const leader = !!db.persons.find((x) => x.id === pid)?.isGeneralLeader;
+  const leader = seesAsLeader(db, pid);
   const owner = isFinanceOwner(db, pid);
   const tabs: [FinanceSection, boolean][] = [
     ['overview', true],
@@ -88,7 +89,7 @@ export function layoutRolesOf(db: DB, pid: ID): LayoutRole[] {
     ['media_head', head('media')],
     ['leader', c.isLeader],
     ['facilitator', c.facilitatorOf.length],
-    ['tracker', c.isTracker],
+    ['tracker', c.isTracker && !c.isLeader],
     ['group_leader', c.leaderOf],
     ['staff', c.isStaff],
     ['participant', c.isParticipant],
@@ -122,6 +123,7 @@ export function navFor(db: DB, pid: ID): { sections: { title: string; items: Nav
   const placed = new Set<string>();
   const sections: { title: string; items: NavItem[] }[] = [];
   const push = (title: string, key: string, label?: string) => {
+    if (key === 'notifications' || key === 'profile') return; // تُفتح من قائمة الحساب
     const cat = catalog.get(key);
     if (!cat || placed.has(key) || !allowed.has(key)) return;
     // عنصران لنفس الشاشة (مثل «اللجان» و«لجنتي») لا يظهران معاً

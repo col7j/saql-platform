@@ -11,7 +11,7 @@ import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } f
 import { buildTrips } from './seed-trips';
 import { seedMedia } from './seed-media';
 
-export const DB_VERSION = 14;
+export const DB_VERSION = 15;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -32,6 +32,7 @@ export function buildSeed(): DB {
   const { committees, memberships } = buildCommittees();
   const settings = defaultSettings(addDays(T, -60), addDays(T, 150));
   settings.trackerId = 's7';
+  settings.societyDelegateId = 's1';
   // البرنامج جارٍ: حفظ القائد العام إعدادات التقييم فأُقفلت
   settings.evaluationLock = { locked: true, at: iso(addDays(T, -58)), by: LEADER_ID };
   const participants = persons.filter((p) => p.kind === 'participant');

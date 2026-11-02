@@ -335,11 +335,10 @@ function Notifications() {
 /** متابع الرحلات الدائم (يُعرض في شاشة الأشخاص والصلاحيات) */
 export function Tracker() {
   const db = useDB();
-  const staff = db.persons.filter((p) => p.kind === 'staff' && !p.isGeneralLeader);
+  const assistant = db.persons.find((p) => p.isAssistant);
   return (
-    <Card title="متابع الرحلات الدائم" subtitle="شخص ثابت لا يكون ميسّراً ولا مسؤول لجنة (يجوز عضواً). عند غيابه عن رحلة يُكلَّف بديل لها فقط">
-      <Field label="المتابع" className="max-w-sm"><Select value={db.settings.trackerId ?? ''} onChange={(e) => act(() => repos.settings.setTracker(e.target.value), 'عُيّن المتابع')} options={[{ value: '', label: '—' }, ...staff.map((p) => ({ value: p.id, label: p.name }))]} /></Field>
-      <p className="mt-2 text-xs text-ink-400">قواعد التعارض تُطبَّق عند الاختيار: يظهر سبب المنع إن كان للشخص صفة لا تجتمع مع المتابعة.</p>
+    <Card title="متابع الرحلات" subtitle="هو مساعد القائد العام، ويُحدَّد من حسابه الذي ينشئه مسؤول اللجنة التقنية">
+      <p className="text-sm">{assistant ? assistant.name : 'لا يوجد حساب مساعد بعد'}</p>
     </Card>
   );
 }

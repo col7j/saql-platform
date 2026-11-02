@@ -1,5 +1,6 @@
 // ملكية الإعدادات وقفل التقييم (وثيقة القرارات: قفل الإعدادات + إجابة س4).
 // القفل لإعدادات التقييم فقط، وبقية القوالب يعدّلها صاحبها.
+import { hasLeaderPowers } from './roles';
 import { canManageAccounts } from './accounts';
 import { hasTempGrant } from './grants';
 import type { DB, ID, Settings } from './types';
@@ -23,7 +24,7 @@ export function isEvaluationKey(k: string): k is EvaluationKey {
   return (EVALUATION_KEYS as readonly string[]).includes(k);
 }
 
-const isLeader = (db: DB, pid: ID) => !!db.persons.find((p) => p.id === pid)?.isGeneralLeader;
+const isLeader = (db: DB, pid: ID) => hasLeaderPowers(db, pid);
 
 /** تعديل التقييم: القائد العام (أو مسؤول التقنية) ما دام غير مقفل */
 export function canEditEvaluation(db: DB, pid: ID): boolean {

@@ -14,7 +14,8 @@ const staffRaw: [string, string, string][] = [
   ['s4', 'هود الشنقيطي', 'ميسّر مجموعة العقيق'],
   ['s5', 'حمزة النهادي', 'مسؤول اللجنة المالية'],
   ['s6', 'محمد الحاج', 'مسؤول اللجنة الإعلامية والتقنية'],
-  ['s7', 'أحمد عمران', 'متابع الرحلات'],
+  ['s8', 'خالد المشرف', 'المشرف العام على البرنامج (قراءة فقط)'],
+  ['s7', 'أحمد عمران', 'مساعد القائد العام ومتابع الرحلات'],
 ];
 
 /** المشاركون: u1..u24 ست لكل مجموعة كما كانت، ثم u25..u28 واحد لكل مجموعة (سبعة في كل مجموعة) */
@@ -32,7 +33,7 @@ const majors = ['هندسة برمجيات', 'إدارة أعمال', 'شريع�
 
 export function buildPeople(): Person[] {
   const leader: Person = { id: LEADER_ID, name: 'أحمد يحيى الحاج', kind: 'staff', isGeneralLeader: true, email: 'leader@saql.example', phone: '0550000001', title: 'القائد العام للبرنامج' };
-  const staff: Person[] = staffRaw.map(([id, name, title], i) => ({ id, name, kind: 'staff', email: `${id}@saql.example`, phone: `05500000${10 + i}`, title }));
+  const staff: Person[] = staffRaw.map(([id, name, title], i) => ({ id, name, kind: 'staff', ...(id === 's7' ? { isAssistant: true } : {}), ...(id === 's8' ? { isSupervisor: true } : {}), email: `${id}@saql.example`, phone: `05500000${10 + i}`, title }));
   const participants: Person[] = participantNames.map((name, i) => ({
     id: `u${i + 1}`,
     name,

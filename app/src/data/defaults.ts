@@ -220,7 +220,7 @@ export function defaultUiConfig(): UiConfig {
         sections: [
           basics,
           { title: P, items: [k('trips'), k('groups'), k('focus'), k('meetings'), k('leaderboard')] },
-          { title: 'المتابعة', items: [k('insights'), k('tasks'), k('approvals'), k('finance', 'المالية (مراقبة)')] },
+          { title: 'المتابعة', items: [k('insights'), k('tasks'), k('approvals'), k('tracker'), k('finance', 'المالية (مراقبة)')] },
           { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص والصلاحيات')] },
           { title: 'التقييم', items: [k('settings', 'الإعدادات والتقييم'), k('surveys'), k('plans')] },
           { title: 'المحتوى', items: [k('media'), k('tracking_link'), k('site_editor'), k('library'), k('inbox')] },

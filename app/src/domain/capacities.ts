@@ -30,7 +30,7 @@ export function capacityKeysOf(db: DB, personId: ID): Set<CapacityKey> {
   const keys = new Set<CapacityKey>();
   if (db.groups.some((g) => g.facilitatorId === personId)) keys.add('facilitator');
   if (db.groups.some((g) => g.leaderId === personId)) keys.add('group_leader');
-  if (db.settings.trackerId === personId) keys.add('tracker');
+  if (db.persons.find((p) => p.id === personId)?.isAssistant) keys.add('tracker');
   for (const m of db.memberships.filter((x) => x.personId === personId)) {
     const kind = db.committees.find((c) => c.id === m.committeeId)?.kind;
     if (!kind || IGNORED_COMMITTEES.includes(kind)) continue;
@@ -62,7 +62,8 @@ export function violatedRule(rules: CapacityRule[], keys: Set<CapacityKey>): Cap
 
 function isExempt(db: DB, personId: ID) {
   // القائد العام مشرف عام بلا قاعدة جمع صفات
-  return !!db.persons.find((p) => p.id === personId)?.isGeneralLeader;
+  const p = db.persons.find((x) => x.id === personId);
+  return !!(p?.isGeneralLeader || p?.isSupervisor);
 }
 
 /** رسالة التعارض للشخص في البيانات كما هي (تُستدعى بعد تطبيق التغيير على المسودة) */

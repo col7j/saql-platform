@@ -4,6 +4,7 @@
 import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { canManageCommittee, canManageFocus, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
+import { isReadOnly, READ_ONLY_MESSAGE, leaderIds } from '@/domain/roles';
 import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
@@ -13,7 +14,7 @@ import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, evaluationS
 import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, focusDone, focusIsPast, tasksFromTemplates, tripCloseBlock, type DocAction } from '@/domain/workflow';
 import type {
-  AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
+  PersonKind, AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
   LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ProgramEvent, SchedulePlan, Settings,
   Attendance, StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
 } from '@/domain/types';
@@ -39,7 +40,6 @@ export function pushNotification(d: DB, toIds: ID[], type: NotificationType, tit
 }
 
 const staffIds = (d: DB) => d.persons.filter((p) => p.kind === 'staff').map((p) => p.id);
-const leaderId = (d: DB) => d.persons.find((p) => p.isGeneralLeader)!.id;
 const financeIds = (d: DB) => d.memberships.filter((m) => d.committees.find((c) => c.id === m.committeeId)?.kind === 'finance').map((m) => m.personId);
 const allParticipants = (d: DB) => d.persons.filter((p) => p.kind === 'participant').map((p) => p.id);
 const findTrip = (d: DB, id: ID) => {
@@ -47,6 +47,18 @@ const findTrip = (d: DB, id: ID) => {
   if (!t) throw new Error('الرحلة غير موجودة');
   return t;
 };
+
+export type AccountRole = 'participant' | 'staff' | 'general_leader' | 'assistant' | 'supervisor';
+export const ACCOUNT_ROLE_LABEL: Record<AccountRole, string> = {
+  participant: 'مشارك', staff: 'عضو فريق عمل', general_leader: 'القائد العام', assistant: 'مساعد القائد العام', supervisor: 'المشرف العام (قراءة فقط)',
+};
+export interface NewAccountInput {
+  role: AccountRole;
+  name: string;
+  email?: string;
+  phone?: string;
+  title?: string;
+}
 
 export interface CreateTripInput {
   title: string;
@@ -172,7 +184,7 @@ function submitRequestIn(d: DB, pid: ID, input: { ownerKind: BudgetRequest['owne
   const over = amount > allocated ? ` — يتجاوز المرصود (${allocated} ر.س)` : '';
   if (status === 'pending_facilitator') pushNotification(d, [tripBudgetFacilitatorId(d, r.ownerId)!], 'budget_request', `ميزانية رحلة بانتظار اعتمادك: ${t} (${amount} ر.س)`, ownerLink(r.ownerKind, r.ownerId));
   else if (status === 'pending_finance') pushNotification(d, financeIdsWith(d, 'approve_within').filter((x) => x !== pid), 'budget_request', `طلب ميزانية ضمن المرصود: ${t} (${amount} ر.س)`, '/app/finance?tab=requests');
-  else pushNotification(d, [leaderId(d)], 'budget_request', `طلب ميزانية بانتظار قرارك: ${t} (${amount} ر.س)${over}`, '/app/approvals');
+  else pushNotification(d, leaderIds(d), 'budget_request', `طلب ميزانية بانتظار قرارك: ${t} (${amount} ر.س)${over}`, '/app/approvals');
 }
 /** شروط رفع نماذج الرحلة: تخطيط رحلات المجموعات بعد نشر التشكيل، والوثيقة أول ما يُرفع */
 function tripFormBlock(d: DB, trip: Trip, kind: TripDoc['kind'] | 'budget'): string | null {
@@ -221,7 +233,12 @@ function applyEditIn(d: DB, er: EditRequest) {
   }
 }
 
-export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () => DB) {
+export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: () => DB) {
+  /** المشرف العام لا يكتب: يُرفض كل تعديل هنا، في طبقة البيانات، لا بإخفاء الأزرار فقط */
+  const mutate: Mutate = (recipe) => {
+    if (isReadOnly(read(), me())) throw new Error(READ_ONLY_MESSAGE);
+    rawMutate(recipe);
+  };
   /** يرفض بنفس الرسالة الممنوع وغير الموجود */
   const deny = () => {
     throw new Error(ACCESS_DENIED);
@@ -252,22 +269,36 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
     },
     // ───────────── الأشخاص والمجموعات ─────────────
     people: {
-      /** القائد العام ينشئ الشخص ويحدد نوعه، ثم يدير مسؤول اللجنة التقنية حساب دخوله */
-      create(input: Omit<Person, 'id' | 'isGeneralLeader'>): ID {
-        const id = uid(input.kind === 'staff' ? 's' : 'u');
+      /** إنشاء الحسابات (كل الأنواع ومنها القائد العام) لمسؤول اللجنة التقنية وحده. تعيد كلمة مرور مؤقتة تُجبر على التغيير */
+      createAccount(input: NewAccountInput): { id: ID; password: string } {
+        const id = uid(input.role === 'participant' ? 'u' : 's');
+        const password = tempPassword();
         mutate((d) => {
-          if (input.kind === 'staff' ? !isLeaderId(d, me()) : !hasTempGrant(d, me(), 'register_participants'))
-            throw new Error(input.kind === 'staff' ? 'إضافة فريق العمل للقائد العام' : 'تسجيل المشاركين للقائد العام أو من يمنحه صلاحية مؤقتة');
+          techOnly(d, me());
+          const email = (input.email ?? '').trim();
+          const phone = (input.phone ?? '').trim();
           if (!input.name.trim()) throw new Error('الاسم مطلوب');
-          if (!/^\S+@\S+\.\S+$/.test(input.email.trim())) throw new Error('البريد غير صحيح');
-          if (d.persons.some((p) => p.email.toLowerCase() === input.email.trim().toLowerCase())) throw new Error('البريد مسجّل لشخص آخر');
-          d.persons.push({ ...input, id, name: input.name.trim(), email: input.email.trim() });
-          d.accounts.push({ personId: id, username: suggestUsername(d, input.email), mustChangePassword: true, disabled: false, updatedAt: nowISO(), updatedBy: me() });
-          audit(d, me(), input.kind === 'staff' ? 'إضافة عضو فريق عمل' : 'تسجيل مشارك', input.name, 'roles');
-          const tech = d.memberships.find((m) => m.role === 'leader' && d.committees.find((c) => c.id === m.committeeId)?.kind === 'tech')?.personId;
-          if (tech) pushNotification(d, [tech], 'general', `حساب جديد بلا كلمة مرور: ${input.name}`, '/app/people');
+          if (!email && !phone) throw new Error('اكتب الجوال أو البريد');
+          if (email && !/^\S+@\S+\.\S+$/.test(email)) throw new Error('البريد غير صحيح');
+          if (email && d.persons.some((p) => p.email.toLowerCase() === email.toLowerCase())) throw new Error('البريد مسجّل لشخص آخر');
+          if (phone && d.persons.some((p) => p.phone === phone)) throw new Error('الجوال مسجّل لشخص آخر');
+          const flag = ({ general_leader: 'isGeneralLeader', assistant: 'isAssistant', supervisor: 'isSupervisor' } as const)[input.role as 'general_leader' | 'assistant' | 'supervisor'];
+          if (flag && d.persons.some((p) => p[flag])) throw new Error(`يوجد حساب ${ACCOUNT_ROLE_LABEL[input.role]} بالفعل: أوقفه قبل إنشاء بديله`);
+          const kind: PersonKind = input.role === 'participant' ? 'participant' : 'staff';
+          d.persons.push({
+            id, kind, name: input.name.trim(), email: email || `${id}@saql.example`, phone: phone || undefined, title: input.title || ACCOUNT_ROLE_LABEL[input.role],
+            ...(flag ? { [flag]: true } : {}),
+          });
+          const salt = uid('salt');
+          d.accounts.push({ personId: id, username: suggestUsername(d, email || `${id}@x`), salt, passwordHash: hashPassword(password, salt), mustChangePassword: true, disabled: false, updatedAt: nowISO(), updatedBy: me() });
+          if (input.role === 'assistant') d.settings.trackerId = id;
+          audit(d, me(), `إنشاء حساب (${ACCOUNT_ROLE_LABEL[input.role]})`, input.name, 'accounts');
         });
-        return id;
+        return { id, password };
+      },
+      /** مسار قديم: ينشئ الحساب بلا كلمة مرور فتُعيَّن بعدها. لمسؤول اللجنة التقنية وحده أيضاً */
+      create(input: Omit<Person, 'id' | 'isGeneralLeader'>): ID {
+        return this.createAccount({ role: input.kind === 'staff' ? 'staff' : 'participant', name: input.name, email: input.email, phone: input.phone, title: input.title }).id;
       },
     },
     // ───────────── الصلاحيات المؤقتة (يمنحها القائد العام) ─────────────
@@ -397,7 +428,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
       send(text: string) {
         mutate((d) => {
           d.adminMessages.push({ id: uid('am'), fromId: me(), text, at: nowISO() });
-          pushNotification(d, [leaderId(d)], 'general', 'رسالة جديدة من مشارك', '/app/messages');
+          pushNotification(d, leaderIds(d), 'general', 'رسالة جديدة من مشارك', '/app/messages');
         });
       },
       reply(id: ID, text: string) {
@@ -482,6 +513,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
             if (block) throw new Error(block);
           }
           const isStaff = trip.executor.kind === 'staff';
+          if (action.type.startsWith('leader_') && !isLeaderId(d, me())) throw new Error('اعتماد الخطط للقائد العام أو مساعده');
           const updated = applyDocAction(doc, action, me(), isStaff);
           Object.assign(doc, updated);
           doc = updated;
@@ -492,7 +524,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           const fac = tripFacilitatorId(d, trip)!;
           if (action.type === 'submit') pushNotification(d, [fac], 'approval_submitted', `رُفعت ${label} للمراجعة`, link);
           if (action.type === 'facilitator_approve') {
-            pushNotification(d, [leaderId(d)], 'approval_submitted', `وافق الميسّر على ${label}: بانتظار قرارك`, link);
+            pushNotification(d, leaderIds(d), 'approval_submitted', `وافق الميسّر على ${label}: بانتظار قرارك`, link);
             pushNotification(d, staffIds(d), 'general', `${label} معروضة على الإدارة للنقاش`, link);
             pushNotification(d, team, 'approval_approved', `وافق الميسّر على ${label}`, link);
           }
@@ -666,7 +698,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           const conflict = substituteConflict(d, candidateId, findTrip(d, tripId));
           if (conflict) throw new Error(`${personName(d, candidateId)}: ${conflict}`);
           findTrip(d, tripId).trackerSubstitute = { candidateId, reason, status: 'pending' };
-          pushNotification(d, [leaderId(d)], 'general', 'طلب متابع بديل لرحلة', `/app/trips/${tripId}`);
+          pushNotification(d, leaderIds(d), 'general', 'طلب متابع بديل لرحلة', `/app/trips/${tripId}`);
         });
       },
       decideTrackerSubstitute(tripId: ID, approve: boolean) {
@@ -962,7 +994,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           const mat: Material = { ...m, id: uid('mt'), uploaderId: me(), at: nowISO() };
           if (mat.pointsRequested) mat.pointsStatus = 'pending';
           d.materials.push(mat);
-          if (mat.pointsRequested) pushNotification(d, [leaderId(d)], 'general', `طلب نقاط على مادة: ${mat.title}`, '/app/library');
+          if (mat.pointsRequested) pushNotification(d, leaderIds(d), 'general', `طلب نقاط على مادة: ${mat.title}`, '/app/library');
           if (mat.audience.kind === 'person') pushNotification(d, [mat.audience.personId], 'general', `أُرفقت لك مادة: ${mat.title}`, '/app/library');
         });
       },
@@ -1068,7 +1100,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           r.status = approve ? 'pending_leader' : 'rejected';
           r.history.push({ at: nowISO(), byId: me(), action: approve ? 'facilitator_approve' : 'facilitator_reject', note: reason });
           const t = ownerTitle(d, r.ownerKind, r.ownerId);
-          if (approve) pushNotification(d, [leaderId(d)], 'budget_request', `ميزانية ${t} بانتظار اعتمادك (${r.amount} ر.س)${r.amount > r.allocated ? ` — تتجاوز المرصود ${r.allocated} ر.س` : ''}`, '/app/approvals');
+          if (approve) pushNotification(d, leaderIds(d), 'budget_request', `ميزانية ${t} بانتظار اعتمادك (${r.amount} ر.س)${r.amount > r.allocated ? ` — تتجاوز المرصود ${r.allocated} ر.س` : ''}`, '/app/approvals');
           else pushNotification(d, [r.requestedBy], 'approval_rejected', `أعاد الميسّر ميزانية ${t}: ${reason}`, ownerLink(r.ownerKind, r.ownerId));
         });
       },
@@ -1360,7 +1392,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (d.editRequests.some((e) => e.status === 'pending' && JSON.stringify(e.target) === JSON.stringify(t))) throw new Error('يوجد طلب تعديل قائم لهذا السجل');
           d.editRequests.push({ id: uid('er'), ...input, requestedBy: me(), at: nowISO(), status: 'pending' });
           audit(d, me(), 'طلب تعديل سجل معتمد', `${input.summary} — ${input.reason}`);
-          pushNotification(d, [leaderId(d)], 'general', `طلب تعديل سجل مالي معتمد: ${input.summary}`, '/app/approvals');
+          pushNotification(d, leaderIds(d), 'general', `طلب تعديل سجل مالي معتمد: ${input.summary}`, '/app/approvals');
         });
       },
       decideEdit(id: ID, approve: boolean, note?: string) {
@@ -1476,7 +1508,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
         mutate((d) => {
           manageCommitteeIn(d, committeeId);
           d.memberRequests.push({ id: uid('mr'), committeeId, personId, requestedBy: me(), note, status: 'pending', at: nowISO() });
-          pushNotification(d, [leaderId(d)], 'committee_member_request', `طلب إضافة ${d.persons.find((p) => p.id === personId)?.name} إلى ${d.committees.find((c) => c.id === committeeId)?.name}`, `/app/committees/${committeeId}`);
+          pushNotification(d, leaderIds(d), 'committee_member_request', `طلب إضافة ${d.persons.find((p) => p.id === personId)?.name} إلى ${d.committees.find((c) => c.id === committeeId)?.name}`, `/app/committees/${committeeId}`);
         });
       },
       decideRequest(requestId: ID, approve: boolean, role: 'leader' | 'member' = 'member', canSeeFinance = false) {
@@ -1541,15 +1573,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
           if (!reason.trim()) throw new Error('اكتب سبب فتح القفل');
           d.settings.evaluationLock = { locked: false, at: nowISO(), by: me() };
           audit(d, me(), 'فتح قفل إعدادات التقييم', reason, 'settings');
-          pushNotification(d, [leaderId(d)], 'general', `فُتح قفل إعدادات التقييم: ${reason}`, '/app/settings');
-        });
-      },
-      setTracker(personId: ID) {
-        mutate((d) => {
-          d.settings.trackerId = personId;
-          assertNoCapacityConflict(d, [personId]);
-          audit(d, me(), 'إسناد صفة', `متابع الرحلات الدائم — ${personName(d, personId)}`, 'roles');
-          pushNotification(d, [personId], 'general', 'عُيّنت متابعاً للرحلات', '/app/tracker');
+          pushNotification(d, leaderIds(d), 'general', `فُتح قفل إعدادات التقييم: ${reason}`, '/app/settings');
         });
       },
       moderateTrackingComment(id: ID, status: 'visible' | 'hidden') {

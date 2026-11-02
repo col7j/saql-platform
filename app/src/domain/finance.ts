@@ -1,5 +1,6 @@
 // المنطق المالي: الصلاحيات المفوّضة، أنواع الصرف، المرصود، مسار الطلب، الحالة والخطوة التالية.
 // دوال نقية لا تعتمد على الواجهة. حسابات المحفظة والعهدة ونماذج الصرف في ledger.ts
+import { hasLeaderPowers, seesAsLeader } from './roles';
 import { tripTeamLeaderId } from './permissions';
 import type { AllocationRule, BudgetOwnerKind, BudgetRequest, DB, FinancePermission, FocusMeeting, ID, Trip, SpendKind } from './types';
 
@@ -36,16 +37,17 @@ export function financePermsOf(db: DB, pid: ID): FinancePermission[] {
 export function hasFinancePerm(db: DB, pid: ID, perm: FinancePermission) {
   return financePermsOf(db, pid).includes(perm);
 }
+/** القائد العام ومساعده (صلاحيات الكتابة والاعتماد). المشرف العام لا يدخل هنا */
 export function isLeaderId(db: DB, pid: ID) {
-  return !!db.persons.find((p) => p.id === pid)?.isGeneralLeader;
+  return hasLeaderPowers(db, pid);
 }
 /** من يدخل القسم المالي: أعضاء اللجنة المالية والقائد العام (مراقب) */
 export function canOpenFinance(db: DB, pid: ID) {
-  return isLeaderId(db, pid) || isFinanceMember(db, pid);
+  return seesAsLeader(db, pid) || isFinanceMember(db, pid);
 }
 /** الموازنة العامة: القائد العام ومن يحدده مسؤول المالية */
 export function canViewBudget(db: DB, pid: ID) {
-  return isLeaderId(db, pid) || hasFinancePerm(db, pid, 'view_budget');
+  return seesAsLeader(db, pid) || hasFinancePerm(db, pid, 'view_budget');
 }
 
 // ───────────── أنواع الصرف ─────────────

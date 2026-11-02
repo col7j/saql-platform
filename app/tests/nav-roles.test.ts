@@ -8,7 +8,7 @@ const nav = (pid: string) => navFor(db, pid);
 const keys = (pid: string) => nav(pid).all.map((i) => i.key);
 const labels = (pid: string) => nav(pid).all.map((i) => i.label);
 const groupItems = (pid: string, title: string) => nav(pid).sections.find((s) => s.title === title)?.items.map((i) => i.label);
-const BASICS = ['الرئيسية', 'التقويم', 'الإشعارات', 'ملفي'];
+const BASICS = ['الرئيسية', 'التقويم']; // الإشعارات والملف في قائمة الحساب
 
 describe('قواعد عامة لكل القوائم', () => {
   it('الأساسية أولاً، ومجموعات من 4 إلى 6، وكل مجموعة 5 عناصر أو أقل، ولا شاشة مكررة', () => {
@@ -32,7 +32,7 @@ describe('قواعد عامة لكل القوائم', () => {
 
 describe('القائد العام', () => {
   it('18 عنصراً في خمس مجموعات بعد الأساسية (ومعها المركز الإعلامي)', () => {
-    expect(nav('p_lead').all.length).toBe(4 + 18);
+    expect(nav('p_lead').all.length).toBe(2 + 18);
     expect(groupItems('p_lead', 'البرنامج')).toEqual(['الرحلات', 'المجموعات', 'لقاءات التركيز', 'الاجتماعات', 'الترتيب']);
     expect(groupItems('p_lead', 'المتابعة')).toEqual(['المؤشرات', 'المهام', 'بانتظار اعتمادي', 'المالية (مراقبة)']);
     expect(groupItems('p_lead', 'الأشخاص والصلاحيات')).toEqual(['الأشخاص والصلاحيات']);
@@ -85,7 +85,7 @@ describe('المشارك وقائد المجموعة والمتابع وعضو �
     expect(labels('u1').filter((l) => l === 'الرحلات')).toHaveLength(0);
   });
   it('متابع الرحلات: متابعة الرحلات أولاً', () => {
-    expect(nav('s7').sections[1].items[0].key).toBe('tracker');
+    expect(nav('s7').all.map((i) => i.key)).toContain('tracker'); // المساعد يرى قائمة القائد ومعها المتابعة
   });
   it('الرسائل شاشة واحدة لطرفي القناة، والخطط الشخصية شاشة واحدة', () => {
     expect(nav('p_lead').all.find((i) => i.key === 'inbox')!.to).toBe('/app/messages');
@@ -98,12 +98,12 @@ describe('المشارك وقائد المجموعة والمتابع وعضو �
 
 describe('منع الوصول للشاشات الجديدة', () => {
   it('بانتظار اعتمادي للقائد العام وحده', () => {
-    db.persons.filter((p) => !p.isGeneralLeader).forEach((p) => expect(routeAccess(db, p.id, '/app/approvals'), p.name).toBe(false));
+    db.persons.filter((p) => !p.isGeneralLeader && !p.isAssistant && !p.isSupervisor).forEach((p) => expect(routeAccess(db, p.id, '/app/approvals'), p.name).toBe(false));
     expect(routeAccess(db, 'p_lead', '/app/approvals')).toBe(true);
   });
   it('سجل التدقيق لمسؤول التقنية والقائد العام فقط', () => {
     expect(routeAccess(db, 's6', '/app/audit')).toBe(true);
-    ['s1', 's5', 's7', 'u1', 'u2'].forEach((id) => expect(routeAccess(db, id, '/app/audit'), id).toBe(false));
+    ['s1', 's5', 'u1', 'u2'].forEach((id) => expect(routeAccess(db, id, '/app/audit'), id).toBe(false));
   });
   it('أقسام المالية: العناوين القديمة تتحول، وقسم لم يُمنح يُرفض', () => {
     expect(routeAccess(db, 's5', '/app/finance', '?tab=custody')).toBe(true); // ← الطلبات والعهد

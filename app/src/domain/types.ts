@@ -12,7 +12,11 @@ export interface Person {
   id: ID;
   name: string;
   kind: PersonKind;
-  isGeneralLeader?: boolean; // القائد العام = المشرف العام
+  isGeneralLeader?: boolean; // القائد العام (لم يعد يساوي المشرف العام)
+  /** المشرف العام: قراءة فقط تُفرض في طبقة البيانات */
+  isSupervisor?: boolean;
+  /** مساعد القائد العام ومسؤول التدريب والتطوير: هو متابع الرحلات */
+  isAssistant?: boolean;
   email: string;
   phone?: string;
   university?: string;
@@ -1012,7 +1016,10 @@ export interface Settings {
     splitAlert: { maxAmount: number; windowDays: number; minCount: number }; // تنبيه تجزئة المصروف
     evalItems: { key: string; name: string }[]; // بنود المالية في تقييم الرحلة (مثل الترشيد) يقيّم بها وحده
   };
+  /** متابع الرحلات = مساعد القائد العام (يُشتق من حسابه ولا يُعيَّن يدوياً) */
   trackerId?: ID;
+  /** مندوب الجمعية: ميسّر واحد يصدر الخطابات */
+  societyDelegateId?: ID;
   /** رابط الداعم الثابت: حد للمحاولات الخاطئة ومدة القفل */
   supporterLink: { maxAttempts: number; lockMinutes: number; programIdea: string };
   /** المركز الإعلامي */
