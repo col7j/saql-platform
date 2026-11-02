@@ -1,6 +1,7 @@
 // طبقة بيانات المركز الإعلامي والفواتير الإضافية. تُركَّب في createLocalRepositories.
 // الدوال العامة (public*) تعمل بلا حساب: يدخل الفريق المتعاقد بالرابط فقط، وفي المنصة الحقيقية يتحقق منها الخادم
 // (تجزئة حقيقية، تحديد معدل الطلبات، وفحص الصلاحية على الخادم).
+import { canManageAccounts } from '@/domain/accounts';
 import { hasLeaderPowers } from '@/domain/roles';
 import { ACCESS_DENIED } from '@/domain/access';
 import { nowISO } from '@/domain/dates';
@@ -253,11 +254,13 @@ export function createMediaRepos(mutate: Mutate, me: () => ID) {
     },
     setPermission(personId: ID, perm: MediaPermission, on: boolean) {
       mutate((d) => {
-        if (!isLeader(d, me())) throw new Error('يمنح الصلاحيات القائد العام');
+        if (!canManageAccounts(d, me())) throw new Error('يمنح صلاحيات المركز الإعلامي مسؤول اللجنة التقنية');
         const cid = d.committees.find((c) => c.kind === 'media')?.id;
         const m = d.memberships.find((x) => x.committeeId === cid && x.personId === personId);
         if (!m) throw new Error('الشخص ليس عضواً في اللجنة الإعلامية');
         if (m.role === 'leader') throw new Error('رئيس اللجنة يملك كل الصلاحيات');
+        const ceiling = d.committees.find((c) => c.id === cid)?.grantedPerms;
+        if (on && ceiling && !ceiling.includes(perm)) throw new Error('هذه الصلاحية خارج ما منحه القائد العام للجنة الإعلامية');
         const cur = new Set(m.mediaPerms ?? []);
         if (on) cur.add(perm); else cur.delete(perm);
         m.mediaPerms = [...cur];

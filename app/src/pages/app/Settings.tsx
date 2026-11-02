@@ -26,7 +26,7 @@ export default function SettingsPage() {
     ...(me.canManageScheduleCategories ? [{ key: 'categories' as const, label: 'تصنيفات الجدول' }] : []),
     ...(leader ? [{ key: 'templates' as const, label: 'قالب المهام التلقائية' }] : []),
     ...(leader ? [{ key: 'doc' as const, label: 'قالب وثيقة الرحلة' }] : []),
-    ...(leader ? [{ key: 'media' as const, label: 'المركز الإعلامي' }] : []),
+    ...(leader || tech ? [{ key: 'media' as const, label: 'المركز الإعلامي' }] : []),
     ...(tech ? [{ key: 'notifications' as const, label: 'الإشعارات' }] : []),
   ];
   const [picked, setTab] = useState<Tab>(tabs[0]?.key ?? 'evaluation');
@@ -49,9 +49,11 @@ export default function SettingsPage() {
 
 const WEEK_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map((label, i) => ({ value: String(i), label }));
 
-/** إعدادات المركز الإعلامي وصلاحيات أعضاء اللجنة (للقائد العام) */
+/** إعدادات المركز الإعلامي (القائد العام) وصلاحيات أعضاء اللجنة (مسؤول التقنية) */
 function MediaSettings() {
   const db = useDB();
+  const me = useMe();
+  const canGrant = me.isTechLead;
   const [m, setM] = useState(db.settings.media);
   const cid = db.committees.find((c) => c.kind === 'media')?.id;
   const members = db.memberships.filter((x) => x.committeeId === cid);
@@ -64,17 +66,17 @@ function MediaSettings() {
           <Field label="«فعاليات قادمة بلا موجز»: خلال (أيام)"><Input type="number" value={m.upcomingDays} onChange={(e) => setM({ ...m, upcomingDays: +e.target.value })} /></Field>
           <Field label="تنبيه الروابط التي ستنتهي خلال (أيام)"><Input type="number" value={m.linkExpiryWarnDays} onChange={(e) => setM({ ...m, linkExpiryWarnDays: +e.target.value })} /></Field>
           <Field label="صلاحية الرابط الجديد افتراضياً (أيام، 0 بلا انتهاء)"><Input type="number" value={m.defaultLinkDays} onChange={(e) => setM({ ...m, defaultLinkDays: +e.target.value })} /></Field>
-          <Button onClick={() => act(() => repos.media.saveSettings(m), 'حُفظت إعدادات المركز الإعلامي')}>احفظ</Button>
+          {me.isLeader && <Button onClick={() => act(() => repos.media.saveSettings(m), 'حُفظت إعدادات المركز الإعلامي')}>احفظ</Button>}
         </div>
       </Card>
-      <Card title="صلاحيات أعضاء اللجنة الإعلامية" subtitle="يمنحها القائد العام كل واحدة على حدة. العضو بلا أي صلاحية لا يرى المركز">
+      <Card title="صلاحيات أعضاء اللجنة الإعلامية" subtitle={canGrant ? 'امنح كل صلاحية على حدة ضمن سقف اللجنة. العضو بلا أي صلاحية لا يرى المركز' : 'يمنحها مسؤول اللجنة التقنية. العضو بلا أي صلاحية لا يرى المركز'}>
         <ul className="space-y-3">
           {members.map((x) => (
             <li key={x.id} className="rounded-2xl border border-ink-100 p-3">
               <PersonChip id={x.personId} sub={x.role === 'leader' ? 'رئيس اللجنة: كل الصلاحيات' : undefined} />
               {x.role !== 'leader' && (
                 <div className="mt-2 space-y-1">
-                  {MEDIA_PERMS.map((p) => <Toggle key={p.key} checked={(x.mediaPerms ?? []).includes(p.key)} onChange={(v) => act(() => repos.media.setPermission(x.personId, p.key, v), v ? 'مُنحت الصلاحية' : 'سُحبت الصلاحية')} label={<span>{p.label}<span className="block text-xs text-ink-500">{p.hint}</span></span>} />)}
+                  {MEDIA_PERMS.map((p) => <Toggle key={p.key} disabled={!canGrant} checked={(x.mediaPerms ?? []).includes(p.key)} onChange={(v) => act(() => repos.media.setPermission(x.personId, p.key, v), v ? 'مُنحت الصلاحية' : 'سُحبت الصلاحية')} label={<span>{p.label}<span className="block text-xs text-ink-500">{p.hint}</span></span>} />)}
                 </div>
               )}
             </li>

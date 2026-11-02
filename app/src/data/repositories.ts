@@ -350,6 +350,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           const c = d.committees.find((x) => x.id === committeeId);
           const m = d.memberships.find((x) => x.committeeId === committeeId && x.personId === personId);
           if (!c || !m) throw new Error('الشخص ليس عضواً في هذه اللجنة');
+          if (c.kind === 'media') throw new Error('يمنح صلاحيات المركز الإعلامي لأعضائه مسؤول اللجنة التقنية');
           if (m.role === 'leader') throw new Error('مسؤول اللجنة يملك كل ما منحته اللجنة');
           if (on && c.grantedPerms && !c.grantedPerms.includes(perm)) throw new Error('الصلاحية خارج ما منحته للجنة: أضفها إلى سقف اللجنة أولاً');
           if (c.kind === 'finance') {
@@ -358,10 +359,6 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
             if (on) set.add(perm as FinancePermission); else set.delete(perm as FinancePermission);
             m.financePerms = [...set];
             m.canSeeFinance = set.has('view_budget');
-          } else if (c.kind === 'media') {
-            const set = new Set(m.mediaPerms ?? []);
-            if (on) set.add(perm as MediaPermission); else set.delete(perm as MediaPermission);
-            m.mediaPerms = [...set];
           } else throw new Error('الصلاحيات الدقيقة للجنتين المالية والإعلامية');
           audit(d, me(), on ? 'منح صلاحية' : 'سحب صلاحية', `${perm} — ${personName(d, personId)} (${c.name})`, 'roles');
           pushNotification(d, [personId], 'general', `${on ? 'مُنحت' : 'سُحبت'} صلاحية في ${c.name}`, '/app');

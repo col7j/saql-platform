@@ -26,7 +26,7 @@ export default function PermissionsPage() {
         const ceiling = c.grantedPerms ?? cat.map((p) => p.key);
         const members = db.memberships.filter((m) => m.committeeId === c.id);
         return (
-          <Card key={c.id} title={c.name} subtitle="ما منحته للجنة (سقف)، ثم ما يملكه كل عضو ضمنه. وتفويض مسؤول اللجنة داخلها يبقى ضمن هذا السقف">
+          <Card key={c.id} title={c.name} subtitle={c.kind === 'media' ? 'تحدد هنا سقف ما تملكه اللجنة، ويمنح مسؤول التقنية أعضاءها من «الإعدادات» ضمن هذا السقف' : 'ما منحته للجنة (سقف)، ثم ما يملكه كل عضو ضمنه. وتفويض مسؤول اللجنة داخلها يبقى ضمن هذا السقف'}>
             <div className="mb-3 flex flex-wrap gap-3">
               {cat.map((p) => (
                 <label key={p.key} className="flex min-h-[36px] items-center gap-1.5 text-sm">
@@ -46,7 +46,7 @@ export default function PermissionsPage() {
                         <td className="px-2 py-1">{personName(db, m.personId)} {m.role === 'leader' && <Badge tone="blue">مسؤول</Badge>}</td>
                         {cat.map((p) => (
                           <td key={p.key} className="px-2 py-1">
-                            <input type="checkbox" aria-label={`${p.label} — ${personName(db, m.personId)}`} disabled={!canWrite || m.role === 'leader' || !ceiling.includes(p.key)} checked={has(p.key)} onChange={(e) => act(() => repos.permissions.setMemberPerm(c.id, m.personId, p.key, e.target.checked), e.target.checked ? 'مُنحت الصلاحية' : 'سُحبت الصلاحية')} />
+                            <input type="checkbox" aria-label={`${p.label} — ${personName(db, m.personId)}`} disabled={!canWrite || c.kind === 'media' || m.role === 'leader' || !ceiling.includes(p.key)} checked={has(p.key)} onChange={(e) => act(() => repos.permissions.setMemberPerm(c.id, m.personId, p.key, e.target.checked), e.target.checked ? 'مُنحت الصلاحية' : 'سُحبت الصلاحية')} />
                           </td>
                         ))}
                       </tr>

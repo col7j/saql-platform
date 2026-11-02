@@ -36,14 +36,16 @@ describe('1. الصلاحيات', () => {
     h.as('u9');
     expect(() => h.repos.media.createLink('mb_t3', 'read')).toThrow(/الاعتماد والمشاركة/);
   });
-  it('القائد العام يمنح الصلاحيات ويسحبها، وعضو بلا صلاحية يخرج من المركز', () => {
+  it('مسؤول التقنية يمنح الصلاحيات ويسحبها لا القائد العام، وعضو بلا صلاحية يخرج من المركز', () => {
     const h = harness('p_lead');
+    expect(() => h.repos.media.setPermission('u9', 'edit', false)).toThrow(/التقنية/);
+    h.as('s6');
     h.repos.media.setPermission('u9', 'edit', false);
     expect(routeAccess(h.db, 'u9', '/app/media')).toBe(false);
     h.repos.media.setPermission('u9', 'metrics', true);
     expect(routeAccess(h.db, 'u9', '/app/media/metrics')).toBe(true);
-    h.as('s6');
-    expect(() => h.repos.media.setPermission('u9', 'edit', true)).toThrow(/القائد العام/);
+    h.as('u9');
+    expect(() => h.repos.media.setPermission('u9', 'edit', true)).toThrow(/التقنية/);
   });
 });
 
