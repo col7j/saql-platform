@@ -5,6 +5,7 @@ import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { canManageCommittee, canManageFocus, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { isReadOnly, READ_ONLY_MESSAGE, leaderIds } from '@/domain/roles';
+import { ratingWindowOpen, tripEvaluatorIds } from '@/domain/collectiveEvaluation';
 import { queueEmail } from '@/domain/notifyRules';
 import { applyFirstRun, type SetupInput } from '@/domain/setup';
 import { canRequestLetter, isDelegate, lettersFor } from '@/domain/letters';
@@ -790,11 +791,11 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       /** كل عضو في فريق العمل يقيّم الرحلة مرة (من 10)، والمتوسط يدخل في نقاطها */
       rateTrip(tripId: ID, score: number, note?: string) {
         mutate((d) => {
-          const p = d.persons.find((x) => x.id === me());
-          if (p?.kind !== 'staff') throw new Error('تقييم الرحلة لفريق العمل');
           const t = findTrip(d, tripId);
+          if (!tripEvaluatorIds(d, t).includes(me())) throw new Error('تقييم الرحلة لفريق العمل: الميسّرون والقائد العام ومساعده');
           if (!(score >= 0 && score <= 10)) throw new Error('التقييم من 0 إلى 10');
           if (t.evaluation.staffRatings[me()]) throw new Error('قيّمت هذه الرحلة من قبل');
+          if (!ratingWindowOpen(d, t, nowISO())) throw new Error('انتهت نافذة تقييم هذه الرحلة');
           t.evaluation.staffRatings[me()] = { score, note, at: nowISO() };
         });
       },

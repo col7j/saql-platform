@@ -6,14 +6,36 @@ import { isTripTeam } from '@/domain/permissions';
 import { harness } from './helpers/harness';
 
 describe('التقييم الجماعي', () => {
-  it('مقيّما الرحلة: القائد العام والمتابع، ودرجتها متوسطهما', () => {
+  it('مقيّمو الرحلة كل فريق العمل: الميسّرون الأربعة والقائد العام ومساعده، والمشرف لا يقيّم', () => {
     const h = harness('p_lead');
-    expect(tripEvaluatorIds(h.db).sort()).toEqual(['p_lead', 's7']);
-    const t = h.db.trips.find((x) => x.executor.kind === 'group' && x.type === 'external')!;
-    t.evaluation.staffRatings = { p_lead: { score: 9, at: '' }, s7: { score: 7, at: '' }, s1: { score: 1, at: '' } };
-    expect(tripEvaluatorAverage(h.db, t).avg).toBe(8); // تقييم غير المقيّمين لا يدخل
+    expect(tripEvaluatorIds(h.db).sort()).toEqual(['p_lead', 's1', 's2', 's3', 's4', 's7']);
+    expect(tripEvaluatorIds(h.db)).not.toContain('s8');
   });
-
+  it('3 ميسّرين + القائد + المساعد بدرجات مختلفة: المتوسط البسيط، ومن لم يرسل لا يدخل، والمؤقت قبل الإغلاق', () => {
+    const h = harness('p_lead');
+    const t = h.db.trips.find((x) => x.executor.kind === 'group' && x.type === 'external')!;
+    delete t.closedAt;
+    t.evaluation.staffRatings = { s1: { score: 6, at: '' }, s2: { score: 7, at: '' }, s3: { score: 8, at: '' }, p_lead: { score: 9, at: '' }, s7: { score: 10, at: '' }, s5: { score: 0, at: '' } };
+    const r = tripEvaluatorAverage(h.db, t);
+    expect(r.avg).toBe(8); // (6+7+8+9+10)/5، وs4 لم يرسل وs5 ليس مقيّماً
+    expect(r.rated).toBe(5);
+    expect(r.total).toBe(6);
+    expect(r.provisional).toBe(true);
+    t.closedAt = new Date().toISOString();
+    expect(tripEvaluatorAverage(h.db, t).provisional).toBe(false);
+  });
+  it('استبعاد ميسّر المجموعة المنفذة إعداد معطّل افتراضياً، ونافذة التقييم بعد الإغلاق', () => {
+    const h = harness('p_lead');
+    const t = h.db.trips.find((x) => x.executor.kind === 'group' && x.type === 'external')!;
+    const fac = h.db.groups.find((g) => g.id === (t.executor as { groupId: string }).groupId)!.facilitatorId!;
+    expect(tripEvaluatorIds(h.db, t)).toContain(fac);
+    h.db.settings.excludeTripFacilitator = true;
+    expect(tripEvaluatorIds(h.db, t)).not.toContain(fac);
+    const closed = new Date(Date.now() - 10 * 86400000).toISOString(); // أُغلقت قبل 10 أيام، والنافذة 7
+    t.closedAt = closed;
+    t.evaluation.staffRatings = { p_lead: { score: 10, at: new Date(Date.now() - 9 * 86400000).toISOString() }, s7: { score: 2, at: new Date().toISOString() } };
+    expect(tripEvaluatorAverage(h.db, t).avg).toBe(10); // تقييم s7 بعد النافذة لا يدخل
+  });
   it('مجموعة خامسة بلا رحلة خارجية، وأعضاؤها يوزَّعون على رحلات مجموعات أخرى ويأخذون نقاطها نفسها', () => {
     const h = harness('p_lead');
     h.repos.groups.create('مجموعة حراء');

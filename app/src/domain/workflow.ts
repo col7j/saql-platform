@@ -220,7 +220,6 @@ export function closureChecks(db: DB, trip: Trip) {
     { key: 'experience', label: 'نموذج إغلاق التجربة', ok: !!trip.closure.experienceForm },
     { key: 'finance', label: 'الإغلاق المالي (العهدة)', ok: custody?.status === 'closed' },
     { key: 'report', label: 'اعتماد التقرير الختامي', ok: isApproved(db, trip.id, 'final_report') },
-    { key: 'evaluation', label: `تقييم فريق العمل (${staffRatingCount(db, trip).rated} من ${staffRatingCount(db, trip).needed} على الأقل)`, ok: staffRatingCount(db, trip).rated >= staffRatingCount(db, trip).needed },
   ];
 }
 /** كل فريق العمل يقيّم الرحلة، ويكفي للإغلاق نصاب يضبطه القائد العام */
@@ -236,8 +235,6 @@ export function isTripClosed(_db: DB, trip: Trip) {
 export function tripCloseBlock(db: DB, trip: Trip): string | null {
   if (trip.closedAt) return 'الرحلة مغلقة';
   if (!tripHasEnded(trip)) return 'تُغلق الرحلة بعد انتهائها';
-  const count = staffRatingCount(db, trip);
-  if (count.rated < count.needed) return `لا تُغلق الرحلة قبل اكتمال تقييمات فريق العمل: ${count.rated} من ${count.needed} على الأقل`;
   const missing = closureChecks(db, trip).filter((c) => !c.ok);
   return missing.length ? `متطلبات الإغلاق الناقصة: ${missing.map((c) => c.label).join('، ')}` : null;
 }

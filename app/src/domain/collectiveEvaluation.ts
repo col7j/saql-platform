@@ -1,5 +1,5 @@
 // التقييم الجماعي (الرئيسي 2): لكل رحلة، ومعزول عن بقية محرك النقاط.
-// - تُقيَّم كل رحلة بالبنود الجماعية الحالية، ودرجة بند التقييم = متوسط تقييم المقيّمين المحددين (المتابع والقائد العام افتراضياً).
+// - تُقيَّم كل رحلة بالبنود الجماعية الحالية، ودرجة بند التقييم = المتوسط البسيط لتقييمات من أرسل من فريق العمل (كل الميسّرين والقائد العام ومساعده).
 // - كل أعضاء فريق الرحلة (أعضاء المجموعة المنفذة والموزَّعون عليها من مجموعات أخرى) يأخذون نقاط الرحلة نفسها.
 // - التقييم الجماعي للمشارك = مساهمة رحلته الداخلية + مساهمة رحلته الخارجية بأوزان الإعدادات. رحلات فريق العمل لا تدخل.
 // - ترتيب المجموعة = متوسط مجموع نقاط أعضائها (الفردي + الجماعي).
@@ -8,18 +8,34 @@ import type { DB, EvaluationItem, ID, Trip, TripType } from './types';
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
-/** مقيّمو الرحلة: الإعداد إن حُدد، وإلا القائد العام ومساعده (المتابع) */
-export function tripEvaluatorIds(db: DB): ID[] {
+/** مقيّمو الرحلة: كل فريق العمل (كل الميسّرين + القائد العام + مساعده). المشرف العام لا يقيّم.
+ *  ميسّر المجموعة المنفذة مقيّم بينهم، ويُستبعد بإعداد `excludeTripFacilitator` (معطّل افتراضياً). `tripEvaluatorIds` تجاوز اختياري. */
+export function tripEvaluatorIds(db: DB, trip?: Trip): ID[] {
   const set = db.settings.tripEvaluatorIds;
-  if (set?.length) return set;
-  return db.persons.filter((p) => p.isGeneralLeader || p.isAssistant).map((p) => p.id);
+  let ids = set?.length
+    ? [...set]
+    : [...new Set([...db.persons.filter((p) => p.isGeneralLeader || p.isAssistant).map((p) => p.id), ...db.groups.map((g) => g.facilitatorId).filter((x): x is ID => !!x)])];
+  if (trip && db.settings.excludeTripFacilitator && trip.executor.kind === 'group') {
+    const fac = db.groups.find((g) => g.id === (trip.executor as { groupId: ID }).groupId)?.facilitatorId;
+    ids = ids.filter((x) => x !== fac);
+  }
+  return ids.filter((id) => !db.persons.find((p) => p.id === id)?.isSupervisor);
 }
 
-/** درجة الرحلة من 10 = متوسط تقييمات المقيّمين الذين قيّموها. null إن لم يقيّم أحد */
-export function tripEvaluatorAverage(db: DB, trip: Trip): { avg: number | null; scores: { personId: ID; score: number }[] } {
-  const ev = new Set(tripEvaluatorIds(db));
-  const scores = Object.entries(trip.evaluation.staffRatings).filter(([id]) => ev.has(id)).map(([personId, r]) => ({ personId, score: r.score }));
-  return { avg: scores.length ? scores.reduce((s, x) => s + x.score, 0) / scores.length : null, scores };
+/** نهاية نافذة التقييم: بعد إغلاق الرحلة بمدة الإعداد (الافتراضي 7 أيام). قبل الإغلاق لا نهاية */
+export function ratingWindowEnd(db: DB, trip: Trip): string | undefined {
+  if (!trip.closedAt) return undefined;
+  return new Date(new Date(trip.closedAt).getTime() + (db.settings.tripRatingWindowDays ?? 7) * 86400000).toISOString();
+}
+export const ratingWindowOpen = (db: DB, trip: Trip, at: string) => { const end = ratingWindowEnd(db, trip); return !end || at <= end; };
+
+/** درجة الرحلة من 10 = المتوسط البسيط لتقييمات من أرسل ضمن النافذة. قبل الإغلاق «مؤقتة». null إن لم يقيّم أحد */
+export function tripEvaluatorAverage(db: DB, trip: Trip): { avg: number | null; scores: { personId: ID; score: number }[]; rated: number; total: number; provisional: boolean } {
+  const ev = new Set(tripEvaluatorIds(db, trip));
+  const scores = Object.entries(trip.evaluation.staffRatings)
+    .filter(([id, r]) => ev.has(id) && ratingWindowOpen(db, trip, r.at))
+    .map(([personId, r]) => ({ personId, score: r.score }));
+  return { avg: scores.length ? scores.reduce((s, x) => s + x.score, 0) / scores.length : null, scores, rated: scores.length, total: ev.size, provisional: !trip.closedAt };
 }
 
 /** هل الرحلة من رحلات المشاركين (لا رحلات فريق العمل) */

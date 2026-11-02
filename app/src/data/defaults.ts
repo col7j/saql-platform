@@ -78,6 +78,8 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     ],
     scheduleRevealHours: 24,
     tripRatingQuorum: 0.5,
+    tripRatingWindowDays: 7,
+    excludeTripFacilitator: false,
     trackingCommentsNeedReview: true,
     notifyRules: defaultNotifyRules(),
     email: defaultEmailSettings(),
