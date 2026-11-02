@@ -15,15 +15,18 @@ describe('الحسابات وكلمات المرور', () => {
     expect(authenticate(h.db, 'leader', DEMO_PASSWORD)).toMatchObject({ personId: 'p_lead' });
     expect(authenticate(h.db, 'leader', 'خطأ')).toHaveProperty('error');
   });
-  it('مسؤول التقنية وحده ينشئ الحساب (ومنه القائد العام)، ولا ينشئه القائد ولا غيره', () => {
+  it('المشارك والعضو ينشئهما التقنية والقائد ومساعده، والحسابات الخاصة للتقنية وحدها', () => {
     const h = harness('p_lead');
-    expect(() => h.repos.people.create({ kind: 'participant', name: 'مشارك', email: 'new.one@student.example' })).toThrow(/التقنية/);
+    const r0 = h.repos.people.createAccount({ role: 'participant', name: 'مشارك', email: 'new.one@student.example' });
+    expect(h.db.persons.find((p) => p.id === r0.id)).toBeTruthy();
+    expect(() => h.repos.people.createAccount({ role: 'general_leader', name: 'ق', email: 'l9@x.io' })).toThrow(/التقنية وحده/);
+    expect(() => h.repos.people.createAccount({ role: 'supervisor', name: 'ش', email: 'sv@x.io' })).toThrow(/التقنية وحده/);
     h.as('s1');
     expect(() => h.repos.people.create({ kind: 'staff', name: 'س', email: 'x@y.z' })).toThrow(/التقنية/);
     h.as('s6');
-    const r = h.repos.people.createAccount({ role: 'participant', name: 'مشارك جديد', email: 'new.one@student.example' });
-    expect(h.db.accounts.find((x) => x.personId === r.id)).toMatchObject({ username: 'new.one', mustChangePassword: true });
-    expect(authenticate(h.db, 'new.one', r.password)).toMatchObject({ personId: r.id, mustChangePassword: true });
+    const r = h.repos.people.createAccount({ role: 'participant', name: 'مشارك جديد', email: 'second.one@student.example' });
+    expect(h.db.accounts.find((x) => x.personId === r.id)).toMatchObject({ username: 'second.one', mustChangePassword: true });
+    expect(authenticate(h.db, 'second.one', r.password)).toMatchObject({ personId: r.id, mustChangePassword: true });
     expect(() => h.repos.people.createAccount({ role: 'general_leader', name: 'قائد آخر', email: 'l2@x.io' })).toThrow(/بالفعل/);
   });
   it('مسؤول التقنية يعيد التعيين، وصاحب الحساب يغيّر الكلمة أول دخول', () => {

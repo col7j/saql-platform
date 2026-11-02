@@ -35,7 +35,7 @@ describe('مساعد القائد العام', () => {
       const after = h.db.docs.find((d) => d.id === doc.id)!;
       expect(after.history[after.history.length - 1]).toMatchObject({ byId: 's7', role: 'leader' });
     }
-    expect(() => h.repos.people.createAccount({ role: 'participant', name: 'س', email: 'a@b.co' })).toThrow(/التقنية/);
+    expect(() => h.repos.people.createAccount({ role: 'supervisor', name: 'س', email: 'a@b.co' })).toThrow(/التقنية/);
   });
   it('الإعدادات التقنية لمسؤول التقنية وحده', () => {
     for (const id of ['p_lead', 's7', 's8']) {

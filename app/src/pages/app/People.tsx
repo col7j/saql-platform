@@ -11,6 +11,7 @@ import type { Account, Person, PersonKind, TempPermission } from '@/domain/types
 import { Badge, Button, Card, DataTable, Empty, Field, FilterPills, Icons, Input, Modal, Notice, PageHeader, Select, Tabs, Toggle, type Column } from '@/ui';
 import { GroupBadge, PersonChip } from '@/ui/domain';
 import { CommitteesList } from './Committees';
+import type { AccountRole } from '@/data/repositories';
 import { Roles, Tracker } from './Settings';
 
 type Tab = 'participant' | 'staff' | 'committees' | 'grants' | 'tracker' | 'roles';
@@ -32,7 +33,7 @@ export default function PeoplePage() {
   ];
   const tab = (tabs.some((t) => t.key === params.get('tab')) ? params.get('tab') : 'participant') as Tab;
   const [adding, setAdding] = useState(false);
-  const canAdd = me.isLeader || me.canRegisterParticipants;
+  const canAdd = !me.isSupervisor && (me.isLeader || me.isTechLead);
   const title = me.isLeader ? 'الأشخاص والصلاحيات' : accounts ? 'الأشخاص والحسابات' : 'الأشخاص';
   return (
     <div>
@@ -44,7 +45,7 @@ export default function PeoplePage() {
       {tab === 'grants' && <Grants />}
       {tab === 'tracker' && <Tracker />}
       {tab === 'roles' && <Roles />}
-      {adding && <AddPerson onClose={() => setAdding(false)} defaultKind={me.isLeader ? (tab === 'staff' ? 'staff' : 'participant') : 'participant'} staffAllowed={me.isLeader} />}
+      {adding && <AddPerson onClose={() => setAdding(false)} defaultKind={tab === 'staff' ? 'staff' : 'participant'} staffAllowed />}
     </div>
   );
 }
@@ -117,28 +118,36 @@ function UsernameModal({ personId, onClose }: { personId: string; onClose: () =>
 
 /** القائد العام ينشئ الشخص ويحدد نوعه. الصفات تُسند من المجموعات واللجان والإعدادات، والحساب يديره مسؤول اللجنة التقنية */
 function AddPerson({ onClose, defaultKind, staffAllowed }: { onClose: () => void; defaultKind: PersonKind; staffAllowed: boolean }) {
-  const [f, setF] = useState({ kind: defaultKind, name: '', email: '', phone: '', university: '', major: '', title: '' });
+  const me = useMe();
+  const tech = me.isTechLead;
+  const [f, setF] = useState({ role: (defaultKind === 'staff' ? 'staff' : 'participant') as AccountRole, name: '', email: '', phone: '', title: '' });
+  const [made, setMade] = useState<{ name: string; password: string } | null>(null);
   const set = (p: Partial<typeof f>) => setF({ ...f, ...p });
+  const roles: { value: AccountRole; label: string }[] = [
+    { value: 'participant', label: 'مشارك' },
+    ...(staffAllowed ? [{ value: 'staff' as const, label: 'عضو فريق عمل' }] : []),
+    ...(tech ? [{ value: 'general_leader' as const, label: 'القائد العام' }, { value: 'assistant' as const, label: 'مساعد القائد العام' }, { value: 'supervisor' as const, label: 'المشرف العام (قراءة فقط)' }] : []),
+  ];
   const save = () => act(() => {
-    repos.people.create({
-      kind: f.kind, name: f.name, email: f.email, phone: f.phone || undefined,
-      ...(f.kind === 'participant' ? { university: f.university || undefined, major: f.major || undefined } : { title: f.title || undefined }),
-    });
-    onClose();
-  }, 'أُضيف الشخص. يصدر مسؤول اللجنة التقنية كلمة مروره');
+    const r = repos.people.createAccount({ role: f.role, name: f.name, email: f.email || undefined, phone: f.phone || undefined, title: f.title || undefined });
+    setMade({ name: f.name, password: r.password });
+  });
+  if (made)
+    return (
+      <Modal open onClose={onClose} title="أُنشئ الحساب" footer={<Button onClick={onClose}>تم</Button>}>
+        <Notice tone="green">أُنشئ حساب {made.name}. سلّمه كلمة المرور المؤقتة، وسيُطلب منه تغييرها عند أول دخول.</Notice>
+        <p className="mt-3 text-sm">كلمة المرور المؤقتة: <b className="num select-all rounded bg-ink-100 px-2 py-1" dir="ltr">{made.password}</b></p>
+        <p className="mt-2 text-xs text-ink-500">تُعرض مرة واحدة هنا. إن ضاعت يعيد مسؤول اللجنة التقنية تعيينها.</p>
+      </Modal>
+    );
   return (
-    <Modal open onClose={onClose} title="شخص جديد" footer={<Button disabled={!f.name || !f.email} onClick={save}>أضف</Button>}>
+    <Modal open onClose={onClose} title="شخص جديد" footer={<Button disabled={!f.name || (!f.email && !f.phone)} onClick={save}>أنشئ الحساب</Button>}>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="النوع"><Select value={f.kind} onChange={(e) => set({ kind: e.target.value as PersonKind })} options={[{ value: 'participant', label: 'مشارك' }, ...(staffAllowed ? [{ value: 'staff', label: 'عضو فريق عمل' }] : [])]} /></Field>
+        <Field label="نوع الحساب"><Select value={f.role} onChange={(e) => set({ role: e.target.value as AccountRole })} options={roles} /></Field>
         <Field label="الاسم"><Input value={f.name} onChange={(e) => set({ name: e.target.value })} /></Field>
         <Field label="البريد"><Input dir="ltr" type="email" value={f.email} onChange={(e) => set({ email: e.target.value })} /></Field>
-        <Field label="الجوال"><Input dir="ltr" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></Field>
-        {f.kind === 'participant' ? (
-          <>
-            <Field label="الجامعة"><Input value={f.university} onChange={(e) => set({ university: e.target.value })} /></Field>
-            <Field label="التخصص"><Input value={f.major} onChange={(e) => set({ major: e.target.value })} /></Field>
-          </>
-        ) : <Field label="المنصب" className="sm:col-span-2"><Input value={f.title} onChange={(e) => set({ title: e.target.value })} /></Field>}
+        <Field label="الجوال" hint="البريد أو الجوال"><Input dir="ltr" value={f.phone} onChange={(e) => set({ phone: e.target.value })} /></Field>
+        {f.role !== 'participant' && <Field label="المنصب (اختياري)" className="sm:col-span-2"><Input value={f.title} onChange={(e) => set({ title: e.target.value })} /></Field>}
       </div>
     </Modal>
   );

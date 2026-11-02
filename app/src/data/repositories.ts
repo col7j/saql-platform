@@ -292,12 +292,15 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
     },
     // ───────────── الأشخاص والمجموعات ─────────────
     people: {
-      /** إنشاء الحسابات (كل الأنواع ومنها القائد العام) لمسؤول اللجنة التقنية وحده. تعيد كلمة مرور مؤقتة تُجبر على التغيير */
+      /** إنشاء الحسابات: المشارك وعضو الفريق (التقنية والقائد ومساعده)، والحسابات الخاصة ومنها القائد العام (التقنية وحدها). تعيد كلمة مرور مؤقتة تُجبر على التغيير */
       createAccount(input: NewAccountInput): { id: ID; password: string } {
         const id = uid(input.role === 'participant' ? 'u' : 's');
         const password = tempPassword();
         mutate((d) => {
-          techOnly(d, me());
+          // المشارك وعضو الفريق ينشئهما مسؤول التقنية أو القائد العام أو مساعده. حسابات القائد والمساعد والمشرف لمسؤول التقنية وحده
+          const special = !['participant', 'staff'].includes(input.role);
+          if (special ? !canManageAccounts(d, me()) : !(canManageAccounts(d, me()) || isLeaderId(d, me())))
+            throw new Error(special ? 'حسابات القائد والمساعد والمشرف لمسؤول اللجنة التقنية وحده' : 'إضافة الأشخاص للقائد العام أو مساعده أو مسؤول اللجنة التقنية');
           const email = (input.email ?? '').trim();
           const phone = (input.phone ?? '').trim();
           if (!input.name.trim()) throw new Error('الاسم مطلوب');
@@ -319,7 +322,7 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
         });
         return { id, password };
       },
-      /** مسار قديم: ينشئ الحساب بلا كلمة مرور فتُعيَّن بعدها. لمسؤول اللجنة التقنية وحده أيضاً */
+      /** مسار قديم: ينشئ المشارك أو عضو الفريق (كلمة مرور مؤقتة تُسلَّم من مسؤول التقنية بإعادة التعيين) */
       create(input: Omit<Person, 'id' | 'isGeneralLeader'>): ID {
         return this.createAccount({ role: input.kind === 'staff' ? 'staff' : 'participant', name: input.name, email: input.email, phone: input.phone, title: input.title }).id;
       },

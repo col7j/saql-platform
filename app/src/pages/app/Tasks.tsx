@@ -38,14 +38,22 @@ export default function TasksPage() {
       {list.length === 0 ? <Empty title="لا مهام" /> : view === 'list' ? (
         <div className="space-y-2">{list.map((t) => <TaskRow key={t.id} task={t} />)}</div>
       ) : (
-        <div className="grid gap-4 lg:grid-cols-4">
+        <div className="-mx-1 flex gap-4 overflow-x-auto px-1 pb-4 xl:grid xl:grid-cols-4 xl:overflow-visible">
           {cols.map((c) => {
             const items = list.filter((t) => taskDisplayStatus(t) === c);
+            const dot = { new: 'bg-ink-300', in_progress: 'bg-brand-500', late: 'bg-red-500', done: 'bg-emerald-500' }[c];
             return (
-              <div key={c} className="rounded-2xl bg-ink-100/60 p-2">
-                <div className="mb-2 flex items-center justify-between px-2 pt-1 text-sm font-bold"><span className={c === 'late' ? 'text-red-600' : ''}>{taskStatusLabel[c]}</span><span className="num text-xs text-ink-500">{items.length}</span></div>
-                <div className="space-y-2">{items.map((t) => <TaskRow key={t.id} task={t} />)}</div>
-              </div>
+              <section key={c} aria-label={taskStatusLabel[c]} className="flex w-[290px] shrink-0 flex-col rounded-2xl border border-ink-100 bg-ink-50/70 p-3 xl:w-auto xl:min-w-0">
+                <header className="mb-3 flex items-center gap-2 px-1">
+                  <span className={`h-2.5 w-2.5 rounded-full ${dot}`} aria-hidden />
+                  <h2 className="text-sm font-bold text-ink-800">{taskStatusLabel[c]}</h2>
+                  <span className="num ms-auto rounded-full bg-white px-2.5 py-0.5 text-xs font-medium text-ink-600 shadow-sm">{items.length}</span>
+                </header>
+                <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto pe-1">
+                  {items.map((t) => <TaskRow key={t.id} task={t} card />)}
+                  {!items.length && <p className="rounded-xl border border-dashed border-ink-200 px-3 py-6 text-center text-xs text-ink-400">لا مهام هنا</p>}
+                </div>
+              </section>
             );
           })}
         </div>
