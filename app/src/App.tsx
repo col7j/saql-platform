@@ -3,6 +3,16 @@ import { AppShell, MorePage } from './layout/AppShell';
 import PublicHome from './pages/public/Home';
 import Login from './pages/public/Login';
 import TrackingPage from './pages/public/Tracking';
+import PublicBrief from './pages/public/PublicBrief';
+import MediaShell from './pages/app/media/MediaShell';
+import MediaHome from './pages/app/media/MediaHome';
+import BriefsPage from './pages/app/media/Briefs';
+import BriefPage, { NewBrief } from './pages/app/media/BriefPage';
+import FollowPage from './pages/app/media/Follow';
+import TemplatesPage from './pages/app/media/Templates';
+import LinksPage from './pages/app/media/Links';
+import MetricsPage from './pages/app/media/Metrics';
+import PrintBrief from './pages/app/media/PrintBrief';
 import Dashboard from './pages/app/Dashboard';
 import CalendarPage from './pages/app/Calendar';
 import NotificationsPage from './pages/app/Notifications';
@@ -40,6 +50,7 @@ export default function App() {
         <Route path="/" element={<PublicHome />} />
         <Route path="/login" element={<Login />} />
         <Route path="/supporter" element={<TrackingPage />} />
+        <Route path="/brief/:token" element={<PublicBrief />} />
         <Route path="/t/:token" element={<Navigate to="/supporter" replace />} />
         <Route path="/app" element={<AppShell />}>
           <Route index element={<Dashboard />} />
@@ -79,6 +90,17 @@ export default function App() {
           <Route path="site-editor" element={<SiteEditor />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="users" element={<Navigate to="/app/people" replace />} />
+          <Route path="media" element={<MediaShell />}>
+            <Route index element={<MediaHome />} />
+            <Route path="briefs" element={<BriefsPage />} />
+            <Route path="briefs/new" element={<NewBrief />} />
+            <Route path="briefs/:id" element={<BriefPage />} />
+            <Route path="follow" element={<FollowPage />} />
+            <Route path="templates" element={<TemplatesPage />} />
+            <Route path="links" element={<LinksPage />} />
+            <Route path="metrics" element={<MetricsPage />} />
+            <Route path="print/:id" element={<PrintBrief />} />
+          </Route>
           <Route path="profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

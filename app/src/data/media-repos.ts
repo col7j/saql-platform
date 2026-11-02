@@ -60,7 +60,7 @@ export function createMediaRepos(mutate: Mutate, me: () => ID) {
 
   return {
     // ───────────── القوالب ─────────────
-    saveTemplate(t: Omit<MediaTemplate, 'updatedAt'> & { id?: ID }): ID {
+    saveTemplate(t: Omit<MediaTemplate, 'updatedAt' | 'id'> & { id?: ID }): ID {
       let id = t.id ?? '';
       mutate((d) => {
         need(d, 'edit');

@@ -4,13 +4,14 @@ import { uid } from '@/domain/id';
 import { capacityKeyLabel } from '@/domain/capacities';
 import { fmtDateTime } from '@/domain/dates';
 import { notificationTypeLabel, proofTypeLabel } from '@/domain/labels';
+import { MEDIA_PERMS } from '@/domain/media';
 import { canEditEvaluation, canUnlockEvaluation, EVALUATION_KEYS } from '@/domain/settings';
 import type { EvaluationItem, NotificationType, ProofType, Settings, TaskTemplate } from '@/domain/types';
 import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Notice, PageHeader, ReasonModal, Select, Table, Tabs, Toggle } from '@/ui';
 import { PersonChip } from '@/ui/domain';
 
-type Tab = 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications';
+type Tab = 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'media';
 
 export default function SettingsPage() {
   const me = useMe();
@@ -22,6 +23,7 @@ export default function SettingsPage() {
     ...(leader ? [{ key: 'targets' as const, label: 'المستهدفات والأعداد' }] : []),
     ...(me.canManageScheduleCategories ? [{ key: 'categories' as const, label: 'تصنيفات الجدول' }] : []),
     ...(leader ? [{ key: 'templates' as const, label: 'قالب المهام التلقائية' }] : []),
+    ...(leader ? [{ key: 'media' as const, label: 'المركز الإعلامي' }] : []),
     ...(tech ? [{ key: 'notifications' as const, label: 'الإشعارات' }] : []),
   ];
   const [picked, setTab] = useState<Tab>(tabs[0]?.key ?? 'evaluation');
@@ -36,6 +38,45 @@ export default function SettingsPage() {
       {tab === 'categories' && <Categories />}
       {tab === 'templates' && <Templates />}
       {tab === 'notifications' && <Notifications />}
+      {tab === 'media' && <MediaSettings />}
+    </div>
+  );
+}
+
+const WEEK_DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'].map((label, i) => ({ value: String(i), label }));
+
+/** إعدادات المركز الإعلامي وصلاحيات أعضاء اللجنة (للقائد العام) */
+function MediaSettings() {
+  const db = useDB();
+  const [m, setM] = useState(db.settings.media);
+  const cid = db.committees.find((c) => c.kind === 'media')?.id;
+  const members = db.memberships.filter((x) => x.committeeId === cid);
+  return (
+    <div className="grid gap-6 lg:grid-cols-2">
+      <Card title="الإعدادات" subtitle="القيم هنا تغيّر سلوك المركز دون كود">
+        <div className="space-y-4">
+          <Toggle checked={m.requireLeaderApproval} onChange={(v) => setM({ ...m, requireLeaderApproval: v })} label="اعتماد الموجز يتطلب موافقة القائد العام" />
+          <Field label="يوم بداية الأسبوع (للموجز الأسبوعي)"><Select value={String(m.weekStartDay)} onChange={(e) => setM({ ...m, weekStartDay: +e.target.value })} options={WEEK_DAYS} /></Field>
+          <Field label="«فعاليات قادمة بلا موجز»: خلال (أيام)"><Input type="number" value={m.upcomingDays} onChange={(e) => setM({ ...m, upcomingDays: +e.target.value })} /></Field>
+          <Field label="تنبيه الروابط التي ستنتهي خلال (أيام)"><Input type="number" value={m.linkExpiryWarnDays} onChange={(e) => setM({ ...m, linkExpiryWarnDays: +e.target.value })} /></Field>
+          <Field label="صلاحية الرابط الجديد افتراضياً (أيام، 0 بلا انتهاء)"><Input type="number" value={m.defaultLinkDays} onChange={(e) => setM({ ...m, defaultLinkDays: +e.target.value })} /></Field>
+          <Button onClick={() => act(() => repos.media.saveSettings(m), 'حُفظت إعدادات المركز الإعلامي')}>احفظ</Button>
+        </div>
+      </Card>
+      <Card title="صلاحيات أعضاء اللجنة الإعلامية" subtitle="يمنحها القائد العام كل واحدة على حدة. العضو بلا أي صلاحية لا يرى المركز">
+        <ul className="space-y-3">
+          {members.map((x) => (
+            <li key={x.id} className="rounded-2xl border border-ink-100 p-3">
+              <PersonChip id={x.personId} sub={x.role === 'leader' ? 'رئيس اللجنة: كل الصلاحيات' : undefined} />
+              {x.role !== 'leader' && (
+                <div className="mt-2 space-y-1">
+                  {MEDIA_PERMS.map((p) => <Toggle key={p.key} checked={(x.mediaPerms ?? []).includes(p.key)} onChange={(v) => act(() => repos.media.setPermission(x.personId, p.key, v), v ? 'مُنحت الصلاحية' : 'سُحبت الصلاحية')} label={<span>{p.label}<span className="block text-xs text-ink-500">{p.hint}</span></span>} />)}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
+      </Card>
     </div>
   );
 }

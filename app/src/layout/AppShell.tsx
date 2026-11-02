@@ -25,7 +25,7 @@ export function RoleSwitcher() {
   }, [db]);
   const stale = db.seededAt.slice(0, 10) !== todayISO();
   return (
-    <div className="sticky top-0 z-40 bg-ink-900 text-white">
+    <div className="no-print sticky top-0 z-40 bg-ink-900 text-white">
       <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-2 px-3 py-1.5 text-xs sm:px-4">
         <span className="inline-flex items-center gap-1 rounded-md bg-accent-500/90 px-2 py-0.5 font-bold text-ink-900">
           <Icons.FlaskConical className="h-3.5 w-3.5" /> نموذج أولي
@@ -138,14 +138,14 @@ export function AppShell() {
     <div className="min-h-screen pb-20 lg:pb-0">
       <RoleSwitcher />
       <div className="mx-auto flex max-w-[1500px]">
-        <aside className="sticky top-[36px] hidden h-[calc(100vh-36px)] w-64 shrink-0 border-e border-ink-100 bg-white lg:block">{sidebar}</aside>
+        <aside className="no-print sticky top-[36px] hidden h-[calc(100vh-36px)] w-64 shrink-0 border-e border-ink-100 bg-white lg:block">{sidebar}</aside>
         {drawer && (
           <div className="fixed inset-0 z-50 bg-ink-900/40 lg:hidden" onClick={() => setDrawer(false)}>
             <aside className="h-full w-72 max-w-[85%] overflow-y-auto bg-white shadow-lift" onClick={(e) => e.stopPropagation()}>{sidebar}</aside>
           </div>
         )}
         <div className="min-w-0 flex-1 bg-ink-50">
-          <header className="sticky top-[36px] z-30 flex items-center justify-between gap-2 border-b border-ink-100 bg-white/90 px-4 py-2 backdrop-blur">
+          <header className="no-print sticky top-[36px] z-30 flex items-center justify-between gap-2 border-b border-ink-100 bg-white/90 px-4 py-2 backdrop-blur">
             <img src="./brand/logo-horizontal.svg" alt="صقل" className="h-8 lg:invisible" />
             <Link to="/app/notifications" className="relative flex h-11 w-11 items-center justify-center rounded-full text-ink-700 hover:bg-ink-50" aria-label={`الإشعارات${unread ? ` (${unread} جديدة)` : ''}`}>
               <Icons.Bell className="h-5 w-5" />
@@ -159,7 +159,7 @@ export function AppShell() {
           </main>
         </div>
       </div>
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-ink-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      <nav className="no-print fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-ink-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
         {bottom.map((i) => (
           <Link key={i.to} to={i.to} className={cx('flex min-h-[60px] flex-col items-center justify-center gap-0.5 text-xs', isActive(i.to) ? 'font-bold text-brand-700' : 'text-ink-500')}>
             <NavIcon name={i.icon} className="h-5 w-5" />

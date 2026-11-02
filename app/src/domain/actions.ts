@@ -53,6 +53,7 @@ export function pendingActions(db: DB, personId: ID): PendingAction[] {
     if (x.status === 'closing' && f.surplus > 0.009 && !x.surplusReturn) add({ id: `sr_${x.id}`, title: `حوّل فائض عهدة ${t} (${f.surplus} ر.س) وارفع الإيصال`, cta: 'ارفع الإيصال', link: '/app/requests', tone: 'orange', group: 'العهدة' });
   });
   db.budgetRequests.filter((r) => canFacilitatorDecide(db, personId, r)).forEach((r) => add({ id: `rfa_${r.id}`, title: `ميزانية رحلة بانتظار اعتمادك: ${ownerTitle(db, r.ownerKind, r.ownerId)}`, hint: SAR(r.amount), cta: 'راجع الميزانية', link: ownerLink(r.ownerKind, r.ownerId), tone: 'orange', group: 'الاعتمادات' }));
+  if (c.isLeader) db.mediaBriefs.filter((b) => b.approvalRequest && b.status !== 'archived').forEach((b) => add({ id: `mb_${b.id}`, title: `موجز إعلامي بانتظار اعتمادك: ${b.content.title}`, cta: 'اعتمد أو أعد', link: '/app/approvals', tone: 'orange', group: 'الاعتمادات' }));
   if (c.isLeader) db.editRequests.filter((e) => e.status === 'pending').forEach((e) => add({ id: `er_${e.id}`, title: `طلب تعديل سجل مالي معتمد`, hint: e.summary, cta: 'وافق أو ارفض', link: '/app/approvals', tone: 'orange', group: 'الاعتمادات' }));
 
   // ── المشارك ──

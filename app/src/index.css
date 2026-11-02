@@ -28,3 +28,20 @@
   .section-y { @apply py-14 lg:py-24; }
   .container-x { @apply mx-auto w-full max-w-container px-4 sm:px-6; }
 }
+
+/* الطباعة وتصدير PDF: A4، بلا شريط التنقل، وبلا قطع للصفوف والعناوين بين الصفحات */
+@page {
+  size: A4;
+  margin: 16mm 14mm 18mm;
+  @bottom-center { content: "صفحة " counter(page) " من " counter(pages); font-size: 10px; color: #5B6770; }
+}
+@media print {
+  html, body { background: #fff !important; }
+  .no-print { display: none !important; }
+  .print-doc { max-width: none !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; }
+  .print-table thead { display: table-header-group; }
+  .print-table tfoot { display: table-footer-group; }
+  .brief-section, .brief-card, .brief-table tr, .print-table h1 { break-inside: avoid; }
+  .brief-section > h3 { break-after: avoid; }
+  main { padding: 0 !important; max-width: none !important; }
+}

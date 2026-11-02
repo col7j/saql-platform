@@ -3,18 +3,19 @@ import { useState } from 'react';
 import { canLeaderDecide, ownerLink, ownerTitle, spendKindLabel } from '@/domain/finance';
 import { budgetOverview, custodyFigures } from '@/domain/ledger';
 import { SAR, docKindLabel } from '@/domain/labels';
-import { personName, useDB, useMe } from '@/state/store';
-import { Badge, Card, Empty, Icons, LinkButton, PageHeader, cx } from '@/ui';
+import { act, personName, repos, useDB, useMe } from '@/state/store';
+import { Badge, Button, Card, Empty, Icons, LinkButton, PageHeader, ReasonModal, cx } from '@/ui';
 import { EditRequestsList } from './EditRequest';
 import { RequestPanel } from './RequestPanel';
 
-interface Row { id: string; title: string; hint: string; kind: string; to?: string; budget?: { ownerKind: 'trip' | 'focus' | 'meeting' | 'event' | 'need'; ownerId: string } }
+interface Row { media?: boolean; id: string; title: string; hint: string; kind: string; to?: string; budget?: { ownerKind: 'trip' | 'focus' | 'meeting' | 'event' | 'need'; ownerId: string } }
 
 export default function ApprovalsPage() {
   const db = useDB();
   const me = useMe();
   const pid = me.person.id;
   const [open, setOpen] = useState<string | null>(null);
+  const [rejectBrief, setRejectBrief] = useState<string | null>(null);
 
   // 1) طلبات الاعتماد
   const rows: Row[] = [
@@ -27,6 +28,7 @@ export default function ApprovalsPage() {
       return t.executor.kind === 'staff' ? d.status === 'submitted' : d.status === 'facilitator_approved';
     }).map((d) => ({ id: d.id, kind: 'نموذج رحلة', title: `${docKindLabel[d.kind]}: ${db.trips.find((t) => t.id === d.tripId)!.title}`, hint: 'وافق عليه الميسّر ويحتاج قرارك', to: `/app/trips/${d.tripId}?tab=docs` })),
     ...db.trips.filter((t) => t.trackerSubstitute?.status === 'pending').map((t) => ({ id: `ts_${t.id}`, kind: 'متابع بديل', title: t.title, hint: `المرشح: ${personName(db, t.trackerSubstitute!.candidateId)}`, to: `/app/trips/${t.id}` })),
+    ...db.mediaBriefs.filter((b) => b.approvalRequest && b.status !== 'archived').map((b) => ({ id: b.id, media: true, kind: 'موجز إعلامي', title: b.content.title, hint: `طلب ${personName(db, b.approvalRequest!.by)} · ${b.snapshots.length ? `إصدار جديد بعد الإصدار ${b.snapshots.length}` : 'اعتماد أول'}`, to: `/app/media/briefs/${b.id}?step=3` })),
     ...db.memberRequests.filter((r) => r.status === 'pending').map((r) => ({ id: r.id, kind: 'عضوية لجنة', title: personName(db, r.personId), hint: db.committees.find((c) => c.id === r.committeeId)?.name ?? '', to: `/app/committees/${r.committeeId}` })),
   ];
 
@@ -50,7 +52,9 @@ export default function ApprovalsPage() {
                 <div className="flex min-h-[64px] flex-wrap items-center gap-3 px-4 py-3">
                   <Badge tone="orange">{r.kind}</Badge>
                   <div className="min-w-0 flex-1"><div className="font-medium">{r.title}</div><div className="text-xs text-ink-500">{r.hint}</div></div>
-                  {r.budget
+                  {r.media ? (
+                    <span className="flex flex-wrap gap-2"><Button size="sm" onClick={() => act(() => repos.media.approve(r.id), 'اعتُمد الموجز')}>اعتمد</Button><Button size="sm" variant="danger" onClick={() => setRejectBrief(r.id)}>أعد</Button><LinkButton to={r.to!} variant="text" size="sm">افتح</LinkButton></span>
+                  ) : r.budget
                     ? <button onClick={() => setOpen(open === r.id ? null : r.id)} className="inline-flex min-h-[44px] items-center gap-1 rounded-full px-3 text-sm font-medium text-brand-700 hover:bg-brand-50">{open === r.id ? 'أغلق' : 'اتخذ القرار'}<Icons.ChevronDown className={cx('h-4 w-4 transition', open === r.id && 'rotate-180')} /></button>
                     : <LinkButton to={r.to!} variant="text" size="sm">افتح</LinkButton>}
                 </div>
@@ -61,6 +65,7 @@ export default function ApprovalsPage() {
         )}
       </section>
 
+      <ReasonModal open={!!rejectBrief} onClose={() => setRejectBrief(null)} title="أعد الموجز للمسؤول الإعلامي" cta="أعد الموجز" onSubmit={(reason) => act(() => repos.media.rejectApproval(rejectBrief!, reason), 'أُعيد الموجز')} />
       <section>
         <EditRequestsList />
       </section>
