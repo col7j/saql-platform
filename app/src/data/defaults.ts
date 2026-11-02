@@ -1,3 +1,4 @@
+import { defaultEmailSettings, defaultNotifyRules } from '@/domain/notifyRules';
 import { defaultDocTemplate, defaultSuggestedGoals } from '@/domain/tripDocument';
 // القيم الافتراضية للإعدادات. كلها تُنسخ إلى قاعدة البيانات وتُعدّل من شاشة الإعدادات.
 import type { BudgetCategory, CapacityRule, ProgramBudget, Settings, TaskTemplate, UiConfig } from '@/domain/types';
@@ -78,6 +79,8 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     scheduleRevealHours: 24,
     tripRatingQuorum: 0.5,
     trackingCommentsNeedReview: true,
+    notifyRules: defaultNotifyRules(),
+    email: defaultEmailSettings(),
     importantNotifications: ['budget_request', 'approval_rejected', 'deadline_passed', 'custody_issued', 'groups_published', 'leader_absent_focus', 'committee_member_request'],
     showHijri: true,
     feesInPlatform: false,

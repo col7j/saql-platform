@@ -1014,6 +1014,9 @@ export interface Settings {
   trackingCommentsNeedReview: boolean; // 20.8
   /** ما يصل بالإيميل عند ربطه لاحقاً (يحدده مسؤول اللجنة التقنية). حالياً كل الإشعارات داخل المنصة فقط */
   importantNotifications: NotificationType[];
+  /** قواعد الإشعارات والبريد (مسؤول اللجنة التقنية وحده) */
+  notifyRules: NotificationRule[];
+  email: EmailSettings;
   showHijri: boolean; // 20.11
   feesInPlatform: boolean; // 20.12
   feeAmount: number;
@@ -1318,6 +1321,7 @@ export interface DB {
   extraInvoices: ExtraInvoice[];
   letterTypes: LetterType[];
   letters: Letter[];
+  emailLog: EmailLogEntry[];
   mediaTemplates: MediaTemplate[];
   mediaBriefs: MediaBrief[];
   mediaLinks: MediaLink[];
@@ -1371,4 +1375,41 @@ export interface DocSectionDef {
   columns?: DocColumn[];
   /** الأنواع التي يظهر لها القسم (يُخفى السكن والتواصل مع الأسر في الداخلية) */
   tripTypes: TripType[];
+}
+
+// ───────────── قواعد الإشعارات والبريد (اللجنة التقنية وحدها) ─────────────
+export type RecipientRole = 'participant' | 'group_leader' | 'facilitator' | 'staff' | 'leader' | 'finance' | 'media';
+export interface NotificationRule {
+  type: NotificationType;
+  /** مفتاح تشغيل الحدث. القناة داخل المنصة دائماً */
+  enabled: boolean;
+  email: boolean;
+  /** تذكيرات قبل الموعد بالساعات (يمكن أكثر من واحد) */
+  reminders: number[];
+  /** الأدوار التي يصلها بالبريد (فارغ = كل المستلمين) */
+  recipients: RecipientRole[];
+}
+export interface SendWindow { days: number[]; from: string; to: string }
+export interface EmailSettings {
+  /** إيقاف كل البريد */
+  masterOff: boolean;
+  dailyCap: number;
+  perUserCap: number;
+  /** عند بلوغ السقف: تأجيل للنافذة التالية أو تخطٍّ */
+  onCap: 'defer' | 'skip';
+  windows: SendWindow[];
+  /** استثناءات بتواريخ: closed = لا إرسال في ذلك اليوم */
+  exceptions: { date: ISODate; closed: boolean }[];
+  templates: Record<string, { subject: string; body: string }>;
+}
+export type EmailStatus = 'sent' | 'deferred' | 'skipped' | 'disabled';
+export interface EmailLogEntry {
+  id: ID;
+  at: ISODateTime;
+  toId: ID;
+  type: NotificationType;
+  subject: string;
+  status: EmailStatus;
+  reason?: string;
+  test?: boolean;
 }

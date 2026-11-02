@@ -11,6 +11,7 @@ import { act, personName, repos, useDB, useMe } from '@/state/store';
 import { Badge, Button, Card, Empty, Field, Icons, Input, Notice, PageHeader, ReasonModal, Select, Table, Tabs, Toggle } from '@/ui';
 import { PersonChip } from '@/ui/domain';
 import DocTemplateSettings from './DocTemplate';
+import NotifyAdmin from './NotifyAdmin';
 
 type Tab = 'doc' | 'evaluation' | 'targets' | 'categories' | 'templates' | 'notifications' | 'media';
 
@@ -39,7 +40,7 @@ export default function SettingsPage() {
       {tab === 'targets' && <Targets />}
       {tab === 'categories' && <Categories />}
       {tab === 'templates' && <Templates />}
-      {tab === 'notifications' && <Notifications />}
+      {tab === 'notifications' && <NotifyAdmin />}
       {tab === 'media' && <MediaSettings />}
       {tab === 'doc' && <DocTemplateSettings />}
     </div>

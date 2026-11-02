@@ -5,6 +5,7 @@ import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { canManageCommittee, canManageFocus, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { isReadOnly, READ_ONLY_MESSAGE, leaderIds } from '@/domain/roles';
+import { queueEmail } from '@/domain/notifyRules';
 import { applyFirstRun, type SetupInput } from '@/domain/setup';
 import { canRequestLetter, isDelegate, lettersFor } from '@/domain/letters';
 import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
@@ -20,7 +21,8 @@ import type {
   LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ProgramEvent, SchedulePlan, Settings,
   Attendance, StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
 } from '@/domain/types';
-import { docKindLabel } from '@/domain/labels';
+import { docKindLabel, notificationTypeLabel as notificationTypeLabelMap } from '@/domain/labels';
+const notificationTypeLabelOf = (t: NotificationType) => notificationTypeLabelMap[t];
 import { createMediaRepos } from './media-repos';
 import {
   allocatedFor, DIRECT_CUSTODY_KINDS, FINANCE_PERMS, financePermsOf, firstStatusFor, hasFinancePerm, isFinanceOwner, isLeaderId, linesTotal, meetingBudgetReady, ownerLink, ownerTitle,
@@ -36,9 +38,11 @@ export type Mutate = (recipe: (draft: DB) => unknown) => void;
 
 /** إضافة إشعار داخل المنصة (الإيميل مؤجّل: importantNotifications جاهزة لتحديد ما يصل به لاحقاً) */
 export function pushNotification(d: DB, toIds: ID[], type: NotificationType, title: string, link?: string, body?: string) {
-  [...new Set(toIds)].filter(Boolean).forEach((toId) =>
-    d.notifications.unshift({ id: uid('nt'), toId, type, title, body, link, at: nowISO(), read: false }),
-  );
+  [...new Set(toIds)].filter(Boolean).forEach((toId) => {
+    const n = { id: uid('nt'), toId, type, title, body, link, at: nowISO(), read: false };
+    // الحدث المعطّل من قواعد الإشعارات لا يُنشأ، والبريد يُحاكى في السجل بحسب النوافذ والسقوف
+    if (queueEmail(d, n)) d.notifications.unshift(n);
+  });
 }
 
 const staffIds = (d: DB) => d.persons.filter((p) => p.kind === 'staff').map((p) => p.id);
@@ -1732,6 +1736,14 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           d.settings.evaluationLock = { locked: false, at: nowISO(), by: me() };
           audit(d, me(), 'فتح قفل إعدادات التقييم', reason, 'settings');
           pushNotification(d, leaderIds(d), 'general', `فُتح قفل إعدادات التقييم: ${reason}`, '/app/settings');
+        });
+      },
+      /** إرسال تجريبي لقالب بريد: يُسجَّل في السجل ولا يُحتسب في السقوف */
+      testEmail(type: NotificationType, toId: ID) {
+        mutate((d) => {
+          if (!canManageAccounts(d, me())) throw new Error('إعدادات البريد لمسؤول اللجنة التقنية وحده');
+          const tpl = d.settings.email.templates[type];
+          d.emailLog.unshift({ id: uid('em'), at: nowISO(), toId, type, subject: tpl?.subject ?? notificationTypeLabelOf(type), status: 'sent', test: true });
         });
       },
       moderateTrackingComment(id: ID, status: 'visible' | 'hidden') {

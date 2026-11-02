@@ -12,7 +12,7 @@ import { buildTrips } from './seed-trips';
 import { seedMedia } from './seed-media';
 import { defaultLetterTypes } from '@/domain/letters';
 
-export const DB_VERSION = 17;
+export const DB_VERSION = 18;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -556,6 +556,7 @@ export function buildSeed(): DB {
     supporterAccess: { failed: 0 },
     finalFiles: [],
     extraInvoices: [],
+    emailLog: [],
     letterTypes: defaultLetterTypes(),
     letters: (() => {
       const gt = trips.filter((t) => t.executor.kind === 'group' && t.type === 'external');
