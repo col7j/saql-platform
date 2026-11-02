@@ -81,6 +81,7 @@ export function defaultSettings(startDate: string, endDate: string): Settings {
     feeAmount: 500,
     finance: { maxOpenCustodies: 2, splitAlert: { maxAmount: 300, windowDays: 3, minCount: 3 }, evalItems: [{ key: 'rationing', name: 'الترشيد' }, { key: 'proof_quality', name: 'اكتمال الإثباتات ووضوحها' }] },
     ui: defaultUiConfig(),
+    media: { requireLeaderApproval: false, weekStartDay: 6, upcomingDays: 7, linkExpiryWarnDays: 3, defaultLinkDays: 14 },
     supporterLink: { maxAttempts: 5, lockMinutes: 15, programIdea: 'صقل برنامج لتنمية وتأهيل القيادات الشبابية من طلاب الجامعات في المدينة المنورة، يتعلم فيه المشارك القيادة بممارستها: يخطط مع مجموعته رحلات ولقاءات وينفّذها ويغلقها.' },
     site: {
       heroTitle: 'برنامج صقل للقيادات الشبابية',
@@ -187,6 +188,7 @@ export function defaultUiConfig(): UiConfig {
       { key: 'audit', to: '/app/audit', label: 'سجل التدقيق', icon: 'history', section: 'المتابعة' },
       { key: 'settings', to: '/app/settings', label: 'الإعدادات', icon: 'settings', section: 'التقييم' },
       { key: 'finance', to: '/app/finance', label: 'المالية', icon: 'wallet', section: 'المتابعة' },
+      { key: 'media', to: '/app/media', label: 'المركز الإعلامي', icon: 'film', section: 'المحتوى' },
       fin('overview', 'نظرة عامة', 'chart'),
       fin('requests', 'الطلبات والعهد', 'receipt'),
       fin('invoices', 'مراجعة الفواتير', 'clipboard'),
@@ -211,7 +213,7 @@ export function defaultUiConfig(): UiConfig {
       },
       {
         role: 'media_head', priority: 3, tail: ['leaderboard'], home: ['actions', 'upcoming'],
-        sections: [basics, { title: 'أدوات اللجنة الإعلامية', items: [k('my_committee'), k('tracking_link'), k('site_editor'), k('library'), k('trips')] }, view],
+        sections: [basics, { title: 'أدوات اللجنة الإعلامية', items: [k('media'), k('my_committee'), k('tracking_link'), k('site_editor'), k('library')] }, view],
       },
       {
         role: 'leader', priority: 4, home: ['actions', 'upcoming', 'competition'],
@@ -221,7 +223,7 @@ export function defaultUiConfig(): UiConfig {
           { title: 'المتابعة', items: [k('insights'), k('tasks'), k('approvals'), k('finance', 'المالية (مراقبة)')] },
           { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص والصلاحيات')] },
           { title: 'التقييم', items: [k('settings', 'الإعدادات والتقييم'), k('surveys'), k('plans')] },
-          { title: 'المحتوى', items: [k('tracking_link'), k('site_editor'), k('library'), k('inbox')] },
+          { title: 'المحتوى', items: [k('media'), k('tracking_link'), k('site_editor'), k('library'), k('inbox')] },
         ],
       },
       {
@@ -271,6 +273,6 @@ export function defaultUiConfig(): UiConfig {
         ],
       },
     ],
-    extras: [{ key: 'tracker', section: 'المتابعة' }],
+    extras: [{ key: 'tracker', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
   };
 }

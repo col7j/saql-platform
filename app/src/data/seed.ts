@@ -9,8 +9,9 @@ import type {
 import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, defaultSettings, defaultTaskTemplates } from './defaults';
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
+import { seedMedia } from './seed-media';
 
-export const DB_VERSION = 13;
+export const DB_VERSION = 14;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -551,9 +552,15 @@ export function buildSeed(): DB {
     })),
     supporterAccess: { failed: 0 },
     finalFiles: [],
+    extraInvoices: [],
+    mediaTemplates: [],
+    mediaBriefs: [],
+    mediaLinks: [],
+    mediaActivity: [],
     settings,
   };
   // الرحلات التي اكتملت متطلباتها في البيانات التجريبية تُغلق بعد نهايتها بثلاثة أيام
   db.trips.filter((t) => closureChecks(db, t).every((c) => c.ok)).forEach((t) => Object.assign(t, { closedAt: iso(addDays(t.endDate, 3)), closedBy: LEADER_ID }));
+  seedMedia(db, T);
   return db;
 }

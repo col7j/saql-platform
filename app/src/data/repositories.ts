@@ -18,6 +18,7 @@ import type {
   Attendance, StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
 } from '@/domain/types';
 import { docKindLabel } from '@/domain/labels';
+import { createMediaRepos } from './media-repos';
 import {
   allocatedFor, DIRECT_CUSTODY_KINDS, FINANCE_PERMS, financePermsOf, firstStatusFor, hasFinancePerm, isFinanceOwner, isLeaderId, linesTotal, meetingBudgetReady, ownerLink, ownerTitle,
   spendKindLabel, spendKindOf, submitterOf, tripBudgetFacilitatorId,
@@ -230,6 +231,7 @@ export function createLocalRepositories(mutate: Mutate, me: () => ID, read: () =
     if (!canSeeCommitteeIn(d, committeeId) || !canManageCommittee(d, me(), committeeId)) deny();
   };
   return {
+    media: createMediaRepos(mutate, me),
     // ───────────── الوصول: نفس الفحص الذي يستخدمه التوجيه، وقراءات تُرفض لمن لا يملك الصلاحية ─────────────
     access: {
       canOpen(pathname: string, search = '') {

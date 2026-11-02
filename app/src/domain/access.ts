@@ -2,6 +2,7 @@
 // - ما يملكه الشخص يُحسب هنا من صفاته (منطق)، وترتيب القائمة والرئيسية لكل دور يُقرأ من settings.ui (بيانات).
 // - routeAccess يفحص أي عنوان يُكتب يدوياً، ويُستخدم في التوجيه وفي طبقة البيانات معاً.
 import { canOpenFinance, canViewBudget, hasFinancePerm, isFinanceOwner } from './finance';
+import { canOpenMedia, hasMediaPerm, latestSnapshot } from './media';
 import {
   canSeeCommittee, canSeePersonalPlan, canViewFocus, getCapabilities, groupsPublished, type Capabilities,
 } from './permissions';
@@ -69,6 +70,7 @@ export function accessibleKeys(db: DB, pid: ID): Set<string> {
   add('audit', c.isTechLead || c.isLeader);
   add('settings', c.isLeader || c.isTechLead || c.canManageScheduleCategories);
   add('finance', canOpenFinance(db, pid));
+  add('media', canOpenMedia(db, pid));
   financeTabsFor(db, pid).forEach((t) => keys.add(`finance_${t}`));
   return keys;
 }
@@ -148,7 +150,7 @@ const STATIC_ROUTES: Record<string, string> = {
   individual: 'individual', plans: 'plans', library: 'library', surveys: 'surveys', groups: 'groups', leaderboard: 'leaderboard', tasks: 'tasks',
   requests: 'requests', profile: 'profile', contact: 'contact', tracker: 'tracker', committees: 'committees', people: 'people', insights: 'insights', inbox: 'inbox',
   'tracking-link': 'tracking_link', 'site-editor': 'site_editor', users: 'people', settings: 'settings', finance: 'finance', custody: 'requests',
-  approvals: 'approvals', audit: 'audit', messages: 'messages',
+  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media',
 };
 
 export function meetingVisibleTo(db: DB, pid: ID, meetingId: ID): boolean {
@@ -166,6 +168,7 @@ export function routeAccess(db: DB, pid: ID, pathname: string, search = ''): boo
   if (!db.persons.some((p) => p.id === pid)) return false;
   const parts = pathname.replace(/^\/app\/?/, '').split('/').filter(Boolean);
   const [section = '', id, ...rest] = parts;
+  if (section === 'media') return mediaRouteAccess(db, pid, parts.slice(1));
   if (rest.length) return false;
   if (section === 'more' && !id) return true;
   const key = STATIC_ROUTES[section];
@@ -198,6 +201,32 @@ export function routeAccess(db: DB, pid: ID, pathname: string, search = ''): boo
     }
     case 'plans':
       return db.persons.some((x) => x.id === id && x.kind === 'participant') && (id === pid || (allowed.has('plans') && canSeePersonalPlan(db, pid, id)));
+    default:
+      return false;
+  }
+}
+
+/** مسارات المركز الإعلامي: كلها لمن يملك المركز، وشاشات القوالب والروابط والمؤشرات بصلاحياتها */
+function mediaRouteAccess(db: DB, pid: ID, rest: string[]): boolean {
+  if (!canOpenMedia(db, pid)) return false;
+  const [page, id, ...more] = rest;
+  switch (page) {
+    case undefined:
+    case 'follow':
+      return !id;
+    case 'briefs':
+      if (more.length) return false;
+      if (!id) return true;
+      if (id === 'new') return hasMediaPerm(db, pid, 'edit');
+      return db.mediaBriefs.some((b) => b.id === id);
+    case 'print':
+      return !more.length && !!id && db.mediaBriefs.some((b) => b.id === id && (b.status === 'approved' ? !!latestSnapshot(b) : true));
+    case 'templates':
+      return !id && hasMediaPerm(db, pid, 'edit');
+    case 'links':
+      return !id && hasMediaPerm(db, pid, 'approve');
+    case 'metrics':
+      return !id && hasMediaPerm(db, pid, 'metrics');
     default:
       return false;
   }

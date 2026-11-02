@@ -87,7 +87,7 @@ export function buildCommittees(): { committees: Committee[]; memberships: Commi
     { ...m('c_fin', 's5', 'leader', true), financePerms: ['view_budget', 'manage_categories', 'approve_within', 'disburse', 'review_invoices', 'close_custody'] },
     // الميسّرون ميسّرون فقط، ومتابع الرحلات بلا لجنة
     m('c_media', 's6', 'leader', false),
-    m('c_media', 'u9', 'member', false), // مشارك ضمن الإعلامية بموافقة القائد العام
+    { ...m('c_media', 'u9', 'member', false), mediaPerms: ['edit'] }, // مشارك ضمن الإعلامية بموافقة القائد العام، ومعه إنشاء وتحرير الموجزات فقط
     m('c_tech', 's6', 'leader', false),
     m('c_gen', LEADER_ID, 'leader', false),
     ...['s1', 's2', 's3', 's4', 's5', 's6', 's7'].map((id) => m('c_gen', id, 'member', false)),

@@ -142,6 +142,8 @@ export interface CommitteeMembership {
   canSeeFinance: boolean;
   /** للجنة المالية فقط: الصلاحيات المفوّضة (قائد اللجنة يملكها كلها) */
   financePerms?: FinancePermission[];
+  /** للجنة الإعلامية فقط: صلاحيات المركز الإعلامي التي يمنحها القائد العام لكل عضو على حدة (رئيس اللجنة يملكها كلها) */
+  mediaPerms?: MediaPermission[];
 }
 export interface MemberRequest {
   id: ID;
@@ -1013,9 +1015,230 @@ export interface Settings {
   trackerId?: ID;
   /** رابط الداعم الثابت: حد للمحاولات الخاطئة ومدة القفل */
   supporterLink: { maxAttempts: number; lockMinutes: number; programIdea: string };
+  /** المركز الإعلامي */
+  media: MediaSettings;
   site: SiteContent;
   /** القوائم والرئيسية لكل دور. يعدّلها مسؤول اللجنة التقنية (إعداد متغيّر) */
   ui: UiConfig;
+}
+
+
+// ───────────── فواتير إضافية (لا تُحتسب ضمن العهدة) ─────────────
+/** يرفعها صاحب العهدة بعد الشراء لتُستفاد لاحقاً. لا تدخل مصروف العهدة ولا فائضها ولا إغلاقها */
+export interface ExtraInvoice {
+  id: ID;
+  custodyId: ID;
+  /** النشاط المرتبط (تلقائي من العهدة) */
+  ownerKind: BudgetOwnerKind;
+  ownerId: ID;
+  addedBy: ID;
+  at: ISODateTime;
+  attachment: Attachment;
+  amount: number;
+  date: ISODate;
+  /** غير محدد = «غير مصنف» */
+  categoryId?: ID;
+  description: string;
+  /** المراجعة: علامة «تمت مراجعتها» وملاحظة اختيارية، لا رفض ولا اعتماد كصرف */
+  review?: { by: ID; at: ISODateTime; note?: string };
+}
+
+// ───────────── المركز الإعلامي ─────────────
+/** صلاحيات المركز: يمنحها القائد العام لأعضاء اللجنة الإعلامية كل واحدة على حدة */
+export type MediaPermission = 'edit' | 'approve' | 'metrics';
+export type MediaPriority = 'must' | 'important' | 'extra';
+export type MediaItemStatus = 'not_started' | 'in_progress' | 'done' | 'failed';
+export type MediaBriefKind = 'event' | 'week';
+export type MediaBriefStatus = 'draft' | 'approved' | 'archived';
+export type MediaLinkKind = 'read' | 'track';
+/** مرجع فعالية موجودة في المنصة: لا تُنسخ بياناتها */
+export interface EventRef {
+  kind: 'trip' | 'focus' | 'meeting' | 'event';
+  id: ID;
+}
+/** مفاتيح أقسام الموجز الاثني عشر (والمخصصة بمفتاح custom_*) */
+export type BriefSectionKey =
+  | 'info' | 'goals' | 'schedule' | 'shots' | 'interviews' | 'visual' | 'onsite' | 'deliverables' | 'partners' | 'contacts' | 'notes' | 'responsibilities' | 'deadlines'
+  | `custom_${string}`;
+export interface BriefSection {
+  key: BriefSectionKey;
+  title: string;
+  visible: boolean;
+  /** النص الحر للقسم (الأهداف، التوجيهات، التعليمات، القسم المخصص...) */
+  body: string;
+  custom?: boolean;
+}
+export interface BriefShot {
+  id: ID;
+  title: string;
+  priority: MediaPriority;
+  /** فقرة من جدول الفعالية (اختيارية) */
+  scheduleItemId?: ID;
+  /** افتراضها: ضرورية ومهمة مطلوبة، وإضافية اختيارية، وقابلة للتعديل */
+  required: boolean;
+}
+export interface BriefInterview {
+  id: ID;
+  who: string;
+  questions: string[];
+  required: boolean;
+}
+export interface BriefDeliverable {
+  id: ID;
+  title: string;
+  type: string;
+  /** المقاس والصيغة */
+  spec: string;
+  dueDate?: ISODate;
+  required: boolean;
+}
+export interface BriefContact {
+  id: ID;
+  name: string;
+  role: string;
+  phone?: string;
+  /** لا تظهر خارج المنصة إلا الجهة المصرّح بمشاركتها */
+  authorized: boolean;
+}
+export interface BriefResponsibility {
+  id: ID;
+  task: string;
+  owner: string;
+}
+export interface BriefDeadline {
+  id: ID;
+  title: string;
+  date: ISODate;
+}
+/** فعالية داخل الموجز بمتطلباتها الخاصة (الموجز الأسبوعي فيه أكثر من واحدة) */
+export interface BriefEvent {
+  id: ID;
+  ref: EventRef;
+  shots: BriefShot[];
+  interviews: BriefInterview[];
+  notes: string;
+}
+/** المحتوى القابل للتحرير: يُحفظ في الموجز، وتُحلّ بيانات الفعالية منه حياً ولا تُنسخ */
+export interface BriefContent {
+  title: string;
+  weekStart?: ISODate;
+  events: BriefEvent[];
+  sections: BriefSection[];
+  deliverables: BriefDeliverable[];
+  contacts: BriefContact[];
+  responsibilities: BriefResponsibility[];
+  deadlines: BriefDeadline[];
+}
+/** فعالية مُحلّة وقت الاعتماد: ما يُجمَّد في اللقطة */
+export interface ResolvedBriefEvent {
+  id: ID;
+  ref: EventRef;
+  title: string;
+  kindLabel: string;
+  date: ISODate;
+  endDate?: ISODate;
+  start?: string;
+  end?: string;
+  location?: string;
+  schedule: { id: ID; date: ISODate; start: string; end: string; detail: string }[];
+  shots: BriefShot[];
+  interviews: BriefInterview[];
+  notes: string;
+}
+export interface BriefFrozen extends Omit<BriefContent, 'events'> {
+  kind: MediaBriefKind;
+  events: ResolvedBriefEvent[];
+}
+/** لقطة معتمدة بإصدار: هي ما يراه الفريق وما يُصدَّر */
+export interface BriefSnapshot {
+  version: number;
+  at: ISODateTime;
+  by: ID;
+  /** سبب الإصدار: اعتماد أول، أو تأكيد تغييرات الجدول، أو تعديل المحتوى */
+  reason: 'first' | 'schedule_change' | 'content_edit';
+  /** بصمة محتوى الموجز وقت الاعتماد: لمعرفة وجود تعديلات غير معتمدة */
+  contentHash: string;
+  data: BriefFrozen;
+}
+/** حالة تنفيذ بند (لقطة أو مقابلة أو مخرج): حيّة وتبقى عبر الإصدارات */
+export interface BriefItemExec {
+  status: MediaItemStatus;
+  /** إلزامي مع «متعذرة» */
+  reason?: string;
+  proofs: string[];
+  notes: { id: ID; text: string; by: string; at: ISODateTime }[];
+  updatedBy: string;
+  updatedAt: ISODateTime;
+  doneAt?: ISODateTime;
+}
+export interface MediaBrief {
+  id: ID;
+  kind: MediaBriefKind;
+  status: MediaBriefStatus;
+  templateId: ID;
+  /** اسم القالب وقت الإنشاء (تعديل القالب لاحقاً لا يؤثر على الموجز) */
+  templateName: string;
+  content: BriefContent;
+  /** ملاحظات داخلية: لا تدخل اللقطة ولا الرابط ولا الـPDF */
+  internalNotes: string;
+  snapshots: BriefSnapshot[];
+  execution: Record<ID, BriefItemExec>;
+  /** عند تفعيل «يتطلب موافقة القائد العام»: طلب الاعتماد بانتظاره */
+  approvalRequest?: { by: ID; at: ISODateTime };
+  createdBy: ID;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+}
+export interface MediaTemplate {
+  id: ID;
+  name: string;
+  description: string;
+  kind: MediaBriefKind | 'both';
+  sections: BriefSection[];
+  shots: { title: string; priority: MediaPriority; required: boolean }[];
+  interviews: { who: string; questions: string[]; required: boolean }[];
+  deliverables: { title: string; type: string; spec: string; dueOffsetDays: number; required: boolean }[];
+  updatedAt: ISODateTime;
+}
+/** رابط مشاركة: الرمز العشوائي لا يُخزَّن، تُخزَّن بصمته فقط */
+export interface MediaLink {
+  id: ID;
+  briefId: ID;
+  kind: MediaLinkKind;
+  tokenHash: string;
+  /** آخر ستة أحرف للتعريف فقط */
+  tokenTail: string;
+  createdBy: ID;
+  createdAt: ISODateTime;
+  expiresAt?: ISODateTime;
+  revokedAt?: ISODateTime;
+  revokedBy?: ID;
+  accessCount: number;
+  lastAccessAt?: ISODateTime;
+  lastVisitor?: string;
+}
+/** سجل تدقيق إجراءات الزوار على روابط المتابعة */
+export interface MediaActivity {
+  id: ID;
+  briefId: ID;
+  linkId: ID;
+  itemId?: ID;
+  itemTitle?: string;
+  actor: string;
+  action: string;
+  at: ISODateTime;
+}
+export interface MediaSettings {
+  /** يتطلب اعتماد الموجز موافقة القائد العام (معطّل افتراضياً) */
+  requireLeaderApproval: boolean;
+  /** يوم بداية الأسبوع: 0 الأحد ... 6 السبت */
+  weekStartDay: number;
+  /** «فعاليات قادمة بلا موجز»: خلال كم يوم */
+  upcomingDays: number;
+  /** تنبيه الروابط التي ستنتهي خلال كم يوم */
+  linkExpiryWarnDays: number;
+  /** صلاحية الرابط الجديد افتراضياً بالأيام (0 = بلا انتهاء) */
+  defaultLinkDays: number;
 }
 
 // ───────────── قاعدة البيانات الكاملة ─────────────
@@ -1070,5 +1293,10 @@ export interface DB {
   /** عدّاد المحاولات الخاطئة (في المنصة الحقيقية على الخادم لكل عنوان) */
   supporterAccess: { failed: number; lockedUntil?: ISODateTime };
   finalFiles: FinalFile[];
+  extraInvoices: ExtraInvoice[];
+  mediaTemplates: MediaTemplate[];
+  mediaBriefs: MediaBrief[];
+  mediaLinks: MediaLink[];
+  mediaActivity: MediaActivity[];
   settings: Settings;
 }
