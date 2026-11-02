@@ -10,8 +10,9 @@ import { defaultBudgetCategories, defaultCapacityRules, defaultProgramBudget, de
 import { buildAccounts, buildCommittees, buildGroups, buildPeople, LEADER_ID } from './seed-people';
 import { buildTrips } from './seed-trips';
 import { seedMedia } from './seed-media';
+import { defaultLetterTypes } from '@/domain/letters';
 
-export const DB_VERSION = 15;
+export const DB_VERSION = 16;
 
 // مولّد أرقام شبه عشوائية ثابت حتى تتكرر البيانات نفسها
 function rng(seed: number) {
@@ -554,6 +555,19 @@ export function buildSeed(): DB {
     supporterAccess: { failed: 0 },
     finalFiles: [],
     extraInvoices: [],
+    letterTypes: defaultLetterTypes(),
+    letters: (() => {
+      const gt = trips.filter((t) => t.executor.kind === 'group' && t.type === 'external');
+      const t0 = gt[0];
+      const lead = t0 && t0.executor.kind === 'group' ? groups.find((g) => g.id === (t0.executor as { groupId: string }).groupId)?.leaderId : undefined;
+      const mate = t0 && t0.executor.kind === 'group' ? groups.find((g) => g.id === (t0.executor as { groupId: string }).groupId)?.memberIds[2] : undefined;
+      if (!t0 || !lead || !mate) return [];
+      return [
+        { id: 'lt_d1', tripId: t0.id, typeId: 'lt2', addressee: 'إدارة فندق الضيافة', purpose: 'حجز 6 وحدات لمشاركي الرحلة', neededBy: addDays(T, 5), attachments: [], requestedBy: mate, createdAt: iso(addDays(T, -1)), status: 'submitted' as const },
+        { id: 'lt_d2', tripId: t0.id, typeId: 'lt1', addressee: 'إمارة المنطقة', purpose: 'تسهيل مهمة الفريق', neededBy: addDays(T, -2), attachments: [], requestedBy: lead, createdAt: iso(addDays(T, -6)), status: 'issued' as const,
+          issued: { number: '1447/112', date: addDays(T, -3), file: { name: 'خطاب-تسهيل.pdf', type: 'application/pdf', size: 52000, hash: 'seed_letter_1' }, byId: 's1', at: iso(addDays(T, -3)) } },
+      ];
+    })(),
     mediaTemplates: [],
     mediaBriefs: [],
     mediaLinks: [],

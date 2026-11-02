@@ -72,6 +72,7 @@ export function accessibleKeys(db: DB, pid: ID): Set<string> {
   add('settings', c.isLeader || c.isTechLead || c.canManageScheduleCategories);
   add('finance', canOpenFinance(db, pid));
   add('media', canOpenMedia(db, pid));
+  add('letters', c.isDelegate || c.isLeader);
   financeTabsFor(db, pid).forEach((t) => keys.add(`finance_${t}`));
   return keys;
 }
@@ -134,7 +135,7 @@ export function navFor(db: DB, pid: ID): { sections: { title: string; items: Nav
     sec.items.push({ key, to: cat.to, label: label ?? cat.label, icon: cat.icon });
   };
   for (const l of layouts) for (const s of l.sections) for (const i of s.items) if (!tail.has(i.key)) push(s.title, i.key, i.label);
-  for (const x of ui.extras ?? []) push(x.section, x.key);
+  for (const x of ui.extras ?? []) if (x.key !== 'letters' || getCapabilities(db, pid).isDelegate) push(x.section, x.key);
   for (const key of tail) push(sections[sections.length - 1]?.title ?? 'أخرى', key);
   return { sections: sections.filter((s) => s.items.length), all: sections.flatMap((s) => s.items) };
 }
@@ -152,7 +153,7 @@ const STATIC_ROUTES: Record<string, string> = {
   individual: 'individual', plans: 'plans', library: 'library', surveys: 'surveys', groups: 'groups', leaderboard: 'leaderboard', tasks: 'tasks',
   requests: 'requests', profile: 'profile', contact: 'contact', tracker: 'tracker', committees: 'committees', people: 'people', insights: 'insights', inbox: 'inbox',
   'tracking-link': 'tracking_link', 'site-editor': 'site_editor', users: 'people', settings: 'settings', finance: 'finance', custody: 'requests',
-  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media',
+  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media', letters: 'letters',
 };
 
 export function meetingVisibleTo(db: DB, pid: ID, meetingId: ID): boolean {

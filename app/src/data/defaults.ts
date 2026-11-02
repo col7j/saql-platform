@@ -189,6 +189,7 @@ export function defaultUiConfig(): UiConfig {
       { key: 'settings', to: '/app/settings', label: 'الإعدادات', icon: 'settings', section: 'التقييم' },
       { key: 'finance', to: '/app/finance', label: 'المالية', icon: 'wallet', section: 'المتابعة' },
       { key: 'media', to: '/app/media', label: 'المركز الإعلامي', icon: 'film', section: 'المحتوى' },
+      { key: 'letters', to: '/app/letters', label: 'الخطابات', icon: 'stamp', section: 'المتابعة' },
       fin('overview', 'نظرة عامة', 'chart'),
       fin('requests', 'الطلبات والعهد', 'receipt'),
       fin('invoices', 'مراجعة الفواتير', 'clipboard'),
@@ -220,8 +221,8 @@ export function defaultUiConfig(): UiConfig {
         sections: [
           basics,
           { title: P, items: [k('trips'), k('groups'), k('focus'), k('meetings'), k('leaderboard')] },
-          { title: 'المتابعة', items: [k('insights'), k('tasks'), k('approvals'), k('tracker'), k('finance', 'المالية (مراقبة)')] },
-          { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص والصلاحيات')] },
+          { title: 'المتابعة', items: [k('insights'), k('tasks'), k('approvals'), k('finance', 'المالية (مراقبة)')] },
+          { title: 'الأشخاص والصلاحيات', items: [k('people', 'الأشخاص والصلاحيات'), k('tracker')] },
           { title: 'التقييم', items: [k('settings', 'الإعدادات والتقييم'), k('surveys'), k('plans')] },
           { title: 'المحتوى', items: [k('media'), k('tracking_link'), k('site_editor'), k('library'), k('inbox')] },
         ],
@@ -273,6 +274,6 @@ export function defaultUiConfig(): UiConfig {
         ],
       },
     ],
-    extras: [{ key: 'tracker', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
+    extras: [{ key: 'tracker', section: 'المتابعة' }, { key: 'letters', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
   };
 }

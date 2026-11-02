@@ -104,6 +104,9 @@ export const notificationTypeLabel: Record<NotificationType, string> = {
   invoice_rejected: 'رفض بند صرف',
   budget_request: 'طلب ميزانية',
   meeting: 'اجتماع',
+  letter_request: 'طلب خطاب جديد',
+  letter_issued: 'صدور خطاب',
+  letter_reminder: 'تذكير بموعد خطاب',
   general: 'عام',
 };
 

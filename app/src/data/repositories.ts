@@ -5,6 +5,7 @@ import { addDays, nowISO, todayISO } from '@/domain/dates';
 import { uid } from '@/domain/id';
 import { canManageCommittee, canManageFocus, canSeeCommittee, groupOf, groupsPublished, meetingCreateBlock, tripFacilitatorId, tripTeamIds, tripTeamLeaderId, effectiveTrackerId } from '@/domain/permissions';
 import { isReadOnly, READ_ONLY_MESSAGE, leaderIds } from '@/domain/roles';
+import { canRequestLetter, isDelegate, lettersFor } from '@/domain/letters';
 import { ACCESS_DENIED, meetingVisibleTo, routeAccess } from '@/domain/access';
 import { canManageAccounts, passwordError, suggestUsername, usernameError } from '@/domain/accounts';
 import { assertNoCapacityConflict, substituteConflict } from '@/domain/capacities';
@@ -14,7 +15,7 @@ import { canEditEvaluation, canUnlockEvaluation, evaluationKeyLabel, evaluationS
 import { hashPassword, tempPassword } from '@/domain/crypto';
 import { applyDocAction, canPublish, docFor, focusDone, focusIsPast, tasksFromTemplates, tripCloseBlock, type DocAction } from '@/domain/workflow';
 import type {
-  PersonKind, AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
+  Letter, LetterType, PersonKind, AvailabilitySlot, BudgetCategory, BudgetLine, Comment, Committee, CommitteeKPI, Custody, DB, FocusMeeting, ID, IndividualMeeting,
   LifeAspect, Material, MemberRequest, NotificationType, PointsEntry, ProgramEvent, SchedulePlan, Settings,
   Attendance, StepFollowUp, Survey, Task, TaskTemplate, Trip, TripDoc, TripExecutor, TripSession, TripType,
 } from '@/domain/types';
@@ -95,6 +96,14 @@ function ownerOnly(d: DB, pid: ID) {
 }
 function financeIdsWith(d: DB, perm: FinancePermission) {
   return d.memberships.filter((m) => d.committees.find((c) => c.id === m.committeeId)?.kind === 'finance').map((m) => m.personId).filter((p) => hasFinancePerm(d, p, perm));
+}
+function findLetter(d: DB, id: ID) {
+  const l = d.letters.find((x) => x.id === id);
+  if (!l) throw new Error('الخطاب غير موجود');
+  return l;
+}
+function delegateOnly(d: DB, pid: ID) {
+  if (!isDelegate(d, pid)) throw new Error('إصدار الخطابات لمندوب الجمعية');
 }
 function findRequest(d: DB, id: ID) {
   const r = d.budgetRequests.find((x) => x.id === id);
@@ -299,6 +308,108 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       /** مسار قديم: ينشئ الحساب بلا كلمة مرور فتُعيَّن بعدها. لمسؤول اللجنة التقنية وحده أيضاً */
       create(input: Omit<Person, 'id' | 'isGeneralLeader'>): ID {
         return this.createAccount({ role: input.kind === 'staff' ? 'staff' : 'participant', name: input.name, email: input.email, phone: input.phone, title: input.title }).id;
+      },
+    },
+    // ───────────── الخطابات ─────────────
+    letters: {
+      /** أي عضو في فريق الرحلة يرفع الطلب */
+      request(input: { tripId: ID; typeId: ID; addressee: string; purpose: string; neededBy: string; attachments?: Letter['attachments'] }): ID {
+        const id = uid('lt');
+        mutate((d) => {
+          const trip = findTrip(d, input.tripId);
+          if (!canRequestLetter(d, me(), trip)) throw new Error('طلب الخطابات لأعضاء فريق الرحلة');
+          if (!d.letterTypes.some((t) => t.id === input.typeId)) throw new Error('اختر نوع الخطاب');
+          if (!input.addressee.trim() || !input.purpose.trim()) throw new Error('اكتب الجهة الموجّه إليها والغرض');
+          if (!input.neededBy) throw new Error('حدد تاريخ الحاجة للخطاب');
+          for (const a of input.attachments ?? []) if (a.link && !/^https?:\/\//i.test(a.link)) throw new Error('رابط المرفق يبدأ بـ http أو https');
+          d.letters.push({ id, ...input, attachments: input.attachments ?? [], requestedBy: me(), createdAt: nowISO(), status: 'submitted' });
+          if (d.settings.societyDelegateId) pushNotification(d, [d.settings.societyDelegateId], 'letter_request', `طلب خطاب جديد: ${trip.title}`, '/app/letters');
+        });
+        return id;
+      },
+      /** مقدّم الطلب يعدّل ويعيد الإرسال بعد «يحتاج تعديلاً» */
+      resubmit(id: ID, patch: Partial<Pick<Letter, 'addressee' | 'purpose' | 'neededBy'>>) {
+        mutate((d) => {
+          const l = findLetter(d, id);
+          if (l.requestedBy !== me() || l.status !== 'needs_edit') throw new Error('التعديل لمقدّم الطلب بعد إعادته');
+          Object.assign(l, patch, { status: 'submitted', editReason: undefined });
+          if (d.settings.societyDelegateId) pushNotification(d, [d.settings.societyDelegateId], 'letter_request', 'أُعيد إرسال طلب خطاب بعد التعديل', '/app/letters');
+        });
+      },
+      startPreparing(id: ID) {
+        mutate((d) => {
+          delegateOnly(d, me());
+          const l = findLetter(d, id);
+          if (l.status !== 'submitted') throw new Error('الطلب ليس في حالة «مرفوع»');
+          l.status = 'preparing';
+        });
+      },
+      needsEdit(id: ID, reason: string) {
+        mutate((d) => {
+          delegateOnly(d, me());
+          const l = findLetter(d, id);
+          if (!['submitted', 'preparing'].includes(l.status)) throw new Error('لا يمكن إعادة هذا الطلب الآن');
+          if (!reason.trim()) throw new Error('اكتب سبب الإعادة ليعرف الطالب ما يعدّله');
+          Object.assign(l, { status: 'needs_edit', editReason: reason.trim() });
+          pushNotification(d, [l.requestedBy], 'general', `طلب الخطاب يحتاج تعديلاً: ${reason.trim()}`, `/app/trips/${l.tripId}?tab=letters`);
+        });
+      },
+      /** يرفع المندوب الخطاب الصادر برقمه وتاريخه فيصل الطالب ويُحفظ في وثائق الرحلة */
+      issue(id: ID, input: { number: string; date: string; file: Attachment }) {
+        mutate((d) => {
+          delegateOnly(d, me());
+          const l = findLetter(d, id);
+          if (!['submitted', 'preparing'].includes(l.status)) throw new Error('الخطاب صدر أو أُعيد للتعديل');
+          if (!input.number.trim() || !input.date) throw new Error('اكتب رقم الخطاب وتاريخه');
+          const err = attachmentError(input.file, 'ملف الخطاب');
+          if (err) throw new Error(err);
+          l.issued = { number: input.number.trim(), date: input.date, file: input.file, byId: me(), at: nowISO() };
+          l.status = 'issued';
+          pushNotification(d, [l.requestedBy], 'letter_issued', `صدر خطابك رقم ${l.issued.number}`, `/app/trips/${l.tripId}?tab=letters`);
+        });
+      },
+      markDelivered(id: ID) {
+        mutate((d) => {
+          delegateOnly(d, me());
+          const l = findLetter(d, id);
+          if (l.status !== 'issued') throw new Error('يُسلَّم بعد صدوره');
+          Object.assign(l, { status: 'delivered', deliveredAt: nowISO() });
+        });
+      },
+      /** تعيين مندوب الجمعية: ميسّر واحد، ويجوز تحويله لآخر */
+      assignDelegate(personId: ID) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('تعيين مندوب الجمعية للقائد العام أو مساعده');
+          if (!d.groups.some((g) => g.facilitatorId === personId)) throw new Error('المندوب يكون من الميسّرين');
+          d.settings.societyDelegateId = personId;
+          audit(d, me(), 'تعيين مندوب الجمعية', personName(d, personId), 'roles');
+          pushNotification(d, [personId], 'general', 'عُيّنت مندوباً للجمعية: تصلك طلبات الخطابات', '/app/letters');
+        });
+      },
+      /** تذكير قبل الموعد المطلوب (يُستدعى عند فتح المنصة لغياب الخادم) */
+      remind() {
+        mutate((d) => {
+          const soon = addDays(todayISO(), 2);
+          let n = 0;
+          d.letters.filter((l) => !l.reminderSent && ['submitted', 'preparing'].includes(l.status) && l.neededBy <= soon).forEach((l) => {
+            l.reminderSent = true;
+            n++;
+            if (d.settings.societyDelegateId) pushNotification(d, [d.settings.societyDelegateId], 'letter_reminder', `اقترب موعد خطاب مطلوب: ${findTrip(d, l.tripId).title}`, '/app/letters');
+          });
+          if (!n) return false;
+        });
+      },
+      saveType(t: LetterType) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('أنواع الخطابات للقائد العام أو مساعده');
+          if (!t.name.trim()) throw new Error('اسم النوع مطلوب');
+          const i = d.letterTypes.findIndex((x) => x.id === t.id);
+          if (i >= 0) d.letterTypes[i] = t; else d.letterTypes.push({ ...t, id: uid('lt') });
+        });
+      },
+      /** قراءة مرشَّحة: لا يرى الطلب إلا من يحق له */
+      list(): Letter[] {
+        return lettersFor(read(), me());
       },
     },
     // ───────────── الصلاحيات المؤقتة (يمنحها القائد العام) ─────────────

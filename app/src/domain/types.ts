@@ -856,6 +856,9 @@ export type NotificationType =
   | 'invoice_rejected'
   | 'budget_request'
   | 'meeting'
+  | 'letter_request'
+  | 'letter_issued'
+  | 'letter_reminder'
   | 'general';
 
 export interface Notification {
@@ -1305,9 +1308,39 @@ export interface DB {
   supporterAccess: { failed: number; lockedUntil?: ISODateTime };
   finalFiles: FinalFile[];
   extraInvoices: ExtraInvoice[];
+  letterTypes: LetterType[];
+  letters: Letter[];
   mediaTemplates: MediaTemplate[];
   mediaBriefs: MediaBrief[];
   mediaLinks: MediaLink[];
   mediaActivity: MediaActivity[];
   settings: Settings;
+}
+
+// ───────────── الخطابات (مندوب الجمعية) ─────────────
+export interface LetterType {
+  id: ID;
+  name: string;
+  /** نص مقترح قابل للتعديل يساعد في الصياغة */
+  suggestedText: string;
+}
+export type LetterStatus = 'submitted' | 'preparing' | 'issued' | 'delivered' | 'needs_edit';
+export interface Letter {
+  id: ID;
+  tripId: ID;
+  typeId: ID;
+  addressee: string;
+  purpose: string;
+  /** الحاجة قبل هذا التاريخ */
+  neededBy: ISODate;
+  /** مرفقات اختيارية: ملف أو رابط */
+  attachments: { name: string; link?: string }[];
+  requestedBy: ID;
+  createdAt: ISODateTime;
+  status: LetterStatus;
+  editReason?: string;
+  /** الخطاب الصادر: يُصدر خارج المنصة بترويسة الجمعية، وتحفظه المنصة وتتابعه */
+  issued?: { number: string; date: ISODate; file: Attachment; byId: ID; at: ISODateTime };
+  deliveredAt?: ISODateTime;
+  reminderSent?: boolean;
 }

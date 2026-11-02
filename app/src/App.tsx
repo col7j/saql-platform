@@ -24,6 +24,7 @@ import IndividualPage from './pages/app/Individual';
 import PlansPage, { PlanOf } from './pages/app/Plans';
 import SurveysPage from './pages/app/Surveys';
 import LibraryPage from './pages/app/Library';
+import LettersPage from './pages/app/Letters';
 import GroupsPage from './pages/app/Groups';
 import PersonPage from './pages/app/Person';
 import LeaderboardPage from './pages/app/Leaderboard';
@@ -101,6 +102,7 @@ export default function App() {
             <Route path="metrics" element={<MetricsPage />} />
             <Route path="print/:id" element={<PrintBrief />} />
           </Route>
+          <Route path="letters" element={<LettersPage />} />
           <Route path="profile" element={<ProfilePage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
