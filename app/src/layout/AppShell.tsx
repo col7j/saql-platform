@@ -218,10 +218,11 @@ export function AppShell() {
           </div>
         )}
         <div className="min-w-0 flex-1 bg-ink-50">
-          <header className="no-print sticky top-[36px] z-30 flex items-center justify-between gap-2 border-b border-ink-100 bg-white/90 px-4 py-2 backdrop-blur">
-            <img src="./brand/logo-horizontal.svg" alt="صقل" className="h-8 lg:invisible" />
+          <header className={cx('no-print sticky top-[36px] z-30 flex items-center justify-between gap-2 border-b border-ink-100 bg-white/90 px-4 py-2 backdrop-blur lg:hidden')}>
+            <img src="./brand/logo-horizontal.svg" alt="صقل" className="h-8" />
             {me.isSupervisor && <span className="rounded-full bg-accent-100 px-3 py-1 text-xs font-bold text-ink-900" role="status">وضع القراءة فقط</span>}
           </header>
+          {me.isSupervisor && <div className="no-print hidden justify-end px-8 pt-4 lg:flex"><span className="rounded-full bg-accent-100 px-3 py-1 text-xs font-bold text-ink-900" role="status">وضع القراءة فقط</span></div>}
           <main className="mx-auto max-w-container px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <ErrorBoundary key={loc.pathname + loc.search}>
               {allowed ? (me.isSupervisor ? <fieldset disabled className="min-w-0 border-0 p-0"><Outlet /></fieldset> : <Outlet />) : <AccessDenied />}

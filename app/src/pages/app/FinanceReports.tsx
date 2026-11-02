@@ -19,14 +19,14 @@ export const filterFromParams = (p: URLSearchParams): ReportFilter => ({
 });
 const toParams = (f: ReportFilter) => new URLSearchParams(Object.entries({ scope: f.scope, ref: f.refId, from: f.from, to: f.to, cat: f.categoryId, extra: f.includeExtra ? '1' : '' }).filter(([, v]) => v) as [string, string][]);
 
-export function Dashboard() {
+export function Dashboard({ chartsOnly = false }: { chartsOnly?: boolean }) {
   const db = useDB();
   const d = financeDashboard(db);
   const max = Math.max(1, ...d.byCategory.map((x) => x.amount));
   const maxK = Math.max(1, ...d.byKind.map((x) => x.amount));
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {!chartsOnly && <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="الرصيد الفعلي" value={SAR(d.balance)} />
         <Stat label="المصروف" value={SAR(d.spent)} />
         <Stat label="عهد مفتوحة" value={d.openCustodies} />
@@ -34,7 +34,7 @@ export function Dashboard() {
         <Stat label="فواتير تنتظر مراجعة" value={d.pendingInvoices} tone="accent" />
         <Stat label="صرف مباشر" value={SAR(d.directSpendTotal)} />
         <Stat label="فواتير إضافية (منفصلة)" value={SAR(d.extraInvoicesTotal)} hint="لا تدخل المصروف" />
-      </div>
+      </div>}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="الصرف حسب التصنيف">
           {d.byCategory.length === 0 && <p className="text-sm text-ink-500">لا مصروف بعد</p>}

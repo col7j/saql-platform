@@ -1,3 +1,4 @@
+import { financeDashboard } from '@/domain/financeReport';
 import { Dashboard, ReportBuilder } from './FinanceReports';
 // القسم المالي: يملكه مسؤول اللجنة المالية، ويرى كل عضو ما فُوِّض به فقط
 import { useState } from 'react';
@@ -88,6 +89,7 @@ function Overview({ sections }: { sections: FinanceSection[] }) {
   const me = useMe();
   const pid = me.person.id;
   const w = walletFigures(db);
+  const fd = financeDashboard(db);
   const pendingLines = db.spendForms.flatMap((f) => f.lines).filter((l) => l.status === 'pending');
   const waitingReq = db.budgetRequests.filter((r) => requestStage(db, r).waitingOnId === pid).length;
   const closing = db.custodies.filter((c) => c.status === 'closing').length;
@@ -101,11 +103,13 @@ function Overview({ sections }: { sections: FinanceSection[] }) {
         <Stat label="المصروف" value={SAR(w.out)} icon={<Icons.ArrowUpFromLine className="h-5 w-5" />} to={can('reports') ? go('reports') : undefined} />
         <Stat label="بنود بانتظار المراجعة" value={pendingLines.length} hint={SAR(pendingLines.reduce((s, l) => s + l.amount, 0))} icon={<Icons.ReceiptText className="h-5 w-5" />} tone="accent" to={can('invoices') ? go('invoices') : undefined} />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:gap-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
         <Stat label="طلبات تنتظرك" value={waitingReq} icon={<Icons.Inbox className="h-5 w-5" />} tone="accent" to={go('requests')} />
         <Stat label="عهد بطلب إغلاق" value={closing} icon={<Icons.LockKeyhole className="h-5 w-5" />} to={go('requests')} />
+        <Stat label="صرف مباشر" value={SAR(fd.directSpendTotal)} icon={<Icons.Layers className="h-5 w-5" />} />
+        <Stat label="فواتير إضافية" value={SAR(fd.extraInvoicesTotal)} hint="منفصلة عن المصروف" icon={<Icons.ReceiptText className="h-5 w-5" />} />
       </div>
-      {can('reports') && <Dashboard />}
+      {can('reports') && <Dashboard chartsOnly />}
       {sections.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-bold">الأقسام</h2>

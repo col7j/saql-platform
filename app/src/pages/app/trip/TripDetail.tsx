@@ -49,7 +49,7 @@ export default function TripDetail() {
     if (canSeeOwnerBudget(db, pid, 'trip', trip.id)) tabs.push({ key: 'budget', label: 'الميزانية' });
     tabs.push({ key: 'schedule', label: 'الجدول الزمني' }, { key: 'prep', label: 'التجهيز والمهام' });
   }
-  tabs.push({ key: 'data', label: canPlans ? 'بيانات الرحلة (للمشاركين)' : 'تفاصيل الرحلة' });
+  tabs.push({ key: 'data', label: canPlans ? 'بيانات المشاركين' : 'تفاصيل الرحلة' });
   if (canTakeTripAttendance(db, pid, trip) || me.isStaff || tripTeamLeaderId(db, trip) === pid) tabs.push({ key: 'attendance', label: 'الحضور' });
   if (canPlans && ['live', 'closing', 'closed'].includes(st)) tabs.push({ key: 'closure', label: 'الإغلاق والتقييم' });
   if (trip.type === 'external' && canPlans) tabs.push({ key: 'coord', label: 'التنسيقات' });
@@ -75,14 +75,14 @@ export default function TripDetail() {
       />
 
       {canPlans && (
-        <div className="mb-5 overflow-x-auto rounded-2xl border border-ink-100 bg-white p-3 shadow-card">
+        <div ref={(el) => { el?.querySelector<HTMLElement>('[data-current]')?.scrollIntoView({ inline: 'center', block: 'nearest' }); }} className="mb-5 overflow-x-auto rounded-2xl border border-ink-100 bg-white p-3 shadow-card">
           <ol className="flex min-w-max items-center">
             {tripStageOrder.map((s, i) => {
               const idx = tripStageOrder.indexOf(st);
               const state = i < idx ? 'done' : i === idx ? 'current' : 'todo';
               return (
                 <li key={s} className="flex items-center">
-                  <span className={cx('flex items-center gap-1 rounded-full px-2.5 py-1 text-xs', state === 'done' && 'text-emerald-700', state === 'current' && 'bg-brand-600 font-bold text-white', state === 'todo' && 'text-ink-400')}>
+                  <span {...(state === 'current' ? { 'data-current': true } : {})} className={cx('flex items-center gap-1 rounded-full px-2.5 py-1 text-xs', state === 'done' && 'text-emerald-700', state === 'current' && 'bg-brand-600 font-bold text-white', state === 'todo' && 'text-ink-400')}>
                     {state === 'done' ? <Icons.Check className="h-3.5 w-3.5" /> : <span className="num">{i + 1}</span>}
                     {tripStageLabel[s]}
                   </span>
