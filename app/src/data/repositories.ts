@@ -97,6 +97,12 @@ function ownerOnly(d: DB, pid: ID) {
 function financeIdsWith(d: DB, perm: FinancePermission) {
   return d.memberships.filter((m) => d.committees.find((c) => c.id === m.committeeId)?.kind === 'finance').map((m) => m.personId).filter((p) => hasFinancePerm(d, p, perm));
 }
+/** حجز واحد نشط في كل مرة (قادم ولم يُغلق) ما لم يمنح الميسّر المشارك عدداً أكبر */
+export function bookingBlock(d: DB, pid: ID): string | null {
+  const limit = d.settings.bookingLimits?.[pid] ?? 1;
+  const active = d.individualMeetings.filter((m) => m.participantId === pid && ['booked', 'requested'].includes(m.status)).length;
+  return active >= limit ? 'لديك لقاء فردي نشط مع ميسّرك. يمكنك حجز لقاء جديد بعد أن يغلقه الميسّر، أو اطلب منه السماح بحجز إضافي.' : null;
+}
 function findLetter(d: DB, id: ID) {
   const l = d.letters.find((x) => x.id === id);
   if (!l) throw new Error('الخطاب غير موجود');
@@ -752,6 +758,10 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           if (eventKind === 'trip' && status === 'present') status = 'on_time';
           if (eventKind !== 'trip' && !['present', 'absent'].includes(status)) throw new Error('الحالات هنا: حاضر أو غائب');
           const present = status !== 'absent';
+          // قاعدة صلبة: الغائب عن الرحلة لا يُحضَّر أبداً في لقاءاتها وجلساتها الداخلية
+          if (eventKind === 'trip_session' && present && d.attendance.some((a) => a.eventKind === 'trip' && a.eventId === eventId && a.personId === personId && !a.present))
+            throw new Error('غائب عن الرحلة: لا يُحضَّر في جلساتها الداخلية');
+          if (eventKind === 'trip' && !present) d.attendance.filter((a) => a.eventKind === 'trip_session' && a.eventId === eventId && a.personId === personId).forEach((a) => Object.assign(a, { status: 'absent', present: false }));
           const ex = d.attendance.find((a) => a.eventKind === eventKind && a.eventId === eventId && a.personId === personId && a.sessionId === sessionId);
           if (ex) Object.assign(ex, { status, present, byId: me(), at: nowISO() });
           else d.attendance.push({ id: uid('at'), eventKind, eventId, sessionId, personId, status, present, byId: me(), at: nowISO() });
@@ -1003,6 +1013,8 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
         mutate((d) => {
           const s = d.slots.find((x) => x.id === slotId)!;
           if (s.bookedBy) throw new Error('هذا الموعد محجوز');
+          const block = bookingBlock(d, me());
+          if (block) throw new Error(block);
           s.bookedBy = me();
           d.individualMeetings.push({ id: uid('im'), facilitatorId: s.facilitatorId, participantId: me(), slotId, date: s.date, start: s.start, end: s.end, origin: s.invite === 'open' ? 'open_invite' : 'personal_invite', status: 'booked' });
           pushNotification(d, [s.facilitatorId, me()], 'individual_booked', `حُجز لقاء فردي ${s.date} ${s.start}`, '/app/individual');
@@ -1011,8 +1023,19 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       request(date: string, start: string, note: string) {
         mutate((d) => {
           const g = groupOf(d, me())!;
+          const block = bookingBlock(d, me());
+          if (block) throw new Error(block);
           d.individualMeetings.push({ id: uid('im'), facilitatorId: g.facilitatorId!, participantId: me(), date, start, end: start, origin: 'participant_request', status: 'requested', requestNote: note });
           pushNotification(d, [g.facilitatorId!], 'individual_booked', `طلب لقاء فردي من ${d.persons.find((p) => p.id === me())?.name}`, '/app/individual');
+        });
+      },
+      /** الميسّر يسمح لمشارك من مجموعته بعدد أكبر من الحجوزات النشطة (الافتراضي 1) */
+      setBookingLimit(participantId: ID, limit: number) {
+        mutate((d) => {
+          const g = groupOf(d, participantId);
+          if (!g || g.facilitatorId !== me()) throw new Error('هذا لميسّر مجموعة المشارك');
+          if (!(limit >= 1 && limit <= 10)) throw new Error('العدد بين 1 و10');
+          d.settings.bookingLimits = { ...(d.settings.bookingLimits ?? {}), [participantId]: Math.floor(limit) };
         });
       },
       approveRequest(id: ID, date: string, start: string, end: string) {
