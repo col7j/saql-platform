@@ -197,6 +197,8 @@ export function defaultUiConfig(): UiConfig {
       { key: 'settings', to: '/app/settings', label: 'الإعدادات', icon: 'settings', section: 'التقييم' },
       { key: 'finance', to: '/app/finance', label: 'المالية', icon: 'wallet', section: 'المتابعة' },
       { key: 'media', to: '/app/media', label: 'المركز الإعلامي', icon: 'film', section: 'المحتوى' },
+      { key: 'opening', to: '/app/opening', label: 'اللقاء الافتتاحي', icon: 'calendar', section: 'البرنامج' },
+      { key: 'closing', to: '/app/closing', label: 'اللقاء الختامي', icon: 'calendar', section: 'البرنامج' },
       { key: 'letters', to: '/app/letters', label: 'الخطابات', icon: 'stamp', section: 'المتابعة' },
       fin('overview', 'نظرة عامة', 'chart'),
       fin('requests', 'الطلبات والعهد', 'receipt'),
@@ -282,6 +284,6 @@ export function defaultUiConfig(): UiConfig {
         ],
       },
     ],
-    extras: [{ key: 'tracker', section: 'المتابعة' }, { key: 'letters', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
+    extras: [{ key: 'opening', section: 'اللقاءان' }, { key: 'closing', section: 'اللقاءان' }, { key: 'tracker', section: 'المتابعة' }, { key: 'letters', section: 'المتابعة' }, { key: 'media', section: 'المركز الإعلامي' }],
   };
 }

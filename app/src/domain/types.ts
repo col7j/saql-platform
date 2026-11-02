@@ -805,6 +805,10 @@ export interface ProgramEvent {
   attendees?: number;
   createdBy: ID;
   createdAt: ISODateTime;
+  /** حقول الافتتاحي فقط */
+  opening?: { programIntro?: string; groupsAnnouncement?: string; participantsDistribution?: string };
+  /** حقول الختامي فقط */
+  closing?: { rankingAnnouncement?: string; honorsAndCertificates?: string; finalReport?: string };
 }
 
 export interface PointsEntry {

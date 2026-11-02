@@ -16,7 +16,7 @@ describe('قواعد عامة لكل القوائم', () => {
       const n = nav(p.id);
       expect(n.sections[0].items.map((i) => i.label), p.name).toEqual(BASICS);
       expect(n.sections.length, p.name).toBeGreaterThanOrEqual(2);
-      expect(n.sections.length, p.name).toBeLessThanOrEqual(6);
+      expect(n.sections.length, p.name).toBeLessThanOrEqual(7); // القائد يضيف قسم «اللقاءان»
       n.sections.forEach((s) => expect(s.items.length, `${p.name}: ${s.title}`).toBeLessThanOrEqual(5));
       const tos = n.all.map((i) => i.to);
       expect(new Set(tos).size, p.name).toBe(tos.length);
@@ -32,7 +32,7 @@ describe('قواعد عامة لكل القوائم', () => {
 
 describe('القائد العام', () => {
   it('18 عنصراً في خمس مجموعات بعد الأساسية (ومعها المركز الإعلامي)', () => {
-    expect(nav('p_lead').all.length).toBe(2 + 18);
+    expect(nav('p_lead').all.length).toBe(2 + 18 + 2);
     expect(groupItems('p_lead', 'البرنامج')).toEqual(['الرحلات', 'المجموعات', 'لقاءات التركيز', 'الاجتماعات', 'الترتيب']);
     expect(groupItems('p_lead', 'المتابعة')).toEqual(['المؤشرات', 'المهام', 'بانتظار اعتمادي', 'المالية (مراقبة)']);
     expect(groupItems('p_lead', 'الأشخاص والصلاحيات')).toEqual(['الأشخاص والصلاحيات']);

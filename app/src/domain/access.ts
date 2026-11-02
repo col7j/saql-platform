@@ -73,6 +73,8 @@ export function accessibleKeys(db: DB, pid: ID): Set<string> {
   add('finance', canOpenFinance(db, pid));
   add('media', canOpenMedia(db, pid));
   add('letters', c.isDelegate || c.isLeader);
+  add('opening', c.isLeader);
+  add('closing', c.isLeader);
   financeTabsFor(db, pid).forEach((t) => keys.add(`finance_${t}`));
   return keys;
 }
@@ -153,7 +155,7 @@ const STATIC_ROUTES: Record<string, string> = {
   individual: 'individual', plans: 'plans', library: 'library', surveys: 'surveys', groups: 'groups', leaderboard: 'leaderboard', tasks: 'tasks',
   requests: 'requests', profile: 'profile', contact: 'contact', tracker: 'tracker', committees: 'committees', people: 'people', insights: 'insights', inbox: 'inbox',
   'tracking-link': 'tracking_link', 'site-editor': 'site_editor', users: 'people', settings: 'settings', finance: 'finance', custody: 'requests',
-  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media', letters: 'letters', 'trip-print': 'trips',
+  approvals: 'approvals', audit: 'audit', messages: 'messages', media: 'media', letters: 'letters', 'finance-print': 'finance', opening: 'opening', closing: 'closing', 'trip-print': 'trips',
 };
 
 export function meetingVisibleTo(db: DB, pid: ID, meetingId: ID): boolean {

@@ -1,3 +1,4 @@
+import { Dashboard, ReportBuilder } from './FinanceReports';
 // القسم المالي: يملكه مسؤول اللجنة المالية، ويرى كل عضو ما فُوِّض به فقط
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -124,11 +125,11 @@ function Overview({ sections }: { sections: FinanceSection[] }) {
 
 // ───────────── التقارير: التحليلات + سجل التدقيق ─────────────
 function Reports() {
-  const [t, setT] = useState<'analysis' | 'audit'>('analysis');
+  const [t, setT] = useState<'dashboard' | 'report' | 'analysis' | 'audit'>('dashboard');
   return (
     <div>
-      <Tabs value={t} onChange={setT} tabs={[{ key: 'analysis', label: 'التحليلات' }, { key: 'audit', label: 'سجل التدقيق' }]} />
-      {t === 'analysis' ? <Analysis /> : <AuditLog areas={['finance']} subtitle="من، ماذا، متى: كل تفويض وكل قرار وكل صرف" />}
+      <Tabs value={t} onChange={setT} tabs={[{ key: 'dashboard', label: 'اللوحة المالية' }, { key: 'report', label: 'تقرير بفرز' }, { key: 'analysis', label: 'التحليلات' }, { key: 'audit', label: 'سجل التدقيق' }]} />
+      {t === 'dashboard' ? <Dashboard /> : t === 'report' ? <ReportBuilder /> : t === 'analysis' ? <Analysis /> : <AuditLog areas={['finance']} subtitle="من، ماذا، متى: كل تفويض وكل قرار وكل صرف" />}
     </div>
   );
 }

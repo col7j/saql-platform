@@ -870,10 +870,32 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           if (d.events.some((e) => e.kind === input.kind)) throw new Error(input.kind === 'opening' ? 'يوجد لقاء افتتاحي واحد بالفعل' : 'يوجد لقاء ختامي واحد بالفعل');
           if (!input.title.trim() || !input.date) throw new Error('اكتب العنوان والتاريخ');
           if (input.retroactive && input.date > todayISO()) throw new Error('اللقاء بأثر رجعي تاريخه مضى');
-          d.events.push({ id, ...input, title: input.title.trim(), status: input.retroactive ? 'done' : 'planned', createdBy: me(), createdAt: nowISO() });
+          d.events.push({ id, ...input, ...(input.kind === 'opening' ? { opening: {} } : { closing: {} }), title: input.title.trim(), status: input.retroactive ? 'done' : 'planned', createdBy: me(), createdAt: nowISO() });
           if (!input.retroactive) pushNotification(d, [...allParticipants(d), ...staffIds(d)], 'general', `أُدرج في التقويم: ${input.title}`, '/app/calendar');
         });
         return id;
+      },
+      /** حقول الافتتاحي: التعريف بالبرنامج، وإعلان المجموعات وتوزيع المشاركين، والحضور */
+      saveOpening(patch: NonNullable<ProgramEvent['opening']> & { attendees?: number }) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('اللقاء الافتتاحي للقائد العام أو مساعده');
+          const e = d.events.find((x) => x.kind === 'opening');
+          if (!e) throw new Error('لا يوجد لقاء افتتاحي بعد');
+          const { attendees, ...rest } = patch;
+          e.opening = { ...e.opening, ...rest };
+          if (attendees != null) e.attendees = attendees;
+        });
+      },
+      /** حقول الختامي: إعلان الترتيب والنتائج، والتكريم والشهادات، والتقرير الختامي، والحضور */
+      saveClosing(patch: NonNullable<ProgramEvent['closing']> & { attendees?: number }) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('اللقاء الختامي للقائد العام أو مساعده');
+          const e = d.events.find((x) => x.kind === 'closing');
+          if (!e) throw new Error('لا يوجد لقاء ختامي بعد');
+          const { attendees, ...rest } = patch;
+          e.closing = { ...e.closing, ...rest };
+          if (attendees != null) e.attendees = attendees;
+        });
       },
       markDone(id: ID, attendees?: number) {
         mutate((d) => {
