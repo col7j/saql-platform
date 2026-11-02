@@ -310,6 +310,8 @@ export interface Trip {
   scheduleStartedNotified?: boolean;
   sessions: TripSession[];
   guests: TripGuest[];
+  /** أعضاء فريق من خارج المجموعة المنفذة (توزيع أعضاء المجموعة التي بلا رحلة خارجية) */
+  extraMemberIds?: ID[];
   coordinationOwnerId?: ID;
   coordinations: Coordination[];
   attendanceTakerId?: ID;
@@ -1020,6 +1022,8 @@ export interface Settings {
   trackerId?: ID;
   /** مندوب الجمعية: ميسّر واحد يصدر الخطابات */
   societyDelegateId?: ID;
+  /** مقيّمو الرحلات (متوسط تقييماتهم درجة الرحلة). فارغ = القائد العام ومساعده */
+  tripEvaluatorIds?: ID[];
   /** رابط الداعم الثابت: حد للمحاولات الخاطئة ومدة القفل */
   supporterLink: { maxAttempts: number; lockMinutes: number; programIdea: string };
   /** المركز الإعلامي */

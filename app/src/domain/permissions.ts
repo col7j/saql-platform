@@ -115,7 +115,7 @@ export function tripTeamLeaderId(db: DB, trip: Trip): ID | undefined {
 export function tripTeamIds(db: DB, trip: Trip): ID[] {
   if (trip.executor.kind === 'staff') return [trip.executor.leaderId, ...trip.executor.memberIds];
   const groupId = trip.executor.groupId;
-  return db.groups.find((g) => g.id === groupId)?.memberIds ?? [];
+  return [...new Set([...(db.groups.find((g) => g.id === groupId)?.memberIds ?? []), ...(trip.extraMemberIds ?? [])])];
 }
 
 export function isTripTeam(db: DB, personId: ID, trip: Trip): boolean {

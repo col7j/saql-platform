@@ -118,9 +118,10 @@ describe('محرك النقاط', () => {
   });
   it('الحضور لا يؤثر على الجماعي', () => {
     const h = harness('p_lead');
-    const before = computeScores(h.db).groups.map((g) => g.total);
+    const coll = () => computeScores(h.db).persons.map((p) => p.groupShare);
+    const before = coll();
     h.db.attendance.filter((a) => a.eventKind === 'trip').forEach((a) => Object.assign(a, { status: 'absent', present: false }));
-    expect(computeScores(h.db).groups.map((g) => g.total)).toEqual(before);
+    expect(coll()).toEqual(before);
   });
 });
 

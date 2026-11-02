@@ -2,6 +2,7 @@
 // - نصف فردي ونصف جماعي، والنقاط كسب فقط بلا خصم، وكل البنود والأوزان والشروط من الإعدادات (مقفلة بعد الحفظ).
 // - الجماعي: الرحلات فقط، كل رحلة وحدة تذهب نقاطها للمجموعة المنفِّذة. الحضور يؤثر على الفردي فقط.
 // - الضيوف (المقدّمون من الخارج) لا يدخلون في التقييم ولا الترتيب.
+import { collectiveByPerson, groupAverage, tripEvaluatorAverage, tripRatio } from './collectiveEvaluation';
 import { todayISO } from './dates';
 import { requestFor } from './finance';
 import { isTripTeam } from './permissions';
@@ -186,10 +187,9 @@ function groupTripItem(db: DB, trip: Trip, item: EvaluationItem): { ratio: numbe
       return { ratio: vals.reduce((s, v) => s + v, 0) / (fin.length * 5), detail: `قيّم ${vals.length} من ${fin.length} بنود المالية` };
     }
     case 'staff_rating': {
-      const vals = Object.values(trip.evaluation.staffRatings).map((r) => r.score);
-      if (!vals.length) return { ratio: 0, detail: 'لم يقيّمها فريق العمل بعد' };
-      const avg = vals.reduce((s, v) => s + v, 0) / vals.length;
-      return { ratio: avg / 10, detail: `متوسط ${r2(avg)} من 10 (${vals.length} من فريق العمل)` };
+      const { avg, scores } = tripEvaluatorAverage(db, trip);
+      if (avg == null) return { ratio: 0, detail: 'لم يقيّمها المتابع والقائد العام بعد' };
+      return { ratio: avg / 10, detail: `متوسط ${r2(avg)} من 10 (${scores.length} من المقيّمين)` };
     }
     default:
       return { ratio: 0, detail: '' };
@@ -226,7 +226,9 @@ export function computeScores(db: DB): ScoresResult {
     const external = part('external');
     return { groupId: g.id, internal, external, total: r2(internal.points + external.points), rank: 0 };
   });
-  [...groups].sort((a, b) => b.total - a.total).forEach((g, i) => (g.rank = i + 1));
+  // التقييم الجماعي لكل رحلة: كل أعضاء فريقها (ومنهم الموزَّعون) يأخذون نقاطها نفسها
+  const maxFor = (type: TripType) => (s.split.group * (type === 'internal' ? s.groupTripSplit.internal : s.groupTripSplit.external)) / totalSplit;
+  const coll = collectiveByPerson(db, (t) => tripRatio(groupItems, t, (tr, item) => groupTripItem(db, tr, item).ratio), maxFor);
 
   // ── الأفراد ──
   const indivItems = normalized(s.evaluationItems.filter((i) => i.scope === 'individual' && i.key !== 'enrichment'));
@@ -246,10 +248,19 @@ export function computeScores(db: DB): ScoresResult {
       return { key: item.key, name: item.name, maxPoints: r2(maxPoints), ratio: r2(ratio), ...(extra ? { extra: r2(extra) } : {}), points, mode: item.mode, detail: res.detail };
     });
     const individualTotal = r2(individual.reduce((a, i) => a + i.points, 0));
-    const groupShare = group ? groups.find((x) => x.groupId === group.id)!.total : 0; // يُوزَّع بالتساوي
+    const groupShare = coll.get(p.id)?.total ?? 0; // نقاط رحلات فريقه: نفسها لكل أعضاء الفريق
     return { personId: p.id, groupId: group?.id, individual, individualTotal, groupShare, total: r2(individualTotal + groupShare), rank: 0 };
   });
   [...persons].sort((a, b) => b.total - a.total).forEach((p, i) => (p.rank = i + 1));
+  // ترتيب المجموعات: متوسط مجموع نقاط أعضائها (الفردي + الجماعي)
+  groups.forEach((g) => {
+    const members = db.groups.find((x) => x.id === g.groupId)!.memberIds;
+    const of = (f: (id: ID) => number) => groupAverage(members.map(f));
+    g.internal.points = of((id) => coll.get(id)?.internal ?? 0);
+    g.external.points = of((id) => coll.get(id)?.external ?? 0);
+    g.total = of((id) => persons.find((x) => x.personId === id)?.total ?? 0);
+  });
+  [...groups].sort((a, b) => b.total - a.total).forEach((g, i) => (g.rank = i + 1));
 
   // ── نقاط المواد الإثرائية لأعضاء الإدارة (خارج ترتيب المشاركين) ──
   const enrichmentEnabled = s.evaluationItems.find((i) => i.key === 'enrichment')?.enabled ?? false;

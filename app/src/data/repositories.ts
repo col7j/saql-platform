@@ -497,6 +497,21 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
           if (dateChanged) pushNotification(d, [...allParticipants(d), ...staffIds(d)], 'general', `تعديل تاريخ ${t.title}`, `/app/trips/${tripId}`);
         });
       },
+      /** توزيع عضو من مجموعة أخرى (كالخامسة بلا رحلة خارجية) على فريق رحلة خارجية: يبقى في مجموعته لكل شيء آخر */
+      assignExternalMember(tripId: ID, personId: ID) {
+        mutate((d) => {
+          if (!isLeaderId(d, me())) throw new Error('توزيع الأعضاء على الرحلات للقائد العام أو مساعده');
+          const t = findTrip(d, tripId);
+          if (t.executor.kind !== 'group' || t.type !== 'external') throw new Error('التوزيع على رحلة خارجية لمجموعة');
+          const p = d.persons.find((x) => x.id === personId && x.kind === 'participant');
+          if (!p) throw new Error('يُوزَّع المشاركون فقط');
+          if (t.executor.kind === 'group' && d.groups.find((g) => g.id === (t.executor as { groupId: ID }).groupId)?.memberIds.includes(personId)) throw new Error('هذا العضو من مجموعة الرحلة نفسها');
+          if (d.trips.some((x) => x.id !== t.id && x.type === 'external' && (x.extraMemberIds ?? []).includes(personId))) throw new Error('هذا العضو موزَّع على رحلة خارجية أخرى');
+          t.extraMemberIds = [...(t.extraMemberIds ?? []), personId];
+          audit(d, me(), 'توزيع عضو على رحلة', `${p.name} ← ${t.title}`, 'roles');
+          pushNotification(d, [personId, tripTeamLeaderId(d, t)!], 'general', `${p.name} عضو في فريق ${t.title}`, `/app/trips/${t.id}`);
+        });
+      },
       updateDocFields(docId: ID, fields: Record<string, string>) {
         mutate((d) => {
           const doc = d.docs.find((x) => x.id === docId)!;
@@ -1649,12 +1664,20 @@ export function createLocalRepositories(rawMutate: Mutate, me: () => ID, read: (
       saveOwn(patch: Partial<Pick<Person, 'phone' | 'university' | 'major' | 'photo' | 'bank'>>, complete = false) {
         mutate((d) => {
           const p = d.persons.find((x) => x.id === me())!;
+          // البيانات المالية لقادة المجموعات وفريق العمل فقط
+          const financial = p.kind === 'staff' || d.groups.some((g) => g.leaderId === p.id);
+          if (patch.bank && !financial) throw new Error('البيانات المالية لقادة المجموعات وفريق العمل فقط');
+          if (patch.bank?.iban && !/^SA\d{22}$/.test(patch.bank.iban.replace(/\s/g, ''))) throw new Error('أدخل رقم آيبان سعودي صحيح (SA متبوعاً بـ 22 رقماً)');
           if (complete && p.kind === 'participant') {
-            const bank = patch.bank ?? p.bank;
-            if (!bank?.iban || !/^SA\d{22}$/.test(bank.iban.replace(/\s/g, ''))) throw new Error('أدخل رقم آيبان سعودي صحيح (SA متبوعاً بـ 22 رقماً)');
+            if (financial && d.groups.some((g) => g.leaderId === p.id)) {
+              const bank = patch.bank ?? p.bank;
+              if (!bank?.iban) throw new Error('أدخل رقم آيبان سعودي صحيح (SA متبوعاً بـ 22 رقماً)');
+            }
             if (!(patch.photo ?? p.photo)) throw new Error('أضف صورتك الشخصية');
           }
+          const oldIban = p.bank?.iban;
           Object.assign(p, patch);
+          if (patch.bank && patch.bank.iban.replace(/\s/g, '').toUpperCase() !== oldIban) audit(d, p.id, 'تعديل البيانات المالية', `${p.name} — الآيبان ${oldIban ? 'عُدّل' : 'أُضيف'}`, 'accounts');
           if (p.bank) p.bank.iban = p.bank.iban.replace(/\s/g, '').toUpperCase();
           if (complete) p.profileCompletedAt = nowISO();
         });
