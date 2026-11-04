@@ -6,6 +6,8 @@ import { randomBytes, randomInt } from 'node:crypto';
 
 const cfg = JSON.parse(readFileSync(new URL('../public/show-firebase.json', import.meta.url), 'utf8'));
 const DB = cfg.databaseURL.replace(/\/$/, '');
+// FB_ROOT=events/bia2026 يفحص مسار حفل آخر بنفس الحالات
+const ROOT = process.env.FB_ROOT ? `${process.env.FB_ROOT}/` : '';
 const TS = { '.sv': 'timestamp' };
 const key = () => randomBytes(16).toString('base64url');
 const six = () => String(randomInt(0, 1_000_000)).padStart(6, '0');
@@ -15,7 +17,7 @@ async function user() {
   const j = await r.json();
   if (!j.idToken) throw new Error('تعذّر إنشاء مستخدم مجهول: ' + JSON.stringify(j));
   const call = async (method, path, body) => {
-    const res = await fetch(`${DB}/${path}.json?auth=${j.idToken}`, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+    const res = await fetch(`${DB}/${ROOT}${path}.json?auth=${j.idToken}`, { method, body: body === undefined ? undefined : JSON.stringify(body) });
     return { ok: res.ok, val: await res.json().catch(() => null) };
   };
   return { uid: j.localId, get: (p) => call('GET', p), put: (p, v) => call('PUT', p, v), post: (p, v) => call('POST', p, v), del: (p) => call('DELETE', p) };
@@ -30,7 +32,7 @@ const expect = async (label, p, ok) => {
   return r;
 };
 const anon = async (label, path) => {
-  const res = await fetch(`${DB}/${path}.json`);
+  const res = await fetch(`${DB}/${ROOT}${path}.json`);
   const pass = !res.ok;
   if (!pass) failed++;
   console.log(`${pass ? '✓' : '✗'} ${label}: ${res.ok ? 'مقبول' : 'مرفوض'}`);
