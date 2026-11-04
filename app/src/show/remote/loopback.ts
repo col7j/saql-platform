@@ -2,6 +2,7 @@
 // تحاكي قواعد الأمان في firebase/database.rules.json في جوهرها. تستخدمها الاختبارات،
 // وتجربة الريموت على نفس الجهاز بإضافة ?remote=loopback للرابط على localhost فقط.
 import { KEY_RE, parseCommand, type Backend } from './protocol';
+import { nsKey } from '../profile';
 
 export interface Store {
   read(): any;
@@ -21,7 +22,7 @@ export function memoryStore(): Store {
 }
 
 /** مخزن مشترك بين تبويبات المتصفح (التجربة المحلية) */
-export function sharedStore(key = 'show-loopback-db'): Store {
+export function sharedStore(key = nsKey('show-loopback-db')): Store {
   const subs = new Set<() => void>();
   const bc = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(key) : null;
   bc && (bc.onmessage = () => subs.forEach((s) => s()));
@@ -206,7 +207,7 @@ export const loopbackEnabled = () => /^(localhost|127\.0\.0\.1|\[::1\])$/.test(l
 /** معرّف ثابت لكل نافذة: المحرّر وشاشة العرض والجوال أجهزة مختلفة حتى في إطارات صفحة تجربة واحدة */
 export function loopbackClient(): Backend {
   const role = location.hash.startsWith('#/show-admin') ? 'admin' : location.hash.startsWith('#/show-remote') ? 'remote' : 'display';
-  const slot = `show-loopback-uid:${role}`;
+  const slot = nsKey(`show-loopback-uid:${role}`);
   let uid = '';
   try {
     uid = sessionStorage.getItem(slot) ?? '';

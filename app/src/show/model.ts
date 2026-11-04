@@ -5,7 +5,7 @@ import type { SlideSettings } from './slides/model';
 
 export const SHOW_SCHEMA_VERSION = 2;
 
-export type SegmentType = 'slide' | 'demo' | 'whoami' | 'roster' | 'agreements' | 'launch' | 'photo';
+export type SegmentType = 'slide' | 'demo' | 'whoami' | 'roster' | 'agreements' | 'launch' | 'photo' | 'ext';
 /** أنواع الإصدار 1: للقراءة والتحويل فقط */
 export type LegacySegmentType = 'video' | 'slides' | 'names' | 'blank';
 
@@ -190,7 +190,13 @@ export type RosterSegment = Base<'roster', RosterSettings>;
 export type AgreementsSegment = Base<'agreements', AgreementsSettings>;
 export type LaunchSegment = Base<'launch', LaunchSettings>;
 export type PhotoSegment = Base<'photo', PhotoSettings>;
-export type Segment = SlideSegment | DemoSegment | WhoAmISegment | RosterSegment | AgreementsSegment | LaunchSegment | PhotoSegment;
+/** فقرة من نوع مسجَّل من الخارج (show/ext.ts): اسم النوع وبياناته */
+export interface ExtSettings {
+  kind: string;
+  data: any;
+}
+export type ExtSegment = Base<'ext', ExtSettings>;
+export type Segment = SlideSegment | DemoSegment | WhoAmISegment | RosterSegment | AgreementsSegment | LaunchSegment | PhotoSegment | ExtSegment;
 
 export type VideoSegment = Base<'video', VideoSettings>;
 export type SlidesSegment = Base<'slides', SlidesSettings>;
@@ -218,6 +224,7 @@ export const SEGMENT_LABELS: Record<SegmentType, string> = {
   agreements: 'توقيع الاتفاقيات',
   launch: 'التدشين',
   photo: 'الصورة الجماعية',
+  ext: 'فقرة',
 };
 
 export const LAUNCH_DEFAULTS: LaunchSettings = { waitTitle: 'منصة صقل الإلكترونية', waitSub: 'لحظات وتنطلق', doneTitle: 'تم تدشين منصة صقل الإلكترونية', autoNext: 5 };

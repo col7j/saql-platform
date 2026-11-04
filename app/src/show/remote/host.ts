@@ -3,9 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { connectFirebase, loadFirebaseConfig } from './firebase';
 import { loopbackClient, loopbackEnabled } from './loopback';
 import { createSession, KEY_RE, resumeSession, type Backend, type HostLink, type HostSession, type HostStatus } from './protocol';
+import { nsKey } from '../profile';
 
 /** الجلسة الحالية على جهاز المحرّر (مفتاح مستقل عن مفاتيح المنصة) */
-export const HOST_KEY = 'show-link-host';
+export const HOST_KEY = nsKey('show-link-host');
 
 const saved = {
   get: (): HostLink | null => {

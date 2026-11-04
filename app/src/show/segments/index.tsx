@@ -4,6 +4,7 @@ import type { Segment, ShowTheme, SlideSegment } from '../model';
 import { FitStage, SlideCanvas } from '../slides/SlideView';
 import { Backdrop, SegmentBoundary } from './Fallback';
 import type { DemoNav } from '../demo/DemoView';
+import { extKind, isPreviewWindow } from '../ext';
 import { AgreementsView, LaunchView, PhotoView, RosterView, WhoAmIView } from '../ceremony/views';
 
 const DemoView = lazy(() => import('../demo/DemoView'));
@@ -46,6 +47,8 @@ export function SegmentView(p: SegProps) {
         <LaunchView seg={p.seg} step={p.step} theme={p.theme} active={p.active} onAdvance={p.onAdvance} />
       ) : p.seg.type === 'photo' ? (
         <PhotoView seg={p.seg} step={p.step} theme={p.theme} active={p.active} photoRun={p.photoRun} />
+      ) : p.seg.type === 'ext' ? (
+        <ExtView kind={p.seg.settings.kind} data={p.seg.settings.data} step={p.step} theme={p.theme} active={p.active} run={p.photoRun} />
       ) : (
         <SlidePlayer {...(p as SegProps<SlideSegment>)} />
       )}
@@ -59,4 +62,11 @@ function SlidePlayer({ seg, step, active, onSkip, theme, animate = true }: SegPr
       <FitStage>{(scale) => <SlideCanvas settings={seg.settings} theme={theme} step={step} mode="play" active={active} animate={animate} scale={scale} onSkip={onSkip} />}</FitStage>
     </div>
   );
+}
+
+/** فقرة من نوع مسجَّل من الخارج (show/ext.ts) */
+function ExtView({ kind, data, step, theme, active, run }: { kind: string; data: unknown; step: number; theme: ShowTheme; active: boolean; run?: number }) {
+  const k = extKind(kind);
+  if (!k) return <Backdrop />;
+  return <k.View data={data} step={step} theme={theme} active={active} preview={isPreviewWindow()} run={run} />;
 }

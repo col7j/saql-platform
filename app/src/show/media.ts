@@ -1,7 +1,8 @@
 // الوسائط: ملفات في public/show-media (تُنشر مع الموقع)، أو ملفات مرفوعة محلياً في IndexedDB على هذا الجهاز فقط.
 import type { MediaRef } from './model';
+import { profile } from './profile';
 
-const DB_NAME = 'saql-show-media';
+const DB_NAME = profile.ns ? `${profile.ns}-show-media` : 'saql-show-media';
 const STORE = 'files';
 
 export interface LocalFile {

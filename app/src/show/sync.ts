@@ -2,6 +2,7 @@
 // فاستبدال BroadcastChannel بـ Firebase أو Supabase لاحقاً يكون بكتابة تنفيذ جديد لها فقط.
 import type { ShowConfig } from './model';
 import type { Pos } from './nav';
+import { profile } from './profile';
 
 export type ShowMessage =
   | { type: 'config'; config: ShowConfig } // الأدمن حفظ إعدادات جديدة
@@ -61,7 +62,7 @@ export interface ShowSync {
   close(): void;
 }
 
-export const SYNC_CHANNEL = 'saql-show';
+export const SYNC_CHANNEL = profile.ns ? `${profile.ns}-show` : 'saql-show';
 
 interface Transport {
   post(m: ShowMessage): void;

@@ -1,0 +1,132 @@
+/*
+ * هوية حفل «بيئات التطوع 2026» (من عرض_الحفل_2026.pptx): ‎#274653 الأساسي الداكن، ‎#2C9D8F الأخضر المزرق،
+ * ‎#E76F51 المرجاني للتوكيد، ‎#E8C369 الذهبي، ‎#F1F1F1 الفاتح. الخط Alexandria محلياً (بديل Al Qabas، برخصة OFL).
+ * تُطبَّق فوق رموز وضع العرض نفسها (--b-* و--t-*) داخل html[data-event='bia2026'] فقط، فلا تمس «صقل».
+ */
+@font-face { font-family: 'Alexandria'; font-weight: 300; font-display: block; src: url('/fonts/alexandria/Alexandria-Arabic-300.woff2') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FEFC; }
+@font-face { font-family: 'Alexandria'; font-weight: 400; font-display: block; src: url('/fonts/alexandria/Alexandria-Arabic-400.woff2') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FEFC; }
+@font-face { font-family: 'Alexandria'; font-weight: 500; font-display: block; src: url('/fonts/alexandria/Alexandria-Arabic-500.woff2') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FEFC; }
+@font-face { font-family: 'Alexandria'; font-weight: 700; font-display: block; src: url('/fonts/alexandria/Alexandria-Arabic-700.woff2') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FEFC; }
+@font-face { font-family: 'Alexandria'; font-weight: 900; font-display: block; src: url('/fonts/alexandria/Alexandria-Arabic-900.woff2') format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+200C-200E, U+FB50-FDFF, U+FE70-FEFC; }
+@font-face { font-family: 'Alexandria'; font-weight: 300; font-display: block; src: url('/fonts/alexandria/Alexandria-Latin-300.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: 'Alexandria'; font-weight: 400; font-display: block; src: url('/fonts/alexandria/Alexandria-Latin-400.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: 'Alexandria'; font-weight: 500; font-display: block; src: url('/fonts/alexandria/Alexandria-Latin-500.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: 'Alexandria'; font-weight: 700; font-display: block; src: url('/fonts/alexandria/Alexandria-Latin-700.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: 'Alexandria'; font-weight: 900; font-display: block; src: url('/fonts/alexandria/Alexandria-Latin-900.woff2') format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+
+html[data-event='bia2026'] {
+  --b-teal: 44 157 143;      /* #2C9D8F */
+  --b-teal-deep: 39 70 83;   /* #274653 */
+  --b-sky: 44 157 143;
+  --b-gold: 232 195 105;     /* #E8C369 */
+  --b-orange: 231 111 81;    /* #E76F51 */
+  --b-ink: 39 70 83;
+  --b-grey: 120 140 146;
+  --b-white: 255 255 255;
+  --b-night: 39 70 83;
+  --b-light: 241 241 241;    /* #F1F1F1 */
+  --b-grad-teal: linear-gradient(135deg, rgb(39 70 83), rgb(44 157 143));
+  --b-grad-gold: linear-gradient(90deg, rgb(232 195 105), rgb(231 111 81));
+  --b-font: 'Alexandria', 'Amiri', system-ui, sans-serif;
+}
+
+/* الغامق: تدرّج من #274653 إلى #2C9D8F */
+html[data-event='bia2026'] .show-stage,
+html[data-event='bia2026'] [data-show-theme='dark'] {
+  --t-bg: var(--b-night);
+  --t-bg-image: linear-gradient(140deg, rgb(39 70 83) 0%, rgb(39 70 83) 45%, rgb(44 157 143) 140%);
+  --t-glow: var(--b-teal);
+  --t-fg: var(--b-white);
+  --t-head: var(--b-white);
+  --t-em: var(--b-gold);
+  --t-em-2: var(--b-orange);
+  --t-primary: var(--b-teal);
+  --t-primary-hover: var(--b-teal-deep);
+  --t-panel: var(--b-night);
+  --t-line: var(--b-white);
+}
+/* الفاتح: #F1F1F1، والعناوين بالأساسي الداكن، والتوكيد بالمرجاني */
+html[data-event='bia2026'] [data-show-theme='light'] {
+  --t-bg: var(--b-light);
+  --t-bg-image: rgb(241 241 241);
+  --t-glow: var(--b-teal);
+  --t-fg: var(--b-ink);
+  --t-head: var(--b-ink);
+  --t-em: var(--b-orange);
+  --t-em-2: var(--b-teal);
+  --t-primary: var(--b-teal);
+  --t-primary-hover: var(--b-teal-deep);
+  --t-panel: var(--b-white);
+  --t-line: var(--b-ink);
+}
+html[data-event='bia2026'] .show-bg { background: var(--t-bg-image); }
+html[data-event='bia2026'] .show-glow { display: none; }
+html[data-event='bia2026'] .sl-canvas, html[data-event='bia2026'] .show-stage { font-family: var(--b-font); }
+
+/* ───────── شرائح الحفل ───────── */
+.ev { display: block; }
+/* أشكال الزخرفة الخفيفة من العرض الأصلي */
+.ev-shapes { position: absolute; inset-inline-start: -80px; bottom: 60px; width: 760px; height: 560px; background: url('/brand/bg-shapes.svg') no-repeat center / contain; opacity: .55; pointer-events: none; }
+[data-show-theme='dark'] .ev-shapes { opacity: .14; filter: brightness(3); }
+.ev-center { position: absolute; left: 140px; right: 140px; top: 175px; bottom: 165px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 26px; }
+.ev-with-pic { flex-direction: row; gap: 90px; }
+.ev-with-pic .ev-stack { align-items: flex-start; text-align: start; }
+.ev-stack { display: flex; flex-direction: column; align-items: center; gap: 22px; min-width: 0; }
+.ev-kicker { font-size: 56px; font-weight: 700; color: rgb(var(--t-em)); letter-spacing: .01em; }
+.ev-title { font-size: 104px; font-weight: 900; line-height: 1.15; color: rgb(var(--t-head)); text-wrap: balance; }
+.ev-mega { font-size: 150px; font-weight: 900; line-height: 1.12; color: rgb(var(--t-head)); text-wrap: balance; }
+.ev-name { font-size: 112px; font-weight: 900; line-height: 1.2; color: rgb(var(--t-head)); text-wrap: balance; max-width: 1500px; }
+.ev-sub { font-size: 52px; font-weight: 500; color: rgb(var(--t-fg) / .85); text-wrap: balance; }
+.ev-rule { display: block; width: 200px; height: 10px; border-radius: 999px; background: var(--b-grad-gold); }
+.ev-corner-title { position: absolute; top: 200px; left: 0; right: 0; text-align: center; font-size: 40px; font-weight: 700; color: rgb(var(--t-em)); }
+.ev-photo { width: 420px; height: 420px; object-fit: cover; box-shadow: 0 0 0 12px rgb(var(--b-gold)), var(--b-shadow-media); }
+.ev-round { border-radius: 999px; }
+.ev-logo { max-height: 150px; max-width: 520px; object-fit: contain; padding: 18px 30px; border-radius: 28px; background: rgb(var(--b-white)); }
+.ev-card { display: flex; align-items: center; justify-content: center; width: 560px; height: 300px; padding: 36px; border-radius: 40px; background: rgb(var(--b-white)); box-shadow: var(--b-shadow-media); box-sizing: border-box; }
+.ev-card-img { width: 100%; height: 100%; object-fit: contain; }
+/* الأماكن الفارغة: في المحرّر فقط (المعاينة) */
+.ev-empty { display: grid; place-items: center; border: 4px dashed rgb(var(--b-orange)); color: rgb(var(--b-orange)); font-size: 36px; font-weight: 700; background: rgb(var(--b-orange) / .08); text-align: center; box-sizing: border-box; }
+.ev-card .ev-empty { width: 100%; height: 100%; border-radius: 24px; }
+.ev-empty-text { color: rgb(var(--b-orange)) !important; border-bottom: 4px dashed rgb(var(--b-orange)); }
+
+/* شرائح بشعار: عنوان الفقرة صغيراً في أعلى العمود، والبطاقة والاسم أصغر لتبقى بين الترويسة والزخرفة */
+.ev-small-kicker { font-size: 40px; font-weight: 700; color: rgb(var(--t-em)); }
+.ev-compact { gap: 20px; }
+.ev-compact .ev-title { font-size: 84px; }
+.ev-compact .ev-name { font-size: 92px; }
+.ev-compact .ev-sub { font-size: 46px; }
+.ev-compact .ev-card { width: 460px; height: 230px; padding: 30px; }
+.ev-compact .ev-medal { width: 100px; height: 100px; font-size: 54px; }
+.ev-compact .ev-place-label { font-size: 58px; }
+.ev-compact .ev-crown { font-size: 46px; }
+
+/* الجوائز: المركز يصعد، والأول بتوهّج ذهبي */
+.ev-award { gap: 22px; }
+.ev-place { display: flex; align-items: center; gap: 26px; }
+.ev-medal { display: grid; place-items: center; width: 120px; height: 120px; border-radius: 999px; font-size: 64px; font-weight: 900; color: rgb(var(--b-ink)); background: var(--b-grad-gold); box-shadow: 0 0 50px rgb(var(--b-gold) / .5); }
+.ev-medal[data-place='2'] { background: linear-gradient(135deg, rgb(241 241 241), rgb(170 190 195)); box-shadow: 0 0 40px rgb(255 255 255 / .35); }
+.ev-medal[data-place='3'] { background: linear-gradient(135deg, rgb(231 111 81), rgb(232 195 105)); }
+.ev-place-label { font-size: 64px; font-weight: 900; color: rgb(var(--t-em)); }
+.ev-crown { font-size: 54px; font-weight: 700; color: rgb(var(--t-head)); padding: 10px 40px; border-radius: 999px; background: rgb(var(--b-gold) / .22); border: 3px solid rgb(var(--b-gold)); }
+.ev-rise { animation: ev-rise 1100ms cubic-bezier(.2, 1.1, .3, 1) both; }
+@keyframes ev-rise { from { opacity: 0; transform: translateY(160px) scale(.8); } to { opacity: 1; transform: none; } }
+.ev-first::after { content: ''; position: absolute; left: 50%; top: 55%; width: 1500px; height: 1500px; margin: -750px; border-radius: 999px; background: radial-gradient(circle, rgb(var(--b-gold) / .28), transparent 62%); animation: ev-glow 3.2s ease-in-out infinite; pointer-events: none; }
+@keyframes ev-glow { 50% { transform: scale(1.1); opacity: .65; } }
+
+/* شبكة الأسماء */
+.ev-grid { position: absolute; top: 270px; left: 140px; right: 140px; bottom: 170px; display: grid; gap: 22px; align-content: center; }
+.ev-grid-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 0; padding: 18px 20px; border-radius: 26px; background: rgb(var(--t-fg) / .07); border: 2px solid rgb(var(--t-line) / .14); text-align: center; }
+.ev-grid-logo { max-height: 90px; max-width: 80%; object-fit: contain; padding: 8px 14px; border-radius: 14px; background: rgb(var(--b-white)); }
+.ev-grid-name { font-size: 40px; font-weight: 700; color: rgb(var(--t-head)); line-height: 1.25; }
+.ev-grid-role { font-size: 30px; color: rgb(var(--t-fg) / .8); }
+
+/* رابط التقييم */
+.ev-qr-row { flex-direction: row; gap: 120px; }
+.ev-qr { padding: 26px; border-radius: 36px; background: rgb(var(--b-white)); box-shadow: var(--b-shadow-media); line-height: 0; }
+.ev-qr-empty { width: 460px; height: 460px; border-radius: 20px; }
+
+.ev-in { opacity: 0; animation: ev-up 1000ms var(--b-ease, ease) var(--d, 0ms) both; }
+.ev-wipe { animation: ev-wipe 900ms var(--b-ease, ease) var(--d, 0ms) both; }
+@keyframes ev-up { from { opacity: 0; transform: translateY(50px); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes ev-wipe { from { opacity: 0; transform: scaleX(0); } 30% { opacity: 1; } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ev-in, .ev-wipe, .ev-rise, .ev-first::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; } }

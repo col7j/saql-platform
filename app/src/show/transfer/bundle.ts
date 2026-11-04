@@ -9,8 +9,9 @@ import { strFromU8, strToU8, unzip, zip, type AsyncZippable } from 'fflate';
 import type { MediaRef, ShowConfig } from '../model';
 import { parseSnapshot, type DemoSnapshot } from '../demo/snapshot';
 import { exportConfig, parseConfig } from '../storage';
+import { profile } from '../profile';
 
-export const BUNDLE_FORMAT = 'saql-show';
+export const BUNDLE_FORMAT = profile.ns ? `${profile.ns}-show` : 'saql-show';
 export const BUNDLE_VERSION = 1;
 export const BUNDLE_EXT = '.saql-show.zip';
 

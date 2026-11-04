@@ -11,6 +11,9 @@ import type { LiveInfo, RemoteInfo } from './sync';
 import { Console } from './admin/Console';
 import { collectRefs } from './transfer/bundle';
 import { DemoEditor } from './admin/DemoEditor';
+import { extKind, extPresets } from './ext';
+import { profile } from './profile';
+import { MissingData } from './admin/MissingData';
 import { stepSub } from './stepLabel';
 import { AgreementsEditor, LaunchEditor, PhotoEditor, RosterEditor, SectionField, WhoAmIEditor } from './admin/CeremonyEditors';
 import { CEREMONY_TEMPLATES, ceremonySegmentsFor, type CeremonyKey } from './ceremony/catalog';
@@ -73,14 +76,15 @@ function LivePreview({ seg, step }: { seg: Segment; step: number }) {
 
 const THUMB_W = 168;
 
-const TYPE_ICON: Record<Exclude<Segment['type'], 'slide'>, keyof typeof Icons> = { demo: 'MonitorPlay', whoami: 'CircleHelp', roster: 'Users', agreements: 'Handshake', launch: 'Rocket', photo: 'Camera' };
+const TYPE_ICON: Record<Exclude<Segment['type'], 'slide'>, keyof typeof Icons> = { demo: 'MonitorPlay', whoami: 'CircleHelp', roster: 'Users', agreements: 'Handshake', launch: 'Rocket', photo: 'Camera', ext: 'LayoutTemplate' };
 
 function Thumb({ seg, theme }: { seg: Segment; theme: ShowTheme }) {
   if (seg.type !== 'slide') {
-    const I = Icons[TYPE_ICON[seg.type]] as typeof Icons.Type;
+    const k = seg.type === 'ext' ? extKind(seg.settings.kind) : undefined;
+    const I = (Icons[(k?.icon ?? TYPE_ICON[seg.type]) as keyof typeof Icons] ?? Icons.LayoutTemplate) as typeof Icons.Type;
     return (
       <div className="grid h-full w-full place-items-center bg-gradient-to-br from-brand-700 to-brand-500 text-white">
-        <span className="flex flex-col items-center gap-1 text-[11px]"><I className="h-5 w-5" /> {SEGMENT_LABELS[seg.type]}</span>
+        <span className="flex flex-col items-center gap-1 text-[11px]"><I className="h-5 w-5" /> {k?.label ?? SEGMENT_LABELS[seg.type]}</span>
       </div>
     );
   }
@@ -134,7 +138,7 @@ export default function ShowAdmin() {
   }, [cfg]);
 
   useEffect(() => {
-    document.title = 'محرّر العرض · صقل';
+    document.title = profile.standalone ? 'التحكم · الحفل' : 'محرّر العرض · صقل';
     const off = sync.subscribe((m) => m.type === 'state' && setLive({ pos: m.pos, started: m.started, paused: m.paused, blackout: m.blackout, remote: m.remote, live: m.live, at: Date.now() }));
     sync.send({ type: 'hello' });
     return off;
@@ -269,6 +273,11 @@ export default function ShowAdmin() {
     setAddOpen(false);
   };
   /** فقرة حفل جاهزة (وقد تكون عدة شرائح كالتعريف بالبرنامج) بعد الشريحة الحالية */
+  const addSegments = (segs: Segment[]) => {
+    setSegments((x) => segs.reduce((acc, s, i) => insertSegment(acc, s, i ? segs[i - 1].id : seg?.id), x));
+    selectSeg(segs[0].id);
+    setAddOpen(false);
+  };
   const addCeremony = (key: CeremonyKey) => {
     const id = segId();
     const segs = ceremonySegmentsFor(key, id);
@@ -344,6 +353,7 @@ export default function ShowAdmin() {
         </Badge>
         <Button size="sm" variant="secondary" disabled={!connected} title="السابق" onClick={() => sync.send({ type: 'nav', dir: 'prev' })}><Icons.ChevronRight className="h-4 w-4" /></Button>
         <Button size="sm" variant="secondary" disabled={!connected} title="التالي" onClick={() => sync.send({ type: 'nav', dir: 'next' })}><Icons.ChevronLeft className="h-4 w-4" /></Button>
+        <MissingData segments={list} onOpen={(id) => selectSeg(id)} />
         <LinkBadge host={host} onOpen={() => setLinkOpen(true)} />
         <Button size="sm" icon={<Icons.Radio className="h-4 w-4" />} onClick={() => setConsoleOpen(true)} data-open-console>التشغيل</Button>
         {liveSeg?.type === 'demo' && (
@@ -359,7 +369,7 @@ export default function ShowAdmin() {
             { label: 'استيراد عرض…', onClick: () => bundleRef.current?.click() },
             { label: 'تصدير الإعدادات فقط (JSON)', onClick: () => download('show.json', exportConfig(cfg)) },
             { label: 'استيراد إعدادات فقط (JSON)…', onClick: () => importRef.current?.click() },
-            { label: 'إضافة فقرات حفل صقل 7 إلى عرضي', onClick: addCeremonyAll },
+            { label: 'إضافة فقرات حفل صقل 7 إلى عرضي', onClick: addCeremonyAll, hidden: !!profile.standalone },
             { label: 'استعادة show.json من المستودع', onClick: restoreRepo },
 
           ]}
@@ -492,6 +502,10 @@ export default function ShowAdmin() {
               {seg.type === 'roster' && <RosterEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'roster')} />}
               {seg.type === 'agreements' && <AgreementsEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'agreements')} />}
               {seg.type === 'launch' && <LaunchEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'launch')} />}
+              {seg.type === 'ext' && (() => {
+                const k = extKind(seg.settings.kind);
+                return k ? <k.Editor data={seg.settings.data} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, data: { ...seg.settings.data, ...p } } }), `ext-${seg.id}`)} /> : <p className="text-sm text-ink-500">نوع فقرة غير معروف في هذا العرض: {seg.settings.kind}</p>;
+              })()}
               {seg.type === 'photo' && <PhotoEditor s={seg.settings} patch={(p) => setSegments((x) => replaceSegment(x, { ...seg, settings: { ...seg.settings, ...p } }), 'photo')} />}
             </div>
           ) : null}
@@ -521,6 +535,24 @@ export default function ShowAdmin() {
 
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="شريحة جديدة" wide>
         <h4 className="mb-2 text-xs font-semibold text-ink-500">فقرات الحفل</h4>
+        {profile.standalone ? (
+          <ul className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {extPresets().map((t) => {
+              const I = (Icons[t.icon as keyof typeof Icons] ?? Icons.LayoutTemplate) as typeof Icons.Type;
+              return (
+                <li key={t.key}>
+                  <button onClick={() => addSegments(t.create(segId()))} className="flex h-full w-full items-start gap-2 rounded-xl border border-ink-100 p-2.5 text-start hover:border-brand-600 hover:bg-brand-50" data-preset={t.key}>
+                    <I className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" />
+                    <span>
+                      <span className="block text-sm font-medium text-ink-900">{t.label}</span>
+                      <span className="block text-[11px] leading-snug text-ink-500">{t.hint}</span>
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
         <ul className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {(Object.keys(CEREMONY_TEMPLATES) as CeremonyKey[]).map((k) => {
             const t = CEREMONY_TEMPLATES[k];
@@ -538,6 +570,7 @@ export default function ShowAdmin() {
             );
           })}
         </ul>
+        )}
         <h4 className="mb-2 text-xs font-semibold text-ink-500">قوالب الشرائح</h4>
         <ul className="grid max-h-[45vh] grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3">
           {(Object.keys(TEMPLATES) as TemplateKey[]).map((k) => (
@@ -551,6 +584,7 @@ export default function ShowAdmin() {
               </button>
             </li>
           ))}
+          {!profile.standalone && (
           <li>
             <button onClick={() => addSlide('demo')} className="group block w-full text-start">
               <span className="relative block overflow-hidden rounded-xl ring-1 ring-ink-200 transition group-hover:ring-[3px] group-hover:ring-brand-600" style={{ aspectRatio: '16 / 9' }}>
@@ -559,7 +593,7 @@ export default function ShowAdmin() {
               <span className="mt-1.5 block text-sm font-medium text-ink-900">ديمو المنصة</span>
               <span className="block text-xs text-ink-500">جولة متحركة في شاشات المنصة بصفة مشارك</span>
             </button>
-          </li>
+          </li>)}
         </ul>
       </Modal>
       <Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title={seg ? `معاينة «${seg.title}»` : 'معاينة'} wide>

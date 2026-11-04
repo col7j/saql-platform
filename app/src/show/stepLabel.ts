@@ -2,6 +2,7 @@
 import { agreementAt, rosterPages, whoAt } from './ceremony/logic';
 import { DEMO_PAGE_LABELS, DEMO_SCENE_LABELS, demoSteps, type Segment } from './model';
 import { stepCount } from './nav';
+import { extKind } from './ext';
 
 export function stepSub(seg: Segment | undefined, step: number): string | undefined {
   if (!seg) return undefined;
@@ -21,6 +22,7 @@ export function stepSub(seg: Segment | undefined, step: number): string | undefi
       return at.kind === 'intro' ? 'الافتتاح' : at.kind === 'all' ? 'شبكة الشعارات' : `اتفاقية ${at.index + 1} من ${seg.settings.parties.length}`;
     }
     case 'launch': return ['شاشة الانتظار', 'حركة التدشين', 'تم التدشين'][step];
+    case 'ext': return extKind(seg.settings.kind)?.sub?.(seg.settings.data, step);
     case 'demo': {
       const d = demoSteps(seg.settings)[step];
       return d ? `${DEMO_SCENE_LABELS[d.scene]} · ${DEMO_PAGE_LABELS[d.page]}` : undefined;

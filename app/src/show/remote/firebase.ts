@@ -1,6 +1,7 @@
 // تنفيذ Backend فوق Firebase Realtime Database مع تسجيل دخول مجهول.
 // يُحمَّل عند الحاجة فقط (import ديناميكي)، فالعرض بلا إعداد Firebase أو بلا إنترنت لا يتأثر.
 import type { Backend } from './protocol';
+import { fbPath, profile } from '../profile';
 
 export interface FirebaseConfig {
   apiKey: string;
@@ -29,13 +30,14 @@ let backend: Promise<Backend> | null = null;
 export function connectFirebase(config: FirebaseConfig): Promise<Backend> {
   backend ??= (async () => {
     const [{ initializeApp }, { getAuth, signInAnonymously }, db] = await Promise.all([import('firebase/app'), import('firebase/auth'), import('firebase/database')]);
-    const app = initializeApp(config, 'saql-show');
+    const app = initializeApp(config, profile.ns ? `${profile.ns}-show` : 'saql-show');
     const auth = getAuth(app);
     const { user } = await signInAnonymously(auth);
     const database = db.getDatabase(app, config.databaseURL);
     let offset = 0;
     db.onValue(db.ref(database, '.info/serverTimeOffset'), (s) => (offset = Number(s.val()) || 0));
-    const r = (p: string) => db.ref(database, p);
+    // كل المسارات تحت جذر الحفل (events/bia2026 مثلاً)، وحالة الاتصال من .info كما هي
+    const r = (p: string) => db.ref(database, p.startsWith('.info') ? p : fbPath(p));
     const b: Backend = {
       uid: user.uid,
       now: () => Date.now() + offset,

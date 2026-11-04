@@ -11,7 +11,22 @@ import { combineSync, type Cue, type LiveInfo, type ShowMessage } from './sync';
 import { agenda, agendaIndex, agendaKey, emptyTiming, spentOf, tick, whoHint, whoReveal, whoSkip, type Timing } from './ceremony/logic';
 import { stepSub } from './stepLabel';
 
-const POS_KEY = 'show-pos';
+/** ترويسة ثابتة على لوحة 1920×1080 (شعارات أعلى الشريحة وزخرفة أسفلها) بدل شعار الزاوية، من ملف تعريف الحفل */
+function ShowFrame({ items, visible }: { items: FrameItem[]; visible: boolean }) {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-30" style={{ opacity: visible ? 1 : 0, transition: 'opacity 600ms ease' }} aria-hidden>
+      <FitStage>
+        {(scale) => (
+          <div style={{ position: 'absolute', left: 0, top: 0, width: 1920, height: 1080, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
+            {items.map((it, i) => <img key={i} src={it.src} alt="" draggable={false} style={{ position: 'absolute', left: it.x, top: it.y, width: it.w, height: it.h, objectFit: 'contain' }} />)}
+          </div>
+        )}
+      </FitStage>
+    </div>
+  );
+}
+
+const POS_KEY = nsKey('show-pos');
 const loadPos = (): Pos => {
   try {
     const v = JSON.parse(sessionStorage.getItem(POS_KEY) ?? 'null');
@@ -28,7 +43,7 @@ const savePos = (p: Pos) => {
   }
 };
 
-const TIMING_KEY = 'show-timing';
+const TIMING_KEY = nsKey('show-timing');
 const loadTiming = (): Timing => {
   try {
     const v = JSON.parse(localStorage.getItem(TIMING_KEY) ?? 'null');
@@ -50,6 +65,8 @@ import { SegmentView, hidesCornerMark } from './segments';
 import { Backdrop, heroLogo, markLogo } from './segments/Fallback';
 import { useShowConfig, useSync } from './useShow';
 import './show.css';
+import { nsKey, profile, type FrameItem } from './profile';
+import { FitStage } from './slides/SlideView';
 
 const FADE_MS = 900;
 
@@ -135,7 +152,11 @@ export default function ShowPlayer() {
       const to = (step: number | null) => step !== null && go((_, p) => ({ seg: p.seg, step }));
       switch (c) {
         case 'hint': if (seg?.type === 'whoami') to(whoHint(seg.settings, pos.step)); break;
-        case 'reveal': if (seg?.type === 'whoami') to(whoReveal(seg.settings, pos.step)); break;
+        case 'reveal':
+          if (seg?.type === 'whoami') to(whoReveal(seg.settings, pos.step));
+          // الفقرات المسجَّلة (الجوائز والتكريم): «كشف» يُظهر المركز أو الاسم التالي
+          else if (seg?.type === 'ext' && pos.step < stepCount(seg) - 1) to(pos.step + 1);
+          break;
         case 'skip':
           if (seg?.type === 'whoami') {
             const n = whoSkip(seg.settings, pos.step);
@@ -149,7 +170,7 @@ export default function ShowPlayer() {
           if (i >= 0 && !(seg?.type === 'launch' && pos.step > 0)) go(() => ({ seg: i, step: 1 }));
           break;
         }
-        case 'photo': if (seg?.type === 'photo') setPhotoRun((r) => r + 1); break;
+        case 'photo': if (seg?.type === 'photo' || seg?.type === 'ext') setPhotoRun((r) => r + 1); break;
         case 'skipVideo': if (ref.current.video) go(skipSegment); break;
       }
     },
@@ -346,9 +367,13 @@ export default function ShowPlayer() {
       {!list.length && <Backdrop />}
 
       {/* شعار الزاوية: حجم وموقع ثابتان، ويغيب حين يكون الشعار نفسه هو الشاشة */}
-      <div className="show-mark" style={{ opacity: started && !hidesCornerMark(current) && !blackout ? 1 : 0 }}>
-        <img src={markLogo(cfg.theme)} alt="" draggable={false} />
-      </div>
+      {profile.frame ? (
+        <ShowFrame items={profile.frame[cfg.theme]} visible={started && !hidesCornerMark(current) && !blackout} />
+      ) : (
+        <div className="show-mark" style={{ opacity: started && !hidesCornerMark(current) && !blackout ? 1 : 0 }}>
+          <img src={markLogo(cfg.theme)} alt="" draggable={false} />
+        </div>
+      )}
 
       <div className="show-off z-40" style={{ opacity: blackout ? 1 : 0, pointerEvents: blackout ? 'auto' : 'none', transition: 'opacity 500ms ease' }} />
 
@@ -378,7 +403,7 @@ export default function ShowPlayer() {
                 <p className="show-in show-help mt-[4vh]" style={{ ['--i' as string]: 3 }}>
                   {list.length} فقرات · التالي: → أو PageDown أو المسافة · السابق: ← أو PageUp
                   <br />
-                  F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · K الجولة · H تلميح · R كشف · S تخطي · L تدشين · T مؤقت الصورة · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي
+                  {profile.standalone ? 'F ملء الشاشة · B شاشة سوداء · R كشف · T مؤقت الصورة · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي' : 'F ملء الشاشة · B شاشة سوداء · 1–4 مشاهد الديمو · K الجولة · H تلميح · R كشف · S تخطي · L تدشين · T مؤقت الصورة · باللمس: اسحب يميناً أو انقر يسار الشاشة للتالي'}
                 </p>
               </div>
             </div>

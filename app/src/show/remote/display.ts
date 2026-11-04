@@ -6,9 +6,10 @@ import type { RemoteInfo, ShowMessage, ShowSync } from '../sync';
 import { connectFirebase, loadFirebaseConfig } from './firebase';
 import { loopbackClient, loopbackEnabled } from './loopback';
 import { KEY_RE, openDisplay, type Backend, type DisplaySession, type RemoteCommand, type RemoteState } from './protocol';
+import { nsKey } from '../profile';
 
 /** مفتاح العرض على هذا الجهاز (من رابط شاشة العرض)، بمفتاح مستقل عن مفاتيح المنصة */
-export const DISPLAY_KEY = 'show-display-link';
+export const DISPLAY_KEY = nsKey('show-display-link');
 const LINK_RE = /[?&]link=([A-Za-z0-9_-]{22})(?=$|&)/;
 
 const store = {

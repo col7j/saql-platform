@@ -4,8 +4,10 @@ import { DEFAULT_CONFIG, DEMO_DEFAULTS, DEMO_SCENES, LAUNCH_DEFAULTS, PHOTO_DEFA
 import { normalize } from './nav';
 import { media, slideSettings } from './slides/sanitize';
 import { migrateLegacy } from './slides/templates';
+import { nsKey } from './profile';
+import { extKind } from './ext';
 
-export const SHOW_KEY = 'show-config';
+export const SHOW_KEY = nsKey('show-config');
 const LEGACY: LegacySegmentType[] = ['video', 'slides', 'names', 'blank'];
 
 type KV = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -88,6 +90,13 @@ function ceremonySegment(type: unknown, s: Record<string, any>): Pick<Segment, '
       return { type, settings: { waitTitle: str(s.waitTitle, LAUNCH_DEFAULTS.waitTitle), waitSub: str(s.waitSub, LAUNCH_DEFAULTS.waitSub), doneTitle: str(s.doneTitle, LAUNCH_DEFAULTS.doneTitle), autoNext: num(s.autoNext, LAUNCH_DEFAULTS.autoNext, 0, 120) } };
     case 'photo':
       return { type, settings: { heading: str(s.heading, PHOTO_DEFAULTS.heading), sub: str(s.sub, PHOTO_DEFAULTS.sub), seconds: num(s.seconds, PHOTO_DEFAULTS.seconds, 1, 10) } };
+    case 'ext': {
+      // نوع مسجَّل يتحقق من بياناته بنفسه، وغير المسجَّل يبقى كما هو (لا يضيع عند فتحه في عرض آخر)
+      const kind = str(s.kind);
+      if (!kind) return null;
+      const k = extKind(kind);
+      return { type, settings: { kind, data: k ? k.parse(s.data) : s.data ?? {} } };
+    }
   }
   return null;
 }
@@ -172,6 +181,10 @@ export function withoutPersonalData(cfg: ShowConfig): ShowConfig {
     segments: cfg.segments.map((s) => {
       if (s.type === 'whoami') return { ...s, settings: { ...s.settings, entries: [] } };
       if (s.type === 'roster') return { ...s, settings: { ...s.settings, people: [] } };
+      if (s.type === 'ext') {
+        const k = extKind(s.settings.kind);
+        return k?.scrub ? { ...s, settings: { ...s.settings, data: k.scrub(s.settings.data) } } : s;
+      }
       return s;
     }),
   };

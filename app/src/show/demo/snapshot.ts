@@ -3,8 +3,9 @@
 // ولا تدخل أبداً في show.json ولا في تصدير JSON ولا في Firebase (المستودع علني).
 import { buildSeed, DB_VERSION } from '@/data/seed';
 import type { DB } from '@/domain/types';
+import { nsKey } from '../profile';
 
-export const SNAPSHOT_KEY = 'show-demo-snapshot';
+export const SNAPSHOT_KEY = nsKey('show-demo-snapshot');
 export const SNAPSHOT_FORMAT = 'saql-demo-snapshot';
 /** مفتاح بيانات المنصة نفسه في src/data/db.ts: يُقرأ فقط */
 export const PLATFORM_DB_KEY = 'saql.db.v' + DB_VERSION;

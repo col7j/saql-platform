@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dev:bia2026": "vite --mode bia2026 --port 5174 --strictPort",
+    "build:bia2026": "tsc --noEmit && vite build --mode bia2026"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans-arabic": "5.2.6",

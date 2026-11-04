@@ -10,9 +10,10 @@ import { connectFirebase, loadFirebaseConfig } from './firebase';
 import { loopbackClient, loopbackEnabled } from './loopback';
 import { CODE_RE, joinWithCode, KEY_RE, rejoin, type Backend, type RemoteCommand, type RemoteSession, type RemoteState } from './protocol';
 import './remote.css';
+import { nsKey, profile } from '../profile';
 
 /** مفتاح الجلسة على الجوال (بعد الدخول بالرمز) */
-const REMOTE_KEY = 'show-remote-key';
+const REMOTE_KEY = nsKey('show-remote-key');
 
 type Phase =
   | { kind: 'loading' }
@@ -45,7 +46,7 @@ export default function ShowRemote() {
   const backend = useRef<Backend | null>(null);
 
   useEffect(() => {
-    document.title = 'ريموت العرض · صقل';
+    document.title = profile.standalone ? 'جهاز التحكم · الحفل' : 'ريموت العرض · صقل';
     let alive = true;
     // التجربة المحلية (?remote=loopback على localhost) أو Firebase
     const connect = loopbackEnabled() ? Promise.resolve(true as const) : loadFirebaseConfig();
@@ -213,6 +214,9 @@ function Controls({ s, net, onLeave, onEnded }: { s: RemoteSession; net: boolean
           <button className="rm-btn" disabled={!live} onClick={() => send({ type: 'tour' })}>
             {st?.paused ? <Play className="rm-ico" /> : <Pause className="rm-ico" />} {st?.paused ? 'شغّل الجولة' : 'أوقف الجولة'}
           </button>
+        )}
+        {cur?.type === 'ext' && (st?.steps ?? 1) > 1 && (
+          <button className="rm-btn" disabled={!live || (st?.step ?? 0) >= (st?.steps ?? 1) - 1} onClick={() => send({ type: 'reveal' })}><Eye className="rm-ico" /> كشف التالي</button>
         )}
         {cur?.type === 'photo' && (
           <button className="rm-btn" disabled={!live} onClick={() => send({ type: 'photo' })}><Timer className="rm-ico" /> مؤقت الصورة</button>

@@ -1,6 +1,7 @@
 // منطق نقي لترتيب الفقرات والتنقل بينها: لا يعرف الواجهة ولا التخزين.
 import { demoSteps, type Segment, type ShowConfig } from './model';
 import { slideStepCount } from './slides/model';
+import { extKind } from './ext';
 import { agreementSteps, LAUNCH_STEPS, rosterPages, whoNext, whoStepCount } from './ceremony/logic';
 
 /** موضع العرض: الفقرة (بترتيبها) والخطوة داخلها (شريحة، دفعة أسماء، خطوة ديمو) */
@@ -56,6 +57,7 @@ export function stepCount(seg: Segment): number {
     case 'agreements': return agreementSteps(seg.settings);
     case 'launch': return LAUNCH_STEPS;
     case 'photo': return 1;
+    case 'ext': return Math.max(1, extKind(seg.settings.kind)?.steps(seg.settings.data) ?? 1);
     default: return slideStepCount(seg.settings);
   }
 }

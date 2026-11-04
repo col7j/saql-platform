@@ -2,6 +2,7 @@
 // فتبديل القالب (المرحلة 2) يغيّر كل الشرائح، ولا يدخل العرض لون أو خط من خارج ملف الهوية.
 import { BRAND_COLORS, BRAND_FONTS, CANVAS, LOGOS, TYPE_SCALE, type BrandColorKey, type LogoKind } from '../brand/brand';
 import type { MediaRef } from '../model';
+import { profile } from '../profile';
 
 export { CANVAS };
 
@@ -174,6 +175,7 @@ export const LOGO_RATIO: Record<LogoKind, number> = {
   horizontal: 453.73 / 182.78,
   vertical: 322.12 / 318.03,
   icon: 284.12 / 486.95,
+  ...profile.logoRatio,
 };
 export const logoSrc = (p: LogoProps, theme: 'dark' | 'light' = 'dark') => LOGOS[p.kind][p.variant === 'auto' ? (theme === 'light' ? 'color' : 'white') : p.variant];
 

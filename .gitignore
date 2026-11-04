@@ -20,3 +20,7 @@ show-export*
 .env
 .env.*
 !.env.example
+
+# بناء حفل بيئات التطوع
+dist-bia2026
+app/dist-bia2026

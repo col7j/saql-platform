@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-event="bia2026">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#274653" />
+    <link rel="icon" type="image/svg+xml" href="./brand/logo-icon.svg" />
+    <title>حفل ختام بيئات التطوع 2026</title>
+    <script>
+      // ملف تعريف الحفل قبل تحميل أي وحدة: مفاتيح متصفح بادئتها bia2026. ومسار Firebase مستقل وترويسة العرض الأصلي
+      (function () {
+        var light = [
+          { src: 'brand/header-bia-smf.svg', x: 1425, y: 55, w: 381, h: 88 },
+          { src: 'brand/header-wifada-siaq.svg', x: 111, y: 63, w: 424, h: 71 },
+          { src: 'brand/strip.svg', x: 976, y: 932, w: 832, h: 88, bottom: true },
+          { src: 'brand/strip.svg', x: 408, y: 932, w: 560, h: 88, bottom: true },
+          { src: 'brand/social-wifada.svg', x: 111, y: 966, w: 160, h: 55, bottom: true }
+        ];
+        var dark = light.map(function (it) { return Object.assign({}, it, { src: it.src.replace('strip.svg', 'strip.svg').replace(/(header-[a-z-]+|social-wifada)\.svg$/, '$1-white.svg') }); });
+        window.__SHOW_PROFILE__ = {
+          id: 'bia2026',
+          ns: 'bia2026',
+          firebaseRoot: 'events/bia2026',
+          standalone: true,
+          fontAlias: { 'Thmanyah Sans': 'Alexandria' },
+          logoRatio: { vertical: 556.85 / 129.82, horizontal: 655.41 / 110.18, icon: 655.41 / 110.18 },
+          frame: { light: light, dark: dark }
+        };
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/events/bia2026/main.tsx"></script>
+  </body>
+</html>

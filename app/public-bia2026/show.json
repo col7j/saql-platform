@@ -1,0 +1,691 @@
+{
+  "schemaVersion": 2,
+  "title": "حفل ختام مشروع بيئات التطوع 2026",
+  "theme": "dark",
+  "segments": [
+    {
+      "id": "b_welcome",
+      "type": "slide",
+      "title": "الترحيب",
+      "order": 0,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": false
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "b_welcome_e1",
+            "type": "text",
+            "x": 160,
+            "y": 250,
+            "w": 1600,
+            "h": 200,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "حيّاكم الله",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 170,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "b_welcome_e2",
+            "type": "shape",
+            "x": 870,
+            "y": 490,
+            "w": 180,
+            "h": 9,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 900,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "b_welcome_e3",
+            "type": "text",
+            "x": 160,
+            "y": 540,
+            "w": 1600,
+            "h": 100,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1100,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "في حفل ختام مشروع",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 64,
+              "color": "fg",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "b_welcome_e4",
+            "type": "text",
+            "x": 160,
+            "y": 650,
+            "w": 1600,
+            "h": 160,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1500,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "بيئات التطوع 2026",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 130,
+              "color": "em",
+              "align": "center",
+              "line": 1.2
+            }
+          }
+        ]
+      },
+      "section": {
+        "title": "الترحيب",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_intro",
+      "title": "المقدمة",
+      "order": 1,
+      "type": "ext",
+      "settings": {
+        "kind": "speaker",
+        "data": {
+          "kicker": "المقدمة",
+          "name": "أ. سهيل البرقاوي",
+          "role": ""
+        }
+      },
+      "section": {
+        "title": "المقدمة",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_quran",
+      "type": "slide",
+      "title": "القرآن الكريم",
+      "order": 2,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": false
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "b_quran_e1",
+            "type": "text",
+            "x": 160,
+            "y": 300,
+            "w": 1600,
+            "h": 220,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "fade",
+              "delay": 200,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "القرآن الكريم",
+              "font": "Amiri",
+              "weight": 700,
+              "size": 160,
+              "color": "head",
+              "align": "center",
+              "line": 1.4
+            }
+          },
+          {
+            "id": "b_quran_e2",
+            "type": "shape",
+            "x": 870,
+            "y": 560,
+            "w": 180,
+            "h": 9,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 900,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          },
+          {
+            "id": "b_quran_e3",
+            "type": "text",
+            "x": 160,
+            "y": 610,
+            "w": 1600,
+            "h": 110,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 1100,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "أ. عمر ضياء",
+              "font": "Thmanyah Sans",
+              "weight": 500,
+              "size": 72,
+              "color": "fg",
+              "align": "center",
+              "line": 1.2
+            }
+          }
+        ]
+      },
+      "section": {
+        "title": "القرآن الكريم",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_wifada",
+      "title": "كلمة جمعية وفادة",
+      "order": 3,
+      "type": "ext",
+      "settings": {
+        "kind": "speaker",
+        "data": {
+          "kicker": "كلمة جمعية وفادة",
+          "name": "",
+          "role": "",
+          "logo": {
+            "kind": "url",
+            "src": "brand/header-wifada-siaq.svg"
+          }
+        }
+      },
+      "section": {
+        "title": "كلمة جمعية وفادة",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_exp_assoc",
+      "title": "تجربة جمعية",
+      "order": 4,
+      "type": "ext",
+      "settings": {
+        "kind": "experience",
+        "data": {
+          "kicker": "تجربة جمعية",
+          "name": "جمعية الرياضة النسائية",
+          "mediaKind": "logo"
+        }
+      },
+      "section": {
+        "title": "تجربة جمعية",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_exp_vol",
+      "title": "تجربة متطوع",
+      "order": 5,
+      "type": "ext",
+      "settings": {
+        "kind": "experience",
+        "data": {
+          "kicker": "تجربة متطوع",
+          "name": "",
+          "mediaKind": "photo"
+        }
+      },
+      "section": {
+        "title": "تجربة متطوع",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_report",
+      "type": "slide",
+      "title": "التقرير الختامي",
+      "order": 6,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": false
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "b_report_e1",
+            "type": "text",
+            "x": 160,
+            "y": 440,
+            "w": 1600,
+            "h": 160,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 100,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "التقرير الختامي",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 120,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "b_report_e2",
+            "type": "video",
+            "x": 320,
+            "y": 185,
+            "w": 1280,
+            "h": 720,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "lift",
+            "anim": {
+              "type": "fade",
+              "delay": 0,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "fit": "contain",
+              "radius": 28,
+              "muted": false,
+              "autoAdvance": true,
+              "showSkip": false
+            }
+          }
+        ]
+      },
+      "section": {
+        "title": "التقرير الختامي",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_smf",
+      "title": "كلمة مؤسسة سالم بن محفوظ الأهلية",
+      "order": 7,
+      "type": "ext",
+      "settings": {
+        "kind": "speaker",
+        "data": {
+          "kicker": "كلمة مؤسسة سالم بن محفوظ الأهلية",
+          "name": "م. ممدوح الحربي",
+          "role": ""
+        }
+      },
+      "section": {
+        "title": "كلمة مؤسسة سالم بن محفوظ الأهلية",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_award_brq",
+      "title": "جائزة بريق العطاء",
+      "order": 8,
+      "type": "ext",
+      "settings": {
+        "kind": "award",
+        "data": {
+          "intro": "الإعلان عن الفائزين بجائزة",
+          "title": "بريق العطاء",
+          "mode": "person",
+          "places": [
+            {
+              "name": "",
+              "sub": ""
+            },
+            {
+              "name": "",
+              "sub": ""
+            },
+            {
+              "name": "",
+              "sub": ""
+            }
+          ],
+          "crown": "صاحب بريق العطاء"
+        }
+      },
+      "section": {
+        "title": "جائزة بريق العطاء",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_award_init",
+      "title": "جائزة أفضل مبادرة",
+      "order": 9,
+      "type": "ext",
+      "settings": {
+        "kind": "award",
+        "data": {
+          "intro": "الإعلان عن الفائزين بجائزة",
+          "title": "أفضل مبادرة",
+          "mode": "org",
+          "places": [
+            {
+              "name": "",
+              "sub": ""
+            },
+            {
+              "name": "",
+              "sub": ""
+            },
+            {
+              "name": "",
+              "sub": ""
+            }
+          ],
+          "crown": ""
+        }
+      },
+      "section": {
+        "title": "جائزة أفضل مبادرة",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_partners",
+      "title": "تكريم الشركاء",
+      "order": 10,
+      "type": "ext",
+      "settings": {
+        "kind": "honoring",
+        "data": {
+          "kicker": "تكريم",
+          "title": "الشركاء",
+          "items": [
+            {
+              "label": "شريك النجاح",
+              "name": "",
+              "role": ""
+            }
+          ],
+          "grid": false,
+          "gridOnly": false
+        }
+      },
+      "section": {
+        "title": "تكريم الشركاء",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_team",
+      "title": "تكريم فريق العمل",
+      "order": 11,
+      "type": "ext",
+      "settings": {
+        "kind": "honoring",
+        "data": {
+          "kicker": "تكريم",
+          "title": "فريق العمل",
+          "items": [],
+          "grid": true,
+          "gridOnly": true
+        }
+      },
+      "section": {
+        "title": "تكريم فريق العمل",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_award_orgs",
+      "title": "تكريم الجهات المتميزة",
+      "order": 12,
+      "type": "ext",
+      "settings": {
+        "kind": "award",
+        "data": {
+          "intro": "تكريم الفائزين بجائزة",
+          "title": "الجهات المتميزة",
+          "mode": "org",
+          "places": [
+            {
+              "name": "",
+              "sub": ""
+            },
+            {
+              "name": "",
+              "sub": ""
+            },
+            {
+              "name": "",
+              "sub": ""
+            }
+          ],
+          "crown": ""
+        }
+      },
+      "section": {
+        "title": "تكريم الجهات المتميزة",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_support",
+      "title": "تكريم الجهات الداعمة والإشرافية",
+      "order": 13,
+      "type": "ext",
+      "settings": {
+        "kind": "honoring",
+        "data": {
+          "kicker": "تكريم",
+          "title": "الجهات الداعمة والإشرافية",
+          "items": [
+            {
+              "label": "الجهة الإشرافية",
+              "name": "",
+              "role": ""
+            },
+            {
+              "label": "الجهة الداعمة",
+              "name": "",
+              "role": ""
+            }
+          ],
+          "grid": false,
+          "gridOnly": false
+        }
+      },
+      "section": {
+        "title": "تكريم الجهات الداعمة والإشرافية",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_closing",
+      "type": "slide",
+      "title": "الختام",
+      "order": 14,
+      "settings": {
+        "bg": {
+          "kind": "theme",
+          "glow": false
+        },
+        "mark": true,
+        "elements": [
+          {
+            "id": "b_closing_e1",
+            "type": "text",
+            "x": 160,
+            "y": 290,
+            "w": 1600,
+            "h": 100,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "up",
+              "delay": 100,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "الختام",
+              "font": "Thmanyah Sans",
+              "weight": 700,
+              "size": 64,
+              "color": "em",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "b_closing_e2",
+            "type": "text",
+            "x": 160,
+            "y": 400,
+            "w": 1600,
+            "h": 220,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "scale",
+              "delay": 400,
+              "duration": 1000
+            },
+            "step": 0,
+            "props": {
+              "text": "بيئات تصنع الأثر",
+              "font": "Thmanyah Sans",
+              "weight": 900,
+              "size": 180,
+              "color": "head",
+              "align": "center",
+              "line": 1.2
+            }
+          },
+          {
+            "id": "b_closing_e3",
+            "type": "shape",
+            "x": 870,
+            "y": 660,
+            "w": 180,
+            "h": 9,
+            "rot": 0,
+            "opacity": 1,
+            "shadow": "none",
+            "anim": {
+              "type": "wipe",
+              "delay": 1200,
+              "duration": 900
+            },
+            "step": 0,
+            "props": {
+              "shape": "rect",
+              "fill": "gradGold",
+              "stroke": "none",
+              "strokeWidth": 4,
+              "radius": 999
+            }
+          }
+        ]
+      },
+      "section": {
+        "title": "الختام",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_photo",
+      "title": "الصورة التذكارية",
+      "order": 15,
+      "type": "photo",
+      "settings": {
+        "heading": "صورة تذكارية",
+        "sub": "بيئات التطوع 2026",
+        "seconds": 3
+      },
+      "section": {
+        "title": "الصورة التذكارية",
+        "minutes": 0
+      }
+    },
+    {
+      "id": "b_rating",
+      "title": "رابط تقييم الحفل",
+      "order": 16,
+      "type": "ext",
+      "settings": {
+        "kind": "qr-link",
+        "data": {
+          "title": "رابط تقييم الحفل",
+          "sub": "لمشاركتكم وحضوركم",
+          "url": ""
+        }
+      },
+      "section": {
+        "title": "رابط تقييم الحفل",
+        "minutes": 0
+      }
+    }
+  ],
+  "updatedAt": "2026-11-04T00:00:00.000Z"
+}

@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { ChevronsLeft, Volume2 } from 'lucide-react';
 import { useMediaUrl } from '../segments/useMedia';
 import { SlideFxLayer } from '../ceremony/fx';
+import { fontFor } from '../profile';
 import { BRAND_COLORS } from '../brand/brand';
 import {
   CANVAS, isVisibleAt, logoSrc, nameBatches, THEME_ROLES,
@@ -195,7 +196,7 @@ function TextBody({ el, editing, onTextCommit }: ElProps & { el: TextEl }) {
       suppressContentEditableWarning
       onBlur={editing ? (e) => onTextCommit?.(el.id, e.currentTarget.innerText.replace(/\n$/, '')) : undefined}
       onKeyDown={editing ? (e) => (e.stopPropagation(), e.key === 'Escape' && e.currentTarget.blur()) : undefined}
-      style={{ fontFamily: t.font, fontWeight: t.weight, fontSize: t.size, lineHeight: t.line, color: cssColor(t.color), textAlign: TEXT_ALIGN[t.align] }}
+      style={{ fontFamily: fontFor(t.font), fontWeight: t.weight, fontSize: t.size, lineHeight: t.line, color: cssColor(t.color), textAlign: TEXT_ALIGN[t.align] }}
     >
       {t.text}
     </div>
@@ -332,7 +333,7 @@ function CounterBody({ el, mode, active }: { el: CounterEl; mode: SlideMode; act
     return () => (cancelAnimationFrame(raf), clearTimeout(done));
   }, [mode, active, c.from, c.to, c.duration, el.anim.delay]);
   return (
-    <div className="sl-text num" style={{ display: 'grid', placeItems: 'center', fontFamily: c.font, fontWeight: c.weight, fontSize: c.size, lineHeight: 1, color: cssColor(c.color) }}>
+    <div className="sl-text num" style={{ display: 'grid', placeItems: 'center', fontFamily: fontFor(c.font), fontWeight: c.weight, fontSize: c.size, lineHeight: 1, color: cssColor(c.color) }}>
       <span dir="ltr">{c.prefix}{Math.round(value).toLocaleString('en-US')}{c.suffix}</span>
     </div>
   );
@@ -353,7 +354,7 @@ function NamesBody({ el, step, mode, anim }: { el: NamesEl; step: number; mode: 
           <div
             key={name + i}
             className={anim ? 'sl-anim sl-a-scale' : undefined}
-            style={{ ['--d' as string]: '1300ms', ['--dl' as string]: `${i * 260}ms`, fontFamily: n.font, fontWeight: n.weight, fontSize: size, lineHeight: 1.15, color: cssColor(n.color), textAlign: 'center', textWrap: 'balance' } as CSSProperties}
+            style={{ ['--d' as string]: '1300ms', ['--dl' as string]: `${i * 260}ms`, fontFamily: fontFor(n.font), fontWeight: n.weight, fontSize: size, lineHeight: 1.15, color: cssColor(n.color), textAlign: 'center', textWrap: 'balance' } as CSSProperties}
           >
             {name}
           </div>

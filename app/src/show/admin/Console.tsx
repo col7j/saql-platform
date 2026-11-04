@@ -118,6 +118,7 @@ export function Console({ cfg, live, connected, send, onClose }: { cfg: ShowConf
                 <Button disabled={!connected} variant="secondary" onClick={() => cue('skip')} icon={<Icons.SkipForward className="h-4 w-4" />}>تخطي</Button>
               </>
             )}
+            {cur?.type === 'ext' && steps > 1 && <Button disabled={!connected || pos.step >= steps - 1} variant="secondary" onClick={() => cue('reveal')} icon={<Icons.Eye className="h-4 w-4" />}>كشف التالي</Button>}
             {cur?.type === 'photo' && <Button disabled={!connected} variant="secondary" onClick={() => cue('photo')} icon={<Icons.Timer className="h-4 w-4" />}>مؤقت الصورة</Button>}
             {v && <Button disabled={!connected} variant="secondary" onClick={() => cue('skipVideo')} icon={<Icons.SkipForward className="h-4 w-4" />}>تخطي الفيديو</Button>}
             {list.some((s) => s.type === 'launch') && (
